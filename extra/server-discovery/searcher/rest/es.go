@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/go-chi/jwtauth"
@@ -57,7 +58,8 @@ type (
 			Query string `json:"query"`
 			Type  string `json:"type"`
 			// Operator string   `json:"operator"`
-			Fields []string `json:"fields"`
+			Fields             []string `json:"fields"`
+			MinimumShouldMatch string   `json:"minimum_should_match"`
 		} `json:"multi_match"`
 	}
 
@@ -288,6 +290,7 @@ func esSearch(ctx context.Context, log *zap.Logger, esc *elasticsearch.Client, p
 	for _, mAggs := range p.moduleAggs {
 		mm.Wrap.Query = mAggs
 		mm.Wrap.Type = "cross_fields"
+		mm.Wrap.MinimumShouldMatch = "100%"
 		mm.Wrap.Fields = []string{"module.name"}
 		// query.Query.Bool.Must = append(query.Query.Bool.Must, mm)
 		// query.Query.DisMax.Queries = append(query.Query.DisMax.Queries, mm)
@@ -307,6 +310,7 @@ func esSearch(ctx context.Context, log *zap.Logger, esc *elasticsearch.Client, p
 	for _, nAggs := range p.namespaceAggs {
 		mm.Wrap.Query = nAggs
 		mm.Wrap.Type = "cross_fields"
+		mm.Wrap.MinimumShouldMatch = "100%"
 		mm.Wrap.Fields = []string{"namespace.name"}
 		// query.Query.Bool.Must = append(query.Query.Bool.Must, mm)
 		// query.Query.DisMax.Queries = append(query.Query.DisMax.Queries, mm)
@@ -405,10 +409,12 @@ func esSearch(ctx context.Context, log *zap.Logger, esc *elasticsearch.Client, p
 	//	query.Aggregations = (Aggregations{}).encodeTerms(p.aggregations)
 	// }
 
+	// spew.Dump("query: ", query)
 	if err = json.NewEncoder(&buf).Encode(query); err != nil {
 		err = fmt.Errorf("could not encode query: %q", err)
 		return
 	}
+	spew.Dump("buf: ", buf)
 
 	log.Debug("searching ",
 		zap.String("for", p.title),
