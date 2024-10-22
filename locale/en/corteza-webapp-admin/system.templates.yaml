@@ -24,11 +24,12 @@ editor:
       text_html: HTML
       text_plain: Plain text
     createdAt: Created at
+    createdBy: Created by
     delete: Delete
     deletedAt: Deleted at
     handle: Handle
     placeholder-handle: handle (a - z, 0 - 9, underscore, dash)
-    invalid-handle-characters: Should be at least 2 characters long and start with a letter. Can contain only letters, numbers, dashes, underscores and dots
+    invalid-handle-characters: Should be at least 2 characters long. Can contain only letters, numbers, underscores and dots. Must end with letter or number
     meta:
       description: Description
       short: Short name *
@@ -38,7 +39,7 @@ editor:
     type: Template type
     undelete: Undelete
     updatedAt: Updated at
-  new: New
+  new: New Template
   permissions: Permissions
   title:
     create: Create template
@@ -52,6 +53,8 @@ list:
     meta:
       short: Short name
     state: State
+  delete: Delete
+  undelete: Undelete
   export: Export
   rows:
     filters:
@@ -69,7 +72,7 @@ list:
     inclusive:
       label: Including
   loading: Loading templates
-  new: New
+  new: New Template
   numFound: '{{count}} template found'
   numFound_plural: '{{count}} templates found'
   permissions: Permissions

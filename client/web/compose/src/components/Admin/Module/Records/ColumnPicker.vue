@@ -1,33 +1,41 @@
 <template>
-  <div>
+  <div class="d-flex">
     <b-button
-      v-b-modal.columns
-      size="lg"
-      variant="light"
+      :size="size"
+      :variant="variant"
+      class="flex-fill"
+      :disabled="disabled"
+      @click="showModal = true"
     >
-      {{ $t('allRecords.columns.title') }}
+      <slot>
+        {{ $t('allRecords.columns.title') }}
+      </slot>
     </b-button>
+
     <b-modal
       id="columns"
+      v-model="showModal"
       size="lg"
       scrollable
-      :title="$t('allRecords.columns.title')"
       :ok-title="$t('general.label.saveAndClose')"
-      body-class="p-0"
+      cancel-variant="light"
+      title-class="d-flex align-items-center p-0"
       @ok="onSave"
     >
-      <b-card-body
-        class="d-flex flex-column mh-100"
-      >
-        <p>
-          {{ $t('allRecords.columns.description') }}
-        </p>
-        <field-picker
-          :module="module"
-          :fields.sync="filteredFields"
-          style="max-height: 71vh;"
+      <template #modal-title>
+        {{ $t('allRecords.columns.title') }}
+        <c-hint
+          :tooltip="$t('allRecords.tooltip.configureColumns')"
+          icon-class="text-warning"
         />
-      </b-card-body>
+      </template>
+
+      <field-picker
+        :module="module"
+        :fields.sync="filteredFields"
+        :field-subset="fieldSubset"
+        style="height: 71vh;"
+      />
     </b-modal>
   </div>
 </template>
@@ -56,23 +64,59 @@ export default {
       required: true,
       default: () => [],
     },
+
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
+
+    size: {
+      type: String,
+      default: 'lg',
+    },
+
+    variant: {
+      type: String,
+      default: 'light',
+    },
+
+    fieldSubset: {
+      type: Array,
+      required: false,
+      default: () => null,
+    },
   },
 
   data () {
     return {
+      showModal: false,
+
       filteredFields: [],
     }
   },
 
-  created () {
-    this.filteredFields = this.fields.map(f => {
-      return { ...f.moduleField }
-    })
+  watch: {
+    fields: {
+      immediate: true,
+      handler (fields) {
+        if (fields) {
+          this.filteredFields = this.module.filterFields(fields)
+        }
+      },
+    },
+  },
+
+  beforeDestroy () {
+    this.setDefaultValues()
   },
 
   methods: {
     onSave () {
       this.$emit('updateFields', this.filteredFields)
+    },
+
+    setDefaultValues () {
+      this.filteredFields = []
     },
   },
 }

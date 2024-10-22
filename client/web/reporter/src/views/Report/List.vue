@@ -1,100 +1,158 @@
 <template>
-  <div class="d-flex w-100 py-3">
+  <b-container
+    fluid="xl"
+    class="d-flex flex-column py-3"
+  >
     <portal to="topbar-title">
       {{ $t('report.list') }}
     </portal>
 
-    <b-container fluid="xl">
-      <b-row no-gutters>
-        <b-col>
-          <c-resource-list
-            :primary-key="primaryKey"
-            :filter="filter"
-            :sorting="sorting"
-            :pagination="pagination"
-            :fields="tableFields"
-            :items="reportList"
-            :translations="{
-              searchPlaceholder: $t('searchPlaceholder'),
-              notFound: $t('general:resourceList.notFound'),
-              noItems: $t('general:resourceList.noItems'),
-              loading: $t('general:label.loading'),
-              showingPagination: 'general:resourceList.pagination.showing',
-              singlePluralPagination: 'general:resourceList.pagination.single',
-              prevPagination: $t('general:resourceList.pagination.prev'),
-              nextPagination: $t('general:resourceList.pagination.next'),
-            }"
-            clickable
-            class="h-100"
-            @search="filterList"
-            @row-clicked="viewReport"
+    <c-resource-list
+      :primary-key="primaryKey"
+      :filter="filter"
+      :sorting="sorting"
+      :pagination="pagination"
+      :fields="tableFields"
+      :items="reportList"
+      :translations="{
+        searchPlaceholder: $t('searchPlaceholder'),
+        notFound: $t('general:resourceList.notFound'),
+        noItems: $t('general:resourceList.noItems'),
+        loading: $t('general:label.loading'),
+        showingPagination: 'general:resourceList.pagination.showing',
+        singlePluralPagination: 'general:resourceList.pagination.single',
+        prevPagination: $t('general:resourceList.pagination.prev'),
+        nextPagination: $t('general:resourceList.pagination.next'),
+        resourceSingle: $t('general:label.report.single'),
+        resourcePlural: $t('general:label.report.plural')
+      }"
+      sticky-header
+      clickable
+      class="h-100 flex-fill"
+      @search="filterList"
+      @row-clicked="viewReport"
+    >
+      <template #header>
+        <b-button
+          v-if="canCreate"
+          data-test-id="button-create-report"
+          variant="primary"
+          size="lg"
+          :to="{ name: 'report.create' }"
+        >
+          {{ $t('report.new') }}
+        </b-button>
+
+        <c-permissions-button
+          v-if="canGrant"
+          resource="corteza::system:report/*"
+          :button-label="$t('permissions')"
+          size="lg"
+        />
+      </template>
+
+      <template #name="{ item: r }">
+        {{ r.meta.name }}
+      </template>
+
+      <template #changedAt="{ item }">
+        {{ (item.deletedAt || item.updatedAt || item.createdAt) | locFullDateTime }}
+      </template>
+
+      <template #actions="{ item: r }">
+        <b-button-group
+          v-if="r.canUpdateReport"
+          size="sm"
+        >
+          <b-button
+            data-test-id="button-report-builder"
+            variant="primary"
+            size="sm"
+            :to="{ name: 'report.builder', params: { reportID: r.reportID } }"
           >
-            <template #header>
-              <b-button
-                v-if="canCreate"
-                data-test-id="button-create-report"
-                variant="primary"
-                size="lg"
-                class="mr-1"
-                :to="{ name: 'report.create' }"
-              >
-                {{ $t('report.new') }}
-              </b-button>
+            {{ $t('report.builder') }}
+            <font-awesome-icon
+              :icon="['fas', 'tools']"
+              class="ml-2"
+            />
+          </b-button>
 
-              <c-permissions-button
-                v-if="canGrant"
-                resource="corteza::system:report/*"
-                :button-label="$t('permissions')"
-                button-variant="light"
-                class="btn-lg"
-              />
-            </template>
+          <b-button
+            v-b-tooltip.noninteractive.hover="{ title: $t('report.edit'), container: '#body' }"
+            data-test-id="button-report-edit"
+            variant="primary"
+            :to="{ name: 'report.edit', params: { reportID: r.reportID } }"
+            class="d-flex align-items-center"
+            style="margin-left:2px;"
+          >
+            <font-awesome-icon
+              :icon="['far', 'edit']"
+            />
+          </b-button>
+        </b-button-group>
 
-            <template #name="{ item: r }">
-              {{ r.meta.name }}
-            </template>
+        <b-dropdown
+          v-if="r.canUpdateReport || r.canGrant || r.canDeleteReport"
+          variant="outline-extra-light"
+          toggle-class="d-flex align-items-center justify-content-center text-primary border-0 py-2"
+          no-caret
+          lazy
+          menu-class="m-0"
+          class="ml-2"
+        >
+          <template #button-content>
+            <font-awesome-icon
+              :icon="['fas', 'ellipsis-v']"
+            />
+          </template>
 
-            <template #changedAt="{ item }">
-              {{ (item.deletedAt || item.updatedAt || item.createdAt) | locFullDateTime }}
-            </template>
+          <b-dropdown-item
+            v-if="r.canGrant"
+            link-class="p-0"
+            variant="light"
+          >
+            <c-permissions-button
+              :tooltip="$t('permissions:resources.system.report.tooltip')"
+              :title="r.meta.name || r.handle || r.reportID"
+              :target="r.meta.name || r.handle || r.reportID"
+              :resource="`corteza::system:report/${r.reportID}`"
+              class="text-dark d-print-none border-0"
+              :button-label="$t('permissions:ui.label')"
+              button-variant="link dropdown-item text-decoration-none text-dark regular-font rounded-0"
+            />
+          </b-dropdown-item>
 
-            <template #actions="{ item: r }">
-              <b-button
-                v-if="r.canUpdateReport"
-                variant="light"
-                class="mr-2"
-                :to="{ name: 'report.builder', params: { reportID: r.reportID } }"
-              >
-                {{ $t('report.builder') }}
-              </b-button>
-              <b-button
-                v-if="r.canUpdateReport"
-                variant="link"
-                class="mr-2"
-                :to="{ name: 'report.edit', params: { reportID: r.reportID } }"
-              >
-                {{ $t('report.edit') }}
-              </b-button>
-              <c-permissions-button
-                v-if="r.canGrant"
-                :tooltip="$t('permissions:resources.system.report.tooltip')"
-                :title="r.meta.name || r.handle || r.reportID"
-                :target="r.meta.name || r.handle || r.reportID"
-                :resource="`corteza::system:report/${r.reportID}`"
-                class="btn px-2"
-                link
-              />
-            </template>
-          </c-resource-list>
-        </b-col>
-      </b-row>
-    </b-container>
-  </div>
+          <b-dropdown-item-button @click="handleReportCloning(r)">
+            <font-awesome-icon
+              :icon="['fa','clone']"
+            />
+            {{ $t('general:resourceList.clone') }}
+          </b-dropdown-item-button>
+
+          <c-input-confirm
+            v-if="r.canDeleteReport"
+            :processing="processingDelete"
+            :text="$t('report.delete')"
+            borderless
+            variant="link"
+            size="md"
+            show-icon
+            text-class="p-1"
+            button-class="dropdown-item text-decoration-none regular-font rounded-0"
+            icon-class="text-danger"
+            class="w-100"
+            @confirmed="handleDelete(r)"
+          />
+        </b-dropdown>
+      </template>
+    </c-resource-list>
+  </b-container>
 </template>
 
 <script>
 import { mapGetters } from 'vuex'
 import listHelpers from 'corteza-webapp-reporter/src/mixins/listHelpers'
+import report from 'corteza-webapp-reporter/src/mixins/report'
 import { components } from '@cortezaproject/corteza-vue'
 const { CResourceList } = components
 
@@ -111,11 +169,14 @@ export default {
 
   mixins: [
     listHelpers,
+    report,
   ],
 
   data () {
     return {
       primaryKey: 'reportID',
+
+      processingDelete: false,
 
       filter: {
         query: '',
@@ -146,7 +207,7 @@ export default {
         {
           key: 'name',
           label: this.$t('columns.name'),
-          sortable: true,
+          sortable: false,
           tdClass: 'text-nowrap',
         },
         {
@@ -163,7 +224,7 @@ export default {
         {
           key: 'actions',
           label: '',
-          tdClass: 'text-right text-nowrap',
+          tdClass: 'text-right text-nowrap actions gap-1',
         },
       ]
     },
@@ -172,19 +233,35 @@ export default {
   methods: {
     viewReport ({ reportID, canReadReport = false }) {
       if (reportID) {
-        if (canReadReport) {
-          this.$router.push({
-            name: 'report.view',
-            params: { reportID },
-          })
-        } else {
-          this.toastDanger(this.$t('notification:report.notAllowed.read'))
-        }
+        this.$router.push({
+          name: 'report.view',
+          params: { reportID },
+        })
       }
     },
 
     reportList () {
       return this.procListResults(this.$SystemAPI.reportList(this.encodeListParams()))
+    },
+
+    handleDelete (report) {
+      this.processingDelete = true
+
+      return this.$SystemAPI.reportDelete(report)
+        .then(() => {
+          this.toastSuccess(this.$t('notification:report.delete'))
+          this.filterList()
+        })
+        .catch(this.toastErrorHandler(this.$t('notification:report.deleteFailed')))
+        .finally(() => {
+          this.processingDelete = false
+        })
+    },
+
+    handleReportCloning (report) {
+      this.handleClone(report).then(({ reportID }) => {
+        this.viewReport({ reportID })
+      })
     },
   },
 }

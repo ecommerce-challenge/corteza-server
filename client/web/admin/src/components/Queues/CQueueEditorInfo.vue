@@ -1,116 +1,117 @@
 <template>
   <b-card
     data-test-id="card-queue-edit"
+    header-class="border-bottom"
+    footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
     class="shadow-sm"
-    header-bg-variant="white"
-    footer-bg-variant="white"
   >
-    <b-form @submit="$emit('submit', queue)">
-      <b-form-group
-        :label="$t('name')"
-        label-cols="2"
-      >
-        <b-form-input
-          v-model="queue.queue"
-          data-test-id="input-name"
-          :state="handleState"
-        />
-        <b-form-invalid-feedback
-          :state="handleState"
-          data-test-id="feedback-invalid-name"
-        >
-          {{ $t('invalid-handle-characters') }}
-        </b-form-invalid-feedback>
-      </b-form-group>
-
-      <b-form-group
-        :label="$t('consumer')"
-        label-cols="2"
-      >
-        <b-form-select
-          v-model="queue.consumer"
-          data-test-id="input-consumer"
-          :options="consumers"
-        />
-      </b-form-group>
-
-      <b-form-group
-        label-cols="2"
-        :label="$t('poll_delay')"
-        :description="metaPollDelayDescription()"
-      >
-        <b-form-input
-          v-model="(queue.meta || {}).poll_delay"
-          data-test-id="input-polling"
-          class="col-xs-2 col-lg-2"
-          :state="durationState"
-        />
-      </b-form-group>
-
-      <b-form-group
-        v-if="isMetaDispatchEvents"
-        :label="$t('dispatch_events')"
-        :description="$t('dispatch_events_desc')"
-        label-cols="2"
-      >
-        <b-form-checkbox
-          v-model="queue.meta.dispatch_events"
-          name="checkbox-1"
-        >
-          {{ $t("dispatch_events") }}
-        </b-form-checkbox>
-      </b-form-group>
-
-      <b-form-group
-        v-if="queue.createdAt"
-        data-test-id="input-created-at"
-        :label="$t('createdAt')"
-        label-cols="2"
-      >
-        {{ queue.createdAt | locFullDateTime }}
-      </b-form-group>
-
-      <b-form-group
-        v-if="queue.updatedAt"
-        data-test-id="input-updated-at"
-        :label="$t('updatedAt')"
-        label-cols="2"
-      >
-        {{ queue.updatedAt | locFullDateTime }}
-      </b-form-group>
-
-      <b-form-group
-        v-if="queue.deletedAt"
-        data-test-id="input-deleted-at"
-        :label="$t('deletedAt')"
-        label-cols="2"
-      >
-        {{ queue.deletedAt | locFullDateTime }}
-      </b-form-group>
-    </b-form>
-
     <template #header>
-      <h3 class="m-0">
+      <h4 class="m-0">
         {{ $t("title") }}
-      </h3>
+      </h4>
     </template>
 
-    <template #footer>
-      <c-submit-button
-        class="float-right"
-        :processing="processing"
-        :success="success"
-        :disabled="saveDisabled"
-        @submit="$emit('submit', queue)"
-      />
+    <b-form @submit="$emit('submit', queue)">
+      <b-row>
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('name')"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="queue.queue"
+              data-test-id="input-name"
+              :state="handleState"
+            />
+            <b-form-invalid-feedback
+              :state="handleState"
+              data-test-id="feedback-invalid-name"
+            >
+              {{ $t('invalid-handle-characters') }}
+            </b-form-invalid-feedback>
+          </b-form-group>
+        </b-col>
 
-      <confirmation-toggle
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('consumer')"
+            label-class="text-primary"
+          >
+            <b-form-select
+              v-model="queue.consumer"
+              data-test-id="input-consumer"
+              :options="consumers"
+            />
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('poll_delay')"
+            :description="metaPollDelayDescription()"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="(queue.meta || {}).poll_delay"
+              data-test-id="input-polling"
+              :state="durationState"
+            />
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            v-if="isMetaDispatchEvents"
+            :label="$t('dispatch_events')"
+            :description="$t('dispatch_events_desc')"
+            label-class="text-primary"
+          >
+            <b-form-checkbox
+              v-model="queue.meta.dispatch_events"
+              name="checkbox-1"
+            >
+              {{ $t("dispatch_events") }}
+            </b-form-checkbox>
+          </b-form-group>
+        </b-col>
+      </b-row>
+
+      <c-system-fields
+        :resource="queue"
+      />
+    </b-form>
+
+    <template #footer>
+      <c-input-confirm
         v-if="queue && queue.queueID && queue.canDeleteQueue"
         :data-test-id="deleteButtonStatusCypressId"
+        variant="danger"
+        size="md"
         @confirmed="$emit('delete')"
       >
         {{ getDeleteStatus }}
-      </confirmation-toggle>
+      </c-input-confirm>
+
+      <c-button-submit
+        :disabled="saveDisabled"
+        :processing="processing"
+        :success="success"
+        :text="$t('admin:general.label.submit')"
+        class="ml-auto"
+        @submit="$emit('submit', queue)"
+      />
     </template>
   </b-card>
 </template>
@@ -118,8 +119,6 @@
 <script>
 import { NoID } from '@cortezaproject/corteza-js'
 import { handle } from '@cortezaproject/corteza-vue'
-import ConfirmationToggle from 'corteza-webapp-admin/src/components/ConfirmationToggle'
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
 
 export default {
   name: 'CQueueEditorInfo',
@@ -127,11 +126,6 @@ export default {
   i18nOptions: {
     namespaces: 'system.queues',
     keyPrefix: 'editor.info',
-  },
-
-  components: {
-    ConfirmationToggle,
-    CSubmitButton,
   },
 
   props: {

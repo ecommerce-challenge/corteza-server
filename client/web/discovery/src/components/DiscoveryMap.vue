@@ -1,28 +1,26 @@
 <template>
-  <l-map
-    :zoom="zoom"
-    :center="center"
+  <c-map
     style="height: calc(100vh - 64px);"
-    @click="clearClickedMarker()"
-  >
-    <l-tile-layer
-      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      :attribution="attribution"
-    />
-    <l-marker
-      v-for="(marker, i) in markers"
-      :key="i"
-      :lat-lng="getLatLng(marker.coordinates)"
-      :opacity="[hoverIndex, clickedMarker].includes(marker.id) ? 1.0 : 0.6"
-      @click="onMarkerClick(marker.id)"
-    />
-  </l-map>
+    :map="{
+      zoom,
+      center,
+    }"
+    :markers="makerValues"
+    @on-marker-click="onMarkerClick"
+    @on-map-click="clearClickedMarker"
+  />
 </template>
 
 <script>
-import { latLng } from 'leaflet'
+import { components } from '@cortezaproject/corteza-vue'
+
+const { CMap } = components
 
 export default {
+  components: {
+    CMap,
+  },
+
   props: {
     markers: {
       type: Array,
@@ -44,13 +42,25 @@ export default {
     }
   },
 
+  computed: {
+    makerValues () {
+      return this.markers.map((marker, i) => {
+        return {
+          id: marker.id,
+          value: marker.coordinates,
+          opacity: [this.hoverIndex, this.clickedMarker].includes(marker.id) ? 1.0 : 0.6,
+        }
+      })
+    },
+  },
+
   watch: {
     markers: {
       immediate: true,
       handler (markers = []) {
         if (markers.length) {
           const { coordinates = [30, 30] } = markers[0]
-          this.center = this.getLatLng(coordinates)
+          this.center = coordinates
         }
       },
     },
@@ -60,7 +70,7 @@ export default {
         if (hoverIndex) {
           const { coordinates } = this.markers.find(({ id }) => id === hoverIndex) || {}
           if (coordinates) {
-            this.center = this.getLatLng(coordinates)
+            this.center = coordinates
           }
         }
       },
@@ -68,12 +78,8 @@ export default {
   },
 
   methods: {
-    getLatLng (coordinates = [0, 0]) {
-      return latLng(coordinates[0], coordinates[1])
-    },
-
-    onMarkerClick (ID) {
-      this.clickedMarker = ID
+    onMarkerClick ({ index }) {
+      this.clickedMarker = index
       this.$emit('hover', this.clickedMarker)
     },
 
@@ -87,6 +93,6 @@ export default {
 
 <style lang="scss">
 .vl-style-text {
-  color: white;
+  color: var(--white);
 }
 </style>

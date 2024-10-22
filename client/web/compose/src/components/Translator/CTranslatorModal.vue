@@ -6,6 +6,8 @@
       lazy
       scrollable
       :title="title"
+      no-fade
+      body-class="position-static p-0"
       @hide="onHide"
     >
       <c-translator-form
@@ -18,6 +20,7 @@
         :highlight-key="highlightKey"
         @change="changes=$event"
       />
+
       <template #modal-footer>
         <b-button
           data-test-id="button-submit"
@@ -92,7 +95,19 @@ export default {
 
   mounted () {
     this.loaded = false
-    this.$root.$on('c-translator', payload => {
+    this.$root.$on('c-translator', this.loadModal)
+  },
+
+  beforeDestroy () {
+    this.destroyEvents()
+  },
+
+  methods: {
+    ...mapActions({
+      loadLanguages: 'languages/load',
+    }),
+
+    loadModal (payload) {
       if (!payload) {
         // when falsy payload is received,
         // close the translator modal
@@ -113,17 +128,7 @@ export default {
         this.translations = tt
         this.loaded = true
       })
-    })
-  },
-
-  destroyed () {
-    this.$root.$off('c-translator')
-  },
-
-  methods: {
-    ...mapActions({
-      loadLanguages: 'languages/load',
-    }),
+    },
 
     onSubmit () {
       if (this.changes.length === 0) {
@@ -153,6 +158,10 @@ export default {
       this.updater = undefined
       this.keyPrettyfier = undefined
       this.loaded = false
+    },
+
+    destroyEvents () {
+      this.$root.$off('c-translator', this.loadModal)
     },
   },
 }

@@ -1,8 +1,8 @@
 <template>
   <c-translator-button
     v-if="canManageResourceTranslations && resourceTranslationsEnabled"
-    v-bind="$props"
-    :title="$t('tooltip')"
+    v-bind="{ ...$attrs, ...$props }"
+    :tooltip="$t('tooltip')"
     :resource="resource"
     :titles="titles"
     :fetcher="fetcher"
@@ -31,15 +31,21 @@ export default {
       required: true,
     },
 
-    block: {
-      type: compose.PageBlock,
+    pageLayouts: {
+      type: Array,
+      default: () => [],
+    },
+
+    pageLayout: {
+      type: compose.PageLayout,
       required: false,
       default: undefined,
     },
 
-    buttonVariant: {
-      type: String,
-      default: () => 'primary',
+    block: {
+      type: compose.PageBlock,
+      required: false,
+      default: undefined,
     },
 
     highlightKey: {
@@ -79,6 +85,15 @@ export default {
         titles[this.resource] = this.$t('title', { handle: handle || pageID })
       }
 
+      if (this.pageLayout) {
+        const { namespaceID, pageID, pageLayoutID, handle, meta } = this.pageLayout
+        titles[`compose:page-layout/${namespaceID}/${pageID}/${pageLayoutID}`] = this.$t('layout.title', { handle: handle || meta.title || pageLayoutID })
+      } else {
+        this.pageLayouts.forEach(({ namespaceID, pageID, pageLayoutID, handle, meta }) => {
+          titles[`compose:page-layout/${namespaceID}/${pageID}/${pageLayoutID}`] = this.$t('layout.title', { handle: handle || meta.title || pageLayoutID })
+        })
+      }
+
       return titles
     },
 
@@ -95,6 +110,10 @@ export default {
                * translations that are relevant for that block
                */
               set = set.filter(({ key }) => key.startsWith(`pageBlock.${this.block.blockID}.`))
+            }
+
+            if (this.pageLayout) {
+              set = set.filter(({ resource }) => resource.endsWith(`${pageID}`) || resource.endsWith(`/${this.pageLayout.pageLayoutID}`))
             }
 
             return set
@@ -124,13 +143,17 @@ export default {
               return translations.find(t => t.key === key && t.lang === this.currentLanguage && t.resource === this.resource)
             }
 
+            const layoutResource = ({ pageLayoutID, pageID, namespaceID }) => `compose:page-layout/${namespaceID}/${pageID}/${pageLayoutID}`
+
             let tr = find('title')
             if (tr !== undefined) {
+              // eslint-disable-next-line vue/no-side-effects-in-computed-properties
               this.page.title = tr.message
             }
 
             tr = find('description')
             if (tr !== undefined) {
+              // eslint-disable-next-line vue/no-side-effects-in-computed-properties
               this.page.description = tr.message
             }
 
@@ -203,10 +226,73 @@ export default {
               return block
             }
 
+            const updatePageLayoutTranslations = pageLayout => {
+              if (pageLayout.pageLayoutID === NoID) return pageLayout
+
+              const find = (key) => {
+                return translations.find(t => t.key === key && t.lang === this.currentLanguage && t.resource === layoutResource(pageLayout))
+              }
+
+              let tr = find('title')
+              if (tr !== undefined) {
+                pageLayout.meta.title = tr.message
+              }
+
+              tr = find('description')
+              if (tr !== undefined) {
+                pageLayout.meta.description = tr.message
+              }
+
+              // Refresh page buttons for record pages
+              if (pageLayout.moduleID && pageLayout.moduleID !== NoID) {
+                tr = find('config.buttons.new.label')
+                if (tr) {
+                  pageLayout.config.buttons.new.label = tr.message
+                }
+
+                tr = find('config.buttons.edit.label')
+                if (tr) {
+                  pageLayout.config.buttons.edit.label = tr.message
+                }
+
+                tr = find('config.buttons.submit.label')
+                if (tr) {
+                  pageLayout.config.buttons.submit.label = tr.message
+                }
+
+                tr = find('config.buttons.delete.label')
+                if (tr) {
+                  pageLayout.config.buttons.delete.label = tr.message
+                }
+
+                tr = find('config.buttons.clone.label')
+                if (tr) {
+                  pageLayout.config.buttons.clone.label = tr.message
+                }
+
+                tr = find('config.buttons.back.label')
+                if (tr) {
+                  pageLayout.config.buttons.back.label = tr.message
+                }
+              }
+
+              return pageLayout
+            }
+
             if (this.block) {
+              // eslint-disable-next-line vue/no-side-effects-in-computed-properties
               this.block = updateBlockTranslations(this.block)
             } else {
+              // eslint-disable-next-line vue/no-side-effects-in-computed-properties
               this.page.blocks = this.page.blocks.map(block => updateBlockTranslations(block))
+            }
+
+            if (this.pageLayout) {
+              // eslint-disable-next-line vue/no-side-effects-in-computed-properties
+              this.pageLayout = updatePageLayoutTranslations(this.pageLayout)
+            } else {
+              // eslint-disable-next-line vue/no-side-effects-in-computed-properties
+              this.pageLayouts = this.pageLayouts.map(pageLayout => updatePageLayoutTranslations(pageLayout))
             }
 
             return this.page
@@ -216,6 +302,12 @@ export default {
 
             if (this.block) {
               this.$emit('update:block', this.block)
+            }
+
+            if (this.pageLayout) {
+              this.$emit('update:pageLayout', this.pageLayout)
+            } else {
+              this.$emit('update:pageLayouts', this.pageLayouts)
             }
           })
       }

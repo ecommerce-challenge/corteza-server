@@ -13,6 +13,7 @@ import (
 	"github.com/cortezaproject/corteza/server/pkg/expr"
 	"github.com/cortezaproject/corteza/server/pkg/handle"
 	"github.com/cortezaproject/corteza/server/pkg/label"
+	"github.com/cortezaproject/corteza/server/pkg/logger"
 	"github.com/cortezaproject/corteza/server/pkg/options"
 	"github.com/cortezaproject/corteza/server/pkg/rbac"
 	"github.com/cortezaproject/corteza/server/pkg/slice"
@@ -368,6 +369,11 @@ func (svc role) Update(ctx context.Context, upd *types.Role) (r *types.Role, err
 			return RoleErrNotAllowedToUpdate()
 		}
 
+		// Test if stale (update has an older version of data)
+		if isStale(upd.UpdatedAt, r.UpdatedAt, r.CreatedAt) {
+			return RoleErrStaleData()
+		}
+
 		if svc.IsSystem(r) {
 			// prevent system role updates
 			// we need this here because of the clumsy way
@@ -500,7 +506,7 @@ func (svc role) Delete(ctx context.Context, roleID uint64) (err error) {
 
 func (svc role) Undelete(ctx context.Context, roleID uint64) (err error) {
 	var (
-		r       *types.Role
+		r, upd  *types.Role
 		raProps = &roleActionProps{role: &types.Role{ID: roleID}}
 	)
 
@@ -513,18 +519,23 @@ func (svc role) Undelete(ctx context.Context, roleID uint64) (err error) {
 			return RoleErrNotAllowedToUndelete()
 		}
 
-		raProps.setRole(r)
-
-		if !svc.ac.CanDeleteRole(ctx, r) {
-			return RoleErrNotAllowedToDelete()
-		}
-
-		r.DeletedAt = nil
-
-		if err = store.UpdateRole(ctx, svc.store, r); err != nil {
+		upd = r.Clone()
+		if err = svc.eventbus.WaitFor(ctx, event.RoleBeforeUpdate(upd, r)); err != nil {
 			return
 		}
 
+		raProps.setRole(upd)
+
+		if !svc.ac.CanDeleteRole(ctx, upd) {
+			return RoleErrNotAllowedToDelete()
+		}
+
+		upd.DeletedAt = nil
+		if err = store.UpdateRole(ctx, svc.store, upd); err != nil {
+			return
+		}
+
+		svc.eventbus.Dispatch(ctx, event.RoleAfterUpdate(upd, r))
 		return nil
 	}()
 
@@ -912,7 +923,7 @@ func UpdateRbacRoles(ctx context.Context, log *zap.Logger, ru rbacRoleUpdater, b
 
 	for _, r := range roles {
 		log := log.With(
-			zap.Uint64("ID", r.ID),
+			logger.Uint64("ID", r.ID),
 			zap.String("handle", r.Handle),
 		)
 

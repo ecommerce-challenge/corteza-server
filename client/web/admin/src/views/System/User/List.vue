@@ -1,57 +1,9 @@
 <template>
   <b-container
-    class="py-3"
+    fluid="xl"
+    class="d-flex flex-column flex-fill pt-2 pb-3"
   >
-    <c-content-header
-      :title="$t('title')"
-    >
-      <span
-        class="text-nowrap"
-      >
-        <b-button
-          variant="primary"
-          data-test-id="button-new-user"
-          class="mr-2 float-left"
-          :to="{ name: 'system.user.new' }"
-        >
-          {{ $t('new') }}
-        </b-button>
-        <c-user-import-modal
-          class="mr-1 float-left"
-          @imported="onImported"
-        />
-        <c-user-export-modal
-          class="mr-1 float-left"
-          @export="onExport"
-        />
-        <c-permissions-button
-          v-if="canGrant"
-          resource="corteza::system:user/*"
-          button-variant="light"
-        >
-          <font-awesome-icon :icon="['fas', 'lock']" />
-          {{ $t('permissions') }}
-        </c-permissions-button>
-      </span>
-      <b-dropdown
-        v-if="false"
-        variant="link"
-        right
-        menu-class="shadow-sm"
-        :text="$t('export')"
-      >
-        <b-dropdown-item-button variant="link">
-          {{ $t('yaml') }}
-        </b-dropdown-item-button>
-      </b-dropdown>
-      <c-corredor-manual-buttons
-        ui-page="user/list"
-        ui-slot="toolbar"
-        resource-type="system"
-        class="mr-1"
-        @click="dispatchCortezaSystemEvent($event)"
-      />
-    </c-content-header>
+    <c-content-header :title="$t('title')" />
 
     <c-resource-list
       :primary-key="primaryKey"
@@ -70,10 +22,50 @@
         singlePluralPagination: 'admin:general.pagination.single',
         prevPagination: $t('admin:general.pagination.prev'),
         nextPagination: $t('admin:general.pagination.next'),
+        resourceSingle: $t('general:label.user.single'),
+        resourcePlural: $t('general:label.user.plural'),
       }"
+      clickable
+      sticky-header
+      class="custom-resource-list-height flex-fill"
       @search="filterList"
+      @row-clicked="handleRowClicked"
     >
       <template #header>
+        <b-button
+          variant="primary"
+          size="lg"
+          data-test-id="button-new-user"
+          :to="{ name: 'system.user.new' }"
+        >
+          {{ $t('new') }}
+        </b-button>
+
+        <c-user-import-modal
+          @imported="onImported"
+        />
+
+        <c-user-export-modal
+          @export="onExport"
+        />
+
+        <c-permissions-button
+          v-if="canGrant"
+          resource="corteza::system:user/*"
+          :button-label="$t('permissions')"
+          size="lg"
+        />
+
+        <c-corredor-manual-buttons
+          ui-page="user/list"
+          ui-slot="toolbar"
+          resource-type="system"
+          size="lg"
+          @click="dispatchCortezaSystemEvent($event)"
+        />
+      </template>
+
+      <template #toolbar>
         <c-resource-list-status-filter
           v-model="filter.deleted"
           data-test-id="filter-deleted-users"
@@ -83,6 +75,7 @@
           :exclusive-label="$t('filterForm.exclusive.label')"
           @change="filterList"
         />
+
         <c-resource-list-status-filter
           v-model="filter.suspended"
           data-test-id="filter-suspended-users"
@@ -92,18 +85,56 @@
           :exclusive-label="$t('filterForm.exclusive.label')"
           @change="filterList"
         />
+
+        <b-col />
       </template>
 
-      <template #actions="{ item }">
-        <b-button
-          size="sm"
-          variant="link"
-          :to="{ name: editRoute, params: { [primaryKey]: item[primaryKey] } }"
+      <template #actions="{ item: u }">
+        <b-dropdown
+          v-if="(areActionsVisible({ resource: u, conditions: ['canDeleteUser', 'canGrant'] }))"
+          variant="outline-extra-light"
+          toggle-class="d-flex align-items-center justify-content-center text-primary border-0 py-2"
+          no-caret
+          dropleft
+          lazy
+          menu-class="m-0"
         >
-          <font-awesome-icon
-            :icon="['fas', 'pen']"
+          <template #button-content>
+            <font-awesome-icon
+              :icon="['fas', 'ellipsis-v']"
+            />
+          </template>
+
+          <b-dropdown-item
+            v-if="canGrant"
+            link-class="p-0"
+            variant="light"
+          >
+            <c-permissions-button
+              :title="u.name || u.handle || u.email || u.userID"
+              :target="u.name || u.handle || u.email || u.userID"
+              :resource="`corteza::system:user/${u.userID}`"
+              button-variant="link dropdown-item text-decoration-none text-dark regular-font rounded-0"
+            >
+              <font-awesome-icon :icon="['fas', 'lock']" />
+              {{ $t('permissions') }}
+            </c-permissions-button>
+          </b-dropdown-item>
+
+          <c-input-confirm
+            v-if="u.canDeleteUser"
+            :text="getActionText(u)"
+            show-icon
+            :icon="getActionIcon(u)"
+            borderless
+            variant="link"
+            size="md"
+            button-class="dropdown-item text-decoration-none text-dark regular-font rounded-0"
+            icon-class="text-danger"
+            class="w-100"
+            @confirmed="handleDelete(u)"
           />
-        </b-button>
+        </b-dropdown>
       </template>
     </c-resource-list>
   </b-container>
@@ -170,14 +201,12 @@ export default {
         },
         {
           key: 'createdAt',
-          label: 'Created',
           sortable: true,
           formatter: (v) => moment(v).fromNow(),
         },
         {
           key: 'actions',
-          label: '',
-          tdClass: 'text-right',
+          class: 'actions',
         },
       ].map(c => ({
         ...c,
@@ -231,6 +260,13 @@ export default {
 
     rowClass (item) {
       return { 'text-secondary': item && (!!item.deletedAt || !!item.suspendedAt) }
+    },
+
+    handleDelete (user) {
+      this.handleItemDelete({
+        resource: user,
+        resourceName: 'user',
+      })
     },
   },
 }

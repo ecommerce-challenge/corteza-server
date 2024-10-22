@@ -1,146 +1,156 @@
 <template>
-  <b-container
-    fluid
-    :class="{'shadow border-top': !showRecordModal}"
-    class="bg-white p-3"
-  >
-    <b-row
-      no-gutters
-      class="wrap-with-vertical-gutters align-items-center"
+  <c-toolbar :class="{ 'shadow border-top': !showRecordModal }">
+    <template #start>
+      <b-button
+        v-if="!(hideBack || settings.hideBack)"
+        data-test-id="button-back"
+        variant="link"
+        :disabled="processing"
+        class="d-flex align-items-center text-dark back gap-1 text-decoration-none"
+        @click.prevent="$emit('back')"
+      >
+        <font-awesome-icon
+          :icon="['fas', hasBack ? 'chevron-left' : 'times']"
+          class="back-icon"
+        />
+        {{ backLabel }}
+      </b-button>
+
+      <slot name="start-actions" />
+    </template>
+
+    <template #center>
+      <div
+        v-if="recordNavigation.prev || recordNavigation.next"
+        class="d-flex align-items-center fill-width gap-1"
+      >
+        <b-button
+          v-b-tooltip.noninteractive.hover="{ title: $t('recordNavigation.prev'), container: '#body' }"
+          pill
+          size="lg"
+          variant="outline-primary"
+          :disabled="!isCreated || !record || processing || !recordNavigation.prev"
+          @click="navigateToRecord(recordNavigation.prev)"
+        >
+          <font-awesome-icon :icon="['fas', 'angle-left']" />
+        </b-button>
+
+        <b-button
+          v-b-tooltip.noninteractive.hover="{ title: $t('recordNavigation.next'), container: '#body' }"
+          size="lg"
+          pill
+          variant="outline-primary"
+          :disabled="!isCreated || !record || processing || !recordNavigation.next"
+          @click="navigateToRecord(recordNavigation.next)"
+        >
+          <font-awesome-icon :icon="['fas', 'angle-right']" />
+        </b-button>
+      </div>
+
+      <slot name="center-actions" />
+    </template>
+
+    <template
+      v-if="module"
+      #end
     >
-      <div
-        class="wrap-with-vertical-gutters align-items-center"
+      <slot name="end-actions" />
+
+      <c-input-confirm
+        v-if="(processingDelete || isCreated) && !(isDeleted || hideDelete || settings.hideDelete) && canDeleteRecord"
+        :disabled="!record || processing"
+        :processing="processingDelete"
+        :text="labels.delete || $t('label.delete')"
+        size="lg"
+        size-confirm="lg"
+        variant="danger"
+        @confirmed="$emit('delete')"
+      />
+
+      <c-input-confirm
+        v-else-if="(processingUndelete || isDeleted) && !(hideDelete || settings.hideDelete) && canUndeleteRecord"
+        :disabled="!record || processing"
+        :processing="processingUndelete"
+        :text="$t('label.restore')"
+        size="lg"
+        size-confirm="lg"
+        variant="warning"
+        variant-ok="warning"
+        @confirmed="$emit('undelete')"
+      />
+
+      <b-button
+        v-if="isCreated && module.canCreateRecord && !(hideClone || settings.hideClone)"
+        data-test-id="button-clone"
+        variant="light"
+        size="lg"
+        :disabled="!record || processing"
+        class="text-nowrap"
+        @click.prevent="$emit('clone')"
       >
-        <b-button
-          v-if="!settings.hideBack"
-          data-test-id="button-back"
-          variant="link"
-          class="text-dark back"
-          :disabled="processing"
-          @click.prevent="$emit('back')"
-        >
-          <font-awesome-icon
-            :icon="['fas', showRecordModal ? 'times' : 'chevron-left']"
-            class="back-icon"
-          />
-          {{ showRecordModal ? $t('label.close') : labels.back || $t('label.back') }}
-        </b-button>
-      </div>
+        {{ labels.clone || $t('label.saveAsCopy') }}
+      </b-button>
 
-      <div
-        v-if="module"
-        class="d-flex wrap-with-vertical-gutters align-items-center ml-auto"
+      <b-button
+        v-if="!inEditing && isCreated && !(hideEdit || settings.hideEdit) && canManageRecord"
+        data-test-id="button-edit"
+        :disabled="!record || processing"
+        variant="light"
+        size="lg"
+        @click.prevent="$emit('edit')"
       >
-        <c-input-confirm
-          v-if="(isCreated && !settings.hideDelete && !isDeleted)"
-          :disabled="!canDeleteRecord"
-          size="lg"
-          size-confirm="lg"
-          variant="danger"
-          :borderless="false"
-          @confirmed="$emit('delete')"
-        >
-          <b-spinner
-            v-if="processingDelete"
-            small
-            type="grow"
-          />
+        {{ labels.edit || $t('label.edit') }}
+      </b-button>
 
-          <span v-else>
-            {{ labels.delete || $t('label.delete') }}
-          </span>
-        </c-input-confirm>
+      <b-button
+        v-else-if="inEditing && isCreated && !(hideEdit || settings.hideEdit)"
+        data-test-id="button-view"
+        :disabled="!record || processing"
+        variant="light"
+        size="lg"
+        @click.prevent="$emit('view')"
+      >
+        {{ labels.edit || $t('label.view') }}
+      </b-button>
 
-        <c-input-confirm
-          v-if="isDeleted"
-          :disabled="!canUndeleteRecord"
-          size="lg"
-          size-confirm="lg"
-          variant="warning"
-          variant-ok="warning"
-          :borderless="false"
-          @confirmed="$emit('undelete')"
-        >
-          <b-spinner
-            v-if="processingUndelete"
-            small
-            type="grow"
-          />
+      <b-button
+        v-if="!inEditing && module.canCreateRecord && !(hideNew || settings.hideNew)"
+        data-test-id="button-add-new"
+        variant="primary"
+        size="lg"
+        :disabled="!record || processing"
+        class="text-nowrap"
+        @click.prevent="$emit('add')"
+      >
+        {{ labels.new || $t('label.addNew') }}
+      </b-button>
 
-          <span v-else>
-            {{ $t('label.restore') }}
-          </span>
-        </c-input-confirm>
-
-        <b-button
-          v-if="!inEditing && module.canCreateRecord && !hideClone && isCreated && !settings.hideClone"
-          data-test-id="button-clone"
-          variant="light"
-          size="lg"
-          :disabled="!record || processing"
-          class="ml-2"
-          @click.prevent="$emit('clone')"
-        >
-          {{ labels.clone || $t('label.clone') }}
-        </b-button>
-
-        <b-button
-          v-if="!inEditing && !settings.hideEdit && isCreated"
-          data-test-id="button-edit"
-          :disabled="!record.canUpdateRecord || processing"
-          variant="light"
-          size="lg"
-          class="ml-2"
-          @click.prevent="$emit('edit')"
-        >
-          {{ labels.edit || $t('label.edit') }}
-        </b-button>
-
-        <b-button
-          v-if="module.canCreateRecord && !hideAdd && !inEditing && !settings.hideNew"
-          data-test-id="button-add-new"
-          variant="primary"
-          size="lg"
-          :disabled="processing"
-          class="ml-2"
-          @click.prevent="$emit('add')"
-        >
-          {{ labels.new || $t('label.addNew') }}
-        </b-button>
-
-        <b-button
-          v-if="inEditing && !settings.hideSubmit"
-          data-test-id="button-submit"
-          :disabled="!canSaveRecord || processing"
-          class="d-flex align-items-center justify-content-center ml-2"
-          variant="primary"
-          size="lg"
-          @click.prevent="$emit('submit')"
-        >
-          <b-spinner
-            v-if="processingSubmit"
-            small
-            type="grow"
-          />
-
-          <span
-            v-else
-            data-test-id="button-save"
-          >
-            {{ labels.submit || $t('label.save') }}
-          </span>
-        </b-button>
-      </div>
-    </b-row>
-  </b-container>
+      <c-button-submit
+        v-if="inEditing && !(hideSubmit || settings.hideSubmit) && canManageRecord"
+        data-test-id="button-save"
+        :disabled="!record || processingSubmit || processing"
+        :processing="processingSubmit"
+        :text="labels.submit || $t('label.save')"
+        size="lg"
+        @submit="$emit('submit')"
+      />
+    </template>
+  </c-toolbar>
 </template>
 
 <script>
+import { components } from '@cortezaproject/corteza-vue'
 import { compose, NoID } from '@cortezaproject/corteza-js'
+import { throttle } from 'lodash'
+const { CToolbar } = components
 
 export default {
   i18nOptions: {
     namespaces: 'general',
+  },
+
+  components: {
+    CToolbar,
   },
 
   props: {
@@ -186,37 +196,68 @@ export default {
       required: true,
     },
 
+    hideBack: {
+      type: Boolean,
+      default: () => true,
+    },
+
+    hideDelete: {
+      type: Boolean,
+      default: () => true,
+    },
+
+    hideNew: {
+      type: Boolean,
+      default: () => true,
+    },
+
     hideClone: {
       type: Boolean,
-      default: () => false,
+      default: () => true,
     },
 
-    hideAdd: {
+    hideEdit: {
       type: Boolean,
-      default: () => false,
+      default: () => true,
     },
 
-    isDeleted: {
+    hideSubmit: {
       type: Boolean,
-      default: true,
+      default: () => true,
     },
 
     showRecordModal: {
       type: Boolean,
       required: false,
     },
+
+    recordNavigation: {
+      type: Object,
+      required: false,
+      default: () => ({}),
+    },
+
+    hasBack: {
+      type: Boolean,
+      default: true,
+    },
   },
 
   computed: {
     isCreated () {
-      return this.record && this.record.recordID !== NoID
+      // The !this.record is intentional, to keep the button visible even when loading a record
+      return !this.record || this.record.recordID !== NoID
+    },
+
+    isDeleted () {
+      return this.record && this.record.deletedAt
     },
 
     settings () {
       return this.$Settings.get('compose.ui.record-toolbar', {})
     },
 
-    canSaveRecord () {
+    canManageRecord () {
       if (!this.module || !this.record) {
         return false
       }
@@ -241,18 +282,20 @@ export default {
 
       return this.isDeleted && this.record.canUndeleteRecord && !this.processing && this.record.recordID !== NoID
     },
+
+    backLabel () {
+      if (this.showRecordModal) {
+        return this.hasBack ? this.$t('label.back') : this.$t('label.close')
+      }
+
+      return this.hasBack ? this.labels.back || this.$t('label.back') : this.$t('label.home')
+    },
+  },
+
+  methods: {
+    navigateToRecord: throttle(function (recordID) {
+      this.$emit('update-navigation', recordID)
+    }, 500),
   },
 }
 </script>
-<style lang="scss" scoped>
-.back {
-  &:hover {
-    text-decoration: none;
-
-    .back-icon {
-      transition: transform 0.3s ease-out;
-      transform: translateX(-4px);
-    }
-  }
-}
-</style>

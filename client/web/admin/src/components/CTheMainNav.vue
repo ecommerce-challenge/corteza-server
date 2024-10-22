@@ -1,18 +1,18 @@
 <template>
   <div
-    class="overflow-auto"
+    class="overflow-auto py-3"
   >
     <b-list-group
       v-for="(grp, g) in navigation"
       :key="g"
       tag="li"
     >
-      <h2
+      <h6
         v-if="grp.header"
-        class="small ml-1 mt-2 font-weight-light text-uppercase"
+        class="mt-3 text-uppercase"
       >
         {{ $t(grp.header.label) }}
-      </h2>
+      </h6>
 
       <c-sidebar-nav-items
         :items="grp.items"
@@ -22,6 +22,7 @@
     </b-list-group>
   </div>
 </template>
+
 <script>
 import { mapGetters } from 'vuex'
 import { components } from '@cortezaproject/corteza-vue'
@@ -118,6 +119,12 @@ export default {
               route: 'system.connection',
               icon: 'cloud',
               can: ['system/', 'dal-connections.search'],
+            },
+            {
+              label: 'system.items.code-snippets',
+              route: 'system.codesnippets',
+              icon: 'file-code',
+              can: ['system/', 'settings.read'],
             },
             {
               label: 'system.items.sensitivityLevel',

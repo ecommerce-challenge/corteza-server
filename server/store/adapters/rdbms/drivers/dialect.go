@@ -26,6 +26,9 @@ type (
 		// TwoStepUpsert uses the context from the update statement to figure out
 		// if it needs to do an insert.
 		TwoStepUpsert bool
+
+		// @todo change this around; temporary fix as not sure how I'd rewrite
+		ExpandedJsonColumnSelector func(ident string) exp.Expression
 	}
 
 	Dialect interface {
@@ -63,6 +66,8 @@ type (
 		// comparison or soring expression
 		AttributeCast(*dal.Attribute, exp.Expression) (exp.Expression, error)
 
+		AttributeExpression(attr *dal.Attribute, modelIdent string, ident string) (expr exp.Expression, err error)
+
 		// TableCodec returns table codec (encodes & decodes data to/from db table)
 		TableCodec(*dal.Model) TableCodec
 
@@ -71,8 +76,11 @@ type (
 
 		QuoteIdent(string) string
 
+		AggregateBase(t TableCodec, gb []dal.AggregateAttr, out []dal.AggregateAttr) *goqu.SelectDataset
+
 		// AttributeToColumn converts attribute to column defunition
 		AttributeToColumn(*dal.Attribute) (*ddl.Column, error)
+		ColumnFits(base, assert *ddl.Column) bool
 
 		// ExprHandler returns driver specific expression handling
 		ExprHandler(*ql.ASTNode, ...exp.Expression) (exp.Expression, error)
@@ -92,6 +100,7 @@ func init() {
 	goqu.SetDefaultPrepared(true)
 }
 
+// @note copied to data_definer_test to avoid import cycle; if modified, fixup both parts
 func IndexFieldModifiers(attr *dal.Attribute, quoteIdent func(i string) string, mm ...dal.IndexFieldModifier) (string, error) {
 	var (
 		modifier string

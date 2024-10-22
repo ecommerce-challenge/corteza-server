@@ -9,20 +9,18 @@
     >
       <div
         v-if="block.title || block.description"
-        class="px-3"
-        style="padding-top: 0.75rem; padding-bottom: 0.75rem;"
+        class="d-flex flex-column p-3 border-bottom gap-1"
       >
-        <h5
+        <h4
           v-if="block.title"
           class="text-primary text-truncate mb-0"
         >
           {{ block.title }}
-        </h5>
+        </h4>
 
         <b-card-text
           v-if="block.description"
-          class="text-dark text-truncate"
-          :class="{ 'mt-1': block.title }"
+          class="text-dark text-wrap"
         >
           {{ block.description }}
         </b-card-text>
@@ -130,14 +128,14 @@ export default {
 
     'block.elements.length': {
       handler (length, oldLength) {
-        if (length) {
+        const addedOrRemoved = length !== oldLength && oldLength
+
+        if (addedOrRemoved) {
           const defaultSize = Math.floor(100 / length)
 
           // Reset sizes to default if element was added or removed
-          const addedOrRemoved = length !== oldLength && oldLength !== undefined
-
           this.block.elements = this.block.elements.map(e => {
-            e.meta.size = !addedOrRemoved && e.meta.size ? e.meta.size : defaultSize
+            e.meta.size = defaultSize
             return e
           })
         }
@@ -165,6 +163,8 @@ export default {
       sizes.forEach((size, index) => {
         this.block.elements[index].meta.size = size
       })
+
+      this.$emit('item-updated', this.index)
     },
 
     getScenarioDefinition (element) {
@@ -213,7 +213,7 @@ export default {
               return { ...element, dataframes }
             })
           }).catch((e) => {
-            this.toastErrorHandler(this.$t('notification:report.run-failed'))(e)
+            this.toastErrorHandler(this.$t('notification:report.runFailed'))(e)
           }).finally(() => {
             this.processing = false
           })
@@ -241,7 +241,7 @@ export default {
             .then(({ frames = [] }) => {
               this.block.elements.find(({ elementID }) => elementID === element.elementID).dataframes = frames
             }).catch((e) => {
-              this.toastErrorHandler(this.$t('notification:report.run-failed'))(e)
+              this.toastErrorHandler(this.$t('notification:report.runFailed'))(e)
             })
         }
       }

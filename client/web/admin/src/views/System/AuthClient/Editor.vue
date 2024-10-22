@@ -1,33 +1,28 @@
 <template>
   <b-container
     v-if="authclient"
-    class="py-3"
+    class="pt-2 pb-3"
   >
     <c-content-header
       :title="title"
     >
-      <span
-        class="text-nowrap"
+      <b-button
+        v-if="authClientID && canCreate"
+        variant="primary"
+        :to="{ name: 'system.authClient.new' }"
       >
-        <b-button
-          v-if="authClientID && canCreate"
-          variant="primary"
-          class="mr-2"
-          :to="{ name: 'system.authClient.new' }"
-        >
-          {{ $t('new') }}
-        </b-button>
-        <c-permissions-button
-          v-if="authClientID && canGrant"
-          :title="authclient.meta.name || authclient.handle || authClientID"
-          :target="authclient.meta.name || authclient.handle || authClientID"
-          :resource="`corteza::system:auth-client/${authClientID}`"
-          button-variant="light"
-        >
-          <font-awesome-icon :icon="['fas', 'lock']" />
-          {{ $t('permissions') }}
-        </c-permissions-button>
-      </span>
+        {{ $t('new') }}
+      </b-button>
+
+      <c-permissions-button
+        v-if="authClientID && canGrant"
+        :title="authclient.meta.name || authclient.handle || authClientID"
+        :target="authclient.meta.name || authclient.handle || authClientID"
+        :resource="`corteza::system:auth-client/${authClientID}`"
+      >
+        <font-awesome-icon :icon="['fas', 'lock']" />
+        {{ $t('permissions') }}
+      </c-permissions-button>
     </c-content-header>
 
     <c-authclient-editor-info
@@ -47,16 +42,11 @@
   </b-container>
 </template>
 <script>
+import { isEqual } from 'lodash'
 import editorHelpers from 'corteza-webapp-admin/src/mixins/editorHelpers'
 import CAuthclientEditorInfo from 'corteza-webapp-admin/src/components/Authclient/CAuthclientEditorInfo'
+import { system } from '@cortezaproject/corteza-js'
 import { mapGetters } from 'vuex'
-
-// @todo move this to corteza-js and follow the pattern we use with other resource types
-const makeNewAuthClient = () => JSON.parse(JSON.stringify({
-  scope: 'profile api',
-  enabled: true,
-  validGrant: 'authorization_code',
-}))
 
 export default {
   components: {
@@ -72,6 +62,14 @@ export default {
     editorHelpers,
   ],
 
+  beforeRouteUpdate (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
+
+  beforeRouteLeave (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
+
   props: {
     authClientID: {
       type: String,
@@ -83,6 +81,7 @@ export default {
   data () {
     return {
       authclient: undefined,
+      initialAuthclientState: undefined,
       secret: '',
 
       info: {
@@ -117,7 +116,8 @@ export default {
         if (this.authClientID) {
           this.fetchAuthclient()
         } else {
-          this.authclient = makeNewAuthClient()
+          this.authclient = new system.AuthClient()
+          this.initialAuthclientState = this.authclient.clone()
         }
       },
     },
@@ -129,7 +129,8 @@ export default {
 
       this.$SystemAPI.authClientRead({ clientID: this.authClientID })
         .then(ac => {
-          this.authclient = ac
+          this.authclient = new system.AuthClient(ac)
+          this.initialAuthclientState = this.authclient.clone()
         })
         .catch(this.toastErrorHandler(this.$t('notification:authclient.fetch.error')))
         .finally(() => {
@@ -146,8 +147,10 @@ export default {
 
         this.$SystemAPI.authClientUpdate({ clientID, ...authclient })
           .then(ac => {
-            this.authclient = ac
+            this.authclient = new system.AuthClient(ac)
+            this.initialAuthclientState = this.authclient.clone()
 
+            this.animateSuccess('info')
             this.toastSuccess(this.$t('notification:authclient.update.success'))
           })
           .catch(this.toastErrorHandler(this.$t('notification:authclient.update.error')))
@@ -157,8 +160,10 @@ export default {
       } else {
         this.$SystemAPI.authClientCreate({ ...authclient })
           .then((ac) => {
-            this.authclient = ac
+            this.authclient = new system.AuthClient(ac)
+            this.initialAuthclientState = this.authclient.clone()
             const { authClientID } = ac
+
             this.animateSuccess('info')
             this.toastSuccess(this.$t('notification:authclient.create.success'))
 
@@ -171,11 +176,14 @@ export default {
       }
     },
 
-    onDelete (clientID) {
+    onDelete () {
       this.incLoader()
+      const clientID = this.authClientID
       this.$SystemAPI.authClientDelete({ clientID })
         .then(() => {
           this.fetchAuthclient()
+
+          this.authclient.deletedAt = new Date()
 
           this.toastSuccess(this.$t('notification:authclient.delete.success'))
           this.$router.push({ name: 'system.authClient' })
@@ -184,8 +192,9 @@ export default {
         .finally(() => this.decLoader())
     },
 
-    onUndelete (clientID) {
+    onUndelete () {
       this.incLoader()
+      const clientID = this.authClientID
       this.$SystemAPI.authClientUndelete({ clientID })
         .then(() => {
           this.fetchAuthclient()
@@ -206,6 +215,17 @@ export default {
       this.$SystemAPI
         .authClientRegenerateSecret(({ clientID }))
         .then(newSecret => { this.secret = newSecret })
+    },
+
+    checkUnsavedChanges (next, to) {
+      const isNewPage = this.$route.path.includes('/new') && to.name.includes('edit')
+      const { deletedAt } = this.authclient || {}
+
+      if (isNewPage || deletedAt) {
+        next(true)
+      } else if (!to.name.includes('edit')) {
+        next(!isEqual(this.authclient, this.initialAuthclientState) ? window.confirm(this.$t('general:editor.unsavedChanges')) : true)
+      }
     },
   },
 }

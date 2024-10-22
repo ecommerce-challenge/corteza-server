@@ -1,51 +1,10 @@
 <template>
   <b-container
-    class="py-3"
+    fluid="xl"
+    class="d-flex flex-column flex-fill pt-2 pb-3"
   >
-    <c-content-header
-      :title="$t('title')"
-    >
-      <span
-        class="text-nowrap"
-      >
-        <b-button
-          v-if="canCreate"
-          data-test-id="button-new-role"
-          variant="primary"
-          class="mr-2"
-          :to="{ name: 'system.role.new' }"
-        >
-          {{ $t('new') }}
-        </b-button>
-        <c-permissions-button
-          v-if="canGrant"
-          resource="corteza::system:role/*"
-          button-variant="light"
-        >
-          <font-awesome-icon :icon="['fas', 'lock']" />
-          {{ $t('permissions') }}
-        </c-permissions-button>
-      </span>
-      <b-dropdown
-        v-if="false"
-        variant="link"
-        right
-        menu-class="shadow-sm"
-        :text="$t('export')"
-      >
-        <b-dropdown-item-button variant="link">
-          {{ $t('yaml') }}
-        </b-dropdown-item-button>
-      </b-dropdown>
-      <c-corredor-manual-buttons
-        ui-page="role/list"
-        ui-slot="toolbar"
-        resource-type="system"
-        default-variant="link"
-        class="mr-1"
-        @click="dispatchCortezaSystemEvent($event)"
-      />
-    </c-content-header>
+    <c-content-header :title="$t('title')" />
+
     <c-resource-list
       :primary-key="primaryKey"
       :filter="filter"
@@ -63,10 +22,44 @@
         singlePluralPagination: 'admin:general.pagination.single',
         prevPagination: $t('admin:general.pagination.prev'),
         nextPagination: $t('admin:general.pagination.next'),
+        resourceSingle: $t('general:label.role.single'),
+        resourcePlural: $t('general:label.role.plural'),
       }"
+      clickable
+      sticky-header
+      class="custom-resource-list-height flex-fill"
       @search="filterList"
+      @row-clicked="handleRowClicked"
     >
       <template #header>
+        <b-button
+          v-if="canCreate"
+          data-test-id="button-new-role"
+          variant="primary"
+          size="lg"
+          :to="{ name: 'system.role.new' }"
+        >
+          {{ $t('new') }}
+        </b-button>
+
+        <c-permissions-button
+          v-if="canGrant"
+          resource="corteza::system:role/*"
+          :button-label="$t('permissions')"
+          size="lg"
+        />
+
+        <c-corredor-manual-buttons
+          ui-page="role/list"
+          ui-slot="toolbar"
+          resource-type="system"
+          default-variant="link"
+          size="lg"
+          @click="dispatchCortezaSystemEvent($event)"
+        />
+      </template>
+
+      <template #toolbar>
         <c-resource-list-status-filter
           v-model="filter.deleted"
           data-test-id="filter-deleted-roles"
@@ -86,19 +79,56 @@
           :exclusive-label="$t('filterForm.exclusive.label')"
           @change="filterList"
         />
+
+        <b-col />
       </template>
 
-      <template #actions="{ item }">
-        <b-button
-          v-if="item.roleID !== '1'"
-          size="sm"
-          variant="link"
-          :to="{ name: editRoute, params: { [primaryKey]: item[primaryKey] } }"
+      <template #actions="{ item: r }">
+        <b-dropdown
+          v-if="(areActionsVisible({ resource: r, conditions: ['canDeleteRole', 'canGrant'] }) && r.roleID)"
+          variant="outline-extra-light"
+          toggle-class="d-flex align-items-center justify-content-center text-primary border-0 py-2"
+          no-caret
+          dropleft
+          lazy
+          menu-class="m-0"
         >
-          <font-awesome-icon
-            :icon="['fas', 'pen']"
+          <template #button-content>
+            <font-awesome-icon
+              :icon="['fas', 'ellipsis-v']"
+            />
+          </template>
+
+          <b-dropdown-item
+            v-if="r.roleID && canGrant"
+            link-class="p-0"
+            variant="light"
+          >
+            <c-permissions-button
+              :title="r.name || r.handle || r.roleID"
+              :target="r.name || r.handle || r.roleID"
+              :resource="`corteza::system:role/${r.roleID}`"
+              button-variant="link dropdown-item text-decoration-none text-dark regular-font rounded-0"
+            >
+              <font-awesome-icon :icon="['fas', 'lock']" />
+              {{ $t('permissions') }}
+            </c-permissions-button>
+          </b-dropdown-item>
+
+          <c-input-confirm
+            v-if="r.canDeleteRole"
+            :text="getActionText(r)"
+            show-icon
+            :icon="getActionIcon(r)"
+            borderless
+            variant="link"
+            size="md"
+            button-class="dropdown-item text-decoration-none text-dark regular-font rounded-0"
+            icon-class="text-danger"
+            class="w-100"
+            @confirmed="handleDelete(r)"
           />
-        </b-button>
+        </b-dropdown>
       </template>
     </c-resource-list>
   </b-container>
@@ -160,8 +190,7 @@ export default {
         },
         {
           key: 'actions',
-          label: '',
-          tdClass: 'text-right',
+          class: 'actions',
         },
       ].map(c => ({
         ...c,
@@ -199,6 +228,13 @@ export default {
 
     rowClass (item) {
       return { 'text-secondary': item && (!!item.deletedAt || !!item.archivedAt) }
+    },
+
+    handleDelete (role) {
+      this.handleItemDelete({
+        resource: role,
+        resourceName: 'role',
+      })
     },
   },
 }

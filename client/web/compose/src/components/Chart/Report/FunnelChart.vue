@@ -2,51 +2,130 @@
   <report-edit
     :report.sync="editReport"
     :modules="modules"
-    :dimension-field-kind="['Select']"
     :supported-metrics="1"
-    un-skippable
   >
     <template #dimension-options="{ index, dimension, field }">
-      <c-item-picker
+      <b-form-group
         v-if="showPicker(field)"
-        :value="getOptions(dimension)"
-        :options="field.options.options"
-        :labels="{
-          searchPlaceholder:$t('edit.dimension.optionsPicker.searchPlaceholder'),
-          availableItems: $t('edit.dimension.optionsPicker.availableItems'),
-          selectAllItems: $t('edit.dimension.optionsPicker.selectAllItems'),
-          selectedItems: $t('edit.dimension.optionsPicker.selectedItems'),
-          unselectAllItems: $t('edit.dimension.optionsPicker.unselectAllItems'),
-          noItemsFound: $t('edit.dimension.optionsPicker.noItemsFound'),
-        }"
-        class="d-flex flex-column"
-        style="max-height: 45vh;"
-        @update:value="setOptions(index, field, $event)"
-      />
+        :label="$t('edit.dimension.options.label')"
+        label-class="text-primary"
+      >
+        <c-item-picker
+          :value="getOptions(dimension)"
+          :options="field.options.options"
+          :labels="{
+            searchPlaceholder:$t('edit.dimension.optionsPicker.searchPlaceholder'),
+            availableItems: $t('edit.dimension.optionsPicker.availableItems'),
+            selectAllItems: $t('edit.dimension.optionsPicker.selectAllItems'),
+            selectedItems: $t('edit.dimension.optionsPicker.selectedItems'),
+            unselectAllItems: $t('edit.dimension.optionsPicker.unselectAllItems'),
+            noItemsFound: $t('edit.dimension.optionsPicker.noItemsFound'),
+          }"
+          class="d-flex flex-column"
+          style="height: 100% !important;"
+          @update:value="setOptions(index, field, $event)"
+        />
+      </b-form-group>
     </template>
 
     <template #metric-options="{ metric }">
-      <b-form-group
-        horizontal
-        :label-cols="3"
-        breakpoint="md"
-      >
-        <b-form-checkbox
-          v-model="metric.cumulative"
+      <b-row>
+        <b-col
+          cols="12"
+          lg="6"
+          offset-lg="6"
         >
-          {{ $t('edit.metric.cumulative') }}
-        </b-form-checkbox>
-        <b-form-checkbox
-          v-model="metric.relativeValue"
+          <b-form-group
+            :label="$t('edit.metric.options.label')"
+            label-class="text-primary"
+          >
+            <b-form-checkbox
+              v-model="metric.cumulative"
+            >
+              {{ $t('edit.metric.cumulative') }}
+            </b-form-checkbox>
+
+            <b-form-checkbox
+              v-model="metric.relativeValue"
+            >
+              {{ $t('edit.metric.relative') }}
+            </b-form-checkbox>
+
+            <b-form-checkbox
+              v-model="metric.fixTooltips"
+            >
+              {{ $t('edit.metric.fixTooltips') }}
+            </b-form-checkbox>
+          </b-form-group>
+        </b-col>
+      </b-row>
+
+      <hr>
+
+      <b-row>
+        <b-col
+          cols="12"
+          md="6"
         >
-          {{ $t('edit.metric.relative') }}
-        </b-form-checkbox>
-        <b-form-checkbox
-          v-model="metric.fixTooltips"
+          <b-form-group
+            :label="$t('edit.formatting.prefix.label')"
+            label-class="text-primary"
+          >
+            <b-input
+              v-model="metric.formatting.prefix"
+              :placeholder="$t('edit.formatting.prefix.placeholder')"
+            />
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          md="6"
         >
-          {{ $t('edit.metric.fixTooltips') }}
-        </b-form-checkbox>
-      </b-form-group>
+          <b-form-group
+            :label="$t('edit.formatting.suffix.label')"
+            label-class="text-primary"
+          >
+            <b-input
+              v-model="metric.formatting.suffix"
+              :placeholder="$t('edit.formatting.suffix.placeholder')"
+            />
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          md="6"
+        >
+          <b-form-group
+            :label="$t('edit.formatting.presetFormats.label')"
+            label-class="text-primary"
+            :description="$t(`edit.formatting.presetFormats.description.${metric.formatting.presetFormat}`)"
+            style="white-space: pre-line;"
+          >
+            <b-form-select
+              v-model="metric.formatting.presetFormat"
+              :options="formatOptions"
+            />
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          md="6"
+        >
+          <b-form-group
+            :label="$t('edit.formatting.format.label')"
+            label-class="text-primary"
+          >
+            <b-input
+              v-model="metric.formatting.format"
+              :disabled="metric.formatting.presetFormat !== 'custom'"
+              :placeholder="$t('edit.formatting.format.placeholder')"
+            />
+          </b-form-group>
+        </b-col>
+      </b-row>
     </template>
   </report-edit>
 </template>
@@ -58,6 +137,8 @@ import { components } from '@cortezaproject/corteza-vue'
 const { CItemPicker } = components
 
 export default {
+  name: 'FunnelChart',
+
   components: {
     ReportEdit,
     CItemPicker,

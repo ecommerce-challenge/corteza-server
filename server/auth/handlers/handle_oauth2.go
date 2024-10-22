@@ -11,17 +11,20 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lestrrat-go/jwx/jwa"
-	"github.com/lestrrat-go/jwx/jwk"
-	"github.com/spf13/cast"
+	"github.com/cortezaproject/corteza/server/pkg/locale"
+	"golang.org/x/text/language"
 
 	"github.com/go-chi/jwtauth"
 	oauth2errors "github.com/go-oauth2/oauth2/v4/errors"
+	"github.com/lestrrat-go/jwx/jwa"
+	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jwt"
+	"github.com/spf13/cast"
 
 	"github.com/cortezaproject/corteza/server/auth/request"
 	"github.com/cortezaproject/corteza/server/pkg/auth"
 	"github.com/cortezaproject/corteza/server/pkg/errors"
+	"github.com/cortezaproject/corteza/server/pkg/logger"
 	"github.com/cortezaproject/corteza/server/pkg/payload"
 	systemService "github.com/cortezaproject/corteza/server/system/service"
 	"github.com/cortezaproject/corteza/server/system/types"
@@ -88,7 +91,7 @@ func (h AuthHandlers) oauth2AuthorizeClient(req *request.AuthReq) (err error) {
 	}
 
 	if !h.canAuthorizeClient(req.Context(), req.Client) {
-		h.Log.Error("user's roles do not allow authorization of this client", zap.Uint64("ID", req.Client.ID), zap.String("handle", req.Client.Handle))
+		h.Log.Error("user's roles do not allow authorization of this client", logger.Uint64("ID", req.Client.ID), zap.String("handle", req.Client.Handle))
 		request.SetOauth2Client(req.Session, nil)
 		request.SetOauth2AuthParams(req.Session, nil)
 		req.RedirectTo = GetLinks().Profile
@@ -225,6 +228,7 @@ func (h AuthHandlers) oauth2Info(w http.ResponseWriter, r *http.Request) {
 // Responsibilities:
 //   - handles parameterless request to initialize authorization code flow
 //   - accepts redirect_uri via query string that's used to build the oauth2 authorization URL
+//
 // (for the rest of the flow, see oauth2authorizeDefaultClientProc)
 func (h AuthHandlers) oauth2authorizeDefaultClient(req *request.AuthReq) (err error) {
 	if err = h.verifyDefaultClient(); err != nil {
@@ -260,6 +264,7 @@ func (h AuthHandlers) oauth2authorizeDefaultClient(req *request.AuthReq) (err er
 // Responsibilities:
 //   - handles exchange of authorization-code for token
 //   - handles issuing of new access token requests
+//
 // (for the first part of the flow, see oauth2authorizeDefaultClient)
 func (h AuthHandlers) oauth2authorizeDefaultClientProc(req *request.AuthReq) (err error) {
 	if err = h.verifyDefaultClient(); err != nil {
@@ -326,7 +331,7 @@ func (h AuthHandlers) loadRequestedClient(req *request.AuthReq) (client *types.A
 			return fmt.Errorf("invalid client: %w", err)
 		}
 
-		h.Log.Debug("client loaded from store", zap.Uint64("ID", client.ID))
+		h.Log.Debug("client loaded from store", logger.Uint64("ID", client.ID))
 		return
 	}()
 }
@@ -390,10 +395,23 @@ func (h AuthHandlers) handleTokenRequest(req *request.AuthReq, client *types.Aut
 			userID = userID[:i]
 		}
 
-		if req.AuthUser != nil && req.AuthUser.User != nil && req.AuthUser.User.ID == cast.ToUint64(userID) {
-			user = req.AuthUser.User
-		} else if user, err = h.UserService.FindByAny(suCtx, userID); err != nil {
-			return h.tokenError(w, fmt.Errorf("could not generate token: %v", err))
+		sessionUserExists := req.AuthUser != nil && req.AuthUser.User != nil
+
+		user, err = h.UserService.FindByAny(suCtx, userID)
+
+		if err != nil {
+			if !errors.Is(err, systemService.UserErrNotFound()) {
+				return h.tokenError(w, fmt.Errorf("could not generate token: %v", err))
+			}
+
+			if errors.Is(err, systemService.UserErrNotFound()) && sessionUserExists {
+				user = req.AuthUser.User
+			}
+		}
+
+		if sessionUserExists && req.AuthUser.User.ID == cast.ToUint64(userID) {
+			req.AuthUser.User = user
+			req.AuthUser.Save(req.Session)
 		}
 
 	default:
@@ -436,6 +454,26 @@ func (h AuthHandlers) handleTokenRequest(req *request.AuthReq, client *types.Aut
 	ti.SetAccess(string(signed))
 
 	response := h.OAuth2.GetTokenData(ti)
+
+	// include user's avatarID
+	if user.Meta.AvatarID != 0 {
+		response["avatarID"] = strconv.FormatUint(user.Meta.AvatarID, 10)
+	}
+
+	if h.Locale.HasLanguage(language.Make(user.Meta.PreferredLanguage)) {
+		response["preferred_language"] = user.Meta.PreferredLanguage
+	} else {
+		response["preferred_language"] = locale.GetAcceptLanguageFromContext(req.Context()).String()
+	}
+
+	if user.Labels != nil {
+		response["labels"] = user.Labels
+	} else {
+		response["labels"] = make(map[string]interface{})
+	}
+
+	//include user's theme
+	response["theme"] = user.Meta.Theme
 
 	// in case client is configured with "openid" scope,
 	// we'll add "id_token" with all required (by OIDC) details encoded
@@ -495,8 +533,9 @@ func (h AuthHandlers) oauth2PublicKeys(w http.ResponseWriter, r *http.Request) {
 func SubSplit(ti oauth2def.TokenInfo, data map[string]interface{}) {
 	userIdWithRoles := strings.SplitN(ti.GetUserID(), " ", 2)
 	data["sub"] = userIdWithRoles[0]
+
 	if len(userIdWithRoles) > 1 {
-		data["roles"] = userIdWithRoles[1]
+		data["roles"] = strings.Split(userIdWithRoles[1], " ")
 	}
 }
 

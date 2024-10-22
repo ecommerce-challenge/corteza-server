@@ -7,10 +7,10 @@
       no-gutters
     >
       <b-col
-        md="12"
+        cols="12"
         :lg="map.show ? '7' : '12'"
         :xl="map.show ? '8' : '12'"
-        class="results-container"
+        class="results-container pt-3"
         :class="{ 'with-map': map.show }"
       >
         <b-form-group class="px-3">
@@ -43,7 +43,7 @@
           <div
             v-if="$store.state.processing || !total.actual"
             class="position-absolute d-flex align-items-center justify-content-center w-100 h-100"
-            style="opacity: 0.8; z-index: 1; background-color: #F3F3F5;"
+            style="opacity: 0.8; z-index: 1; background-color: var(--gray-200);"
           >
             <h5
               class="mb-5"
@@ -64,7 +64,6 @@
           <b-col
             v-for="(hit, i) in filteredHits"
             :key="i"
-            sm="12"
             md="6"
             :lg="map.show ? '6': '4'"
             class="py-3"
@@ -84,9 +83,9 @@
           class="position-fixed map-button"
         >
           <b-button
+            v-b-tooltip.noninteractive.hover="{ title: $t('tooltip.map'), container: '#body' }"
             variant="warning"
             class="rounded-circle p-3"
-            :title="$t('tooltip.map')"
             @click="toggleMap"
           >
             <font-awesome-icon
@@ -99,7 +98,6 @@
 
       <b-col
         v-if="map.show"
-        md="12"
         lg="5"
         xl="4"
       >

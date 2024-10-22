@@ -5,36 +5,50 @@
     <fieldset>
       <b-form-group
         :label="$t('metric.editStyle.color')"
-        label-cols="4"
+        label-class="text-primary"
       >
-        <b-form-input
+        <c-input-color-picker
           v-model="options.color"
-          type="color"
-          debounce="300"
+          :translations="{
+            modalTitle: $t('metric.editStyle.colorPicker'),
+            light: $t('general:themes.labels.light'),
+            dark: $t('general:themes.labels.dark'),
+            cancelBtnLabel: $t('general:label.cancel'),
+            saveBtnLabel: $t('general:label.saveAndClose')
+          }"
+          :theme-settings="themeSettings"
           class="mb-1"
         />
       </b-form-group>
 
       <b-form-group
         :label="$t('metric.editStyle.backgroundColor')"
-        label-cols="4"
+        label-class="text-primary"
       >
-        <b-form-input
+        <c-input-color-picker
           v-model="options.backgroundColor"
-          type="color"
-          debounce="300"
+          :translations="{
+            modalTitle: $t('geometry.recordFeed.colorPicker'),
+            light: $t('general:themes.labels.light'),
+            dark: $t('general:themes.labels.dark'),
+            cancelBtnLabel: $t('general:label.cancel'),
+            saveBtnLabel: $t('general:label.saveAndClose')
+          }"
+          :theme-settings="themeSettings"
           class="mb-1"
         />
       </b-form-group>
 
       <b-form-group
         :label="$t('metric.editStyle.fontSize')"
-        label-cols="4"
+        label-class="text-primary"
       >
         <b-form-input
           v-model="options.fontSize"
           type="number"
           placeholder="16"
+          min="0.1"
+          step="0.1"
           class="mb-1"
         />
       </b-form-group>
@@ -43,9 +57,16 @@
 </template>
 
 <script>
+import { components } from '@cortezaproject/corteza-vue'
+const { CInputColorPicker } = components
+
 export default {
   i18nOptions: {
     namespaces: 'block',
+  },
+
+  components: {
+    CInputColorPicker,
   },
 
   props: {
@@ -53,6 +74,12 @@ export default {
       type: Object,
       required: true,
       default: () => ({}),
+    },
+  },
+
+  computed: {
+    themeSettings () {
+      return this.$Settings.get('ui.studio.themes', [])
     },
   },
 }

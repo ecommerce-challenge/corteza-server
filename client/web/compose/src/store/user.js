@@ -32,9 +32,9 @@ export default function (SystemAPI) {
     },
 
     actions: {
-      async load ({ commit }) {
+      async load ({ commit }, filter) {
         commit(types.pending)
-        return SystemAPI.userList().then(({ set }) => {
+        return SystemAPI.userList(filter).then(({ set }) => {
           commit(types.updateSet, set)
         }).finally(() => {
           commit(types.completed)
@@ -70,7 +70,7 @@ export default function (SystemAPI) {
 
         // exclude existing & make unique
         const existing = new Set(getters.set.map(({ userID }) => userID))
-        list = [...new Set(list.filter(userID => !existing.has(userID)))]
+        list = [...new Set(list.filter(userID => userID && !existing.has(userID)))]
 
         if (list.length === 0) {
           // Check for values again

@@ -24,11 +24,7 @@
       </b-button>
     </portal>
 
-    <b-card
-      no-footer
-      body-class="toolbar d-flex flex-column p-2"
-      class="h-100 border-right shadow-lg rounded-0"
-    >
+    <div class="toolbar d-flex flex-column h-100 border-right shadow-lg">
       <div
         id="toolbar"
         ref="toolbar"
@@ -36,21 +32,21 @@
       />
 
       <div
-        class="d-flex flex-grow-1 align-items-end justify-content-center p-3"
+        class="d-flex flex-grow-1 align-items-end justify-content-center py-3"
       >
         <b-button
           ref="help"
           v-b-modal.help
-          variant="link"
-          class="p-0"
+          variant="outline-light"
+          class="d-flex align-items-center border-0 p-2"
         >
           <font-awesome-icon
             :icon="['far', 'question-circle']"
-            class="h4 mb-0"
+            class="h4 mb-0 text-primary"
           />
         </b-button>
       </div>
-    </b-card>
+    </div>
 
     <div
       ref="tooltips"
@@ -131,7 +127,7 @@
           </h5>
 
           <h5
-            v-if="deffered"
+            v-if="deferred"
             class="mb-0 mr-1"
           >
             <b-badge
@@ -196,26 +192,17 @@
         class="d-flex flex-column flex-shrink position-absolute fixed-bottom m-2"
         style="z-index: 1; width: 20vw;"
       >
-        <b-button
-          v-if="changeDetected"
-          variant="dark"
-          :disabled="processingSave || !canUpdateWorkflow"
+        <c-button-submit
+          v-if="changeDetected && canUpdateWorkflow"
+          data-test-id="button-save-workflow"
+          variant="primary"
           block
+          :processing="processingSave"
+          :text="$t('editor:detected-changes') + `${canUpdateWorkflow ? $t('editor:click-to-save') : ''}`"
+          :loading-text="$t('editor:saving')"
           class="rounded-0 py-2 px-3"
-          @click="saveWorkflow()"
-        >
-          <span
-            v-if="processingSave"
-            class="saving mx-2"
-          >
-            Saving
-          </span>
-          <span
-            v-else
-          >
-            {{ $t('editor:detected-changes') + `${canUpdateWorkflow ? this.$t('editor:click-to-save') : ''}` }}
-          </span>
-        </b-button>
+          @submit="saveWorkflow()"
+        />
       </div>
 
       <div
@@ -227,7 +214,7 @@
 
     <!--
       no-enforce-focus flag doesn't set focus to sidebar when it is opened.
-      Bad for Accesability, since keyboard only users can't use sidebar.
+      Bad for Accessability, since keyboard only users can't use sidebar.
     -->
     <b-sidebar
       v-model="sidebar.show"
@@ -289,11 +276,10 @@
             size="md"
             size-confirm="md"
             variant="danger"
-            :borderless="false"
+            :processing="processingDelete"
+            :text="$t('editor:delete')"
             @confirmed="sidebarDelete()"
-          >
-            {{ $t('editor:delete') }}
-          </c-input-confirm>
+          />
 
           <div
             class="ml-auto"
@@ -311,6 +297,7 @@
       :hide-header-close="workflow.workflowID === '0'"
       :no-close-on-backdrop="workflow.workflowID === '0'"
       :no-close-on-esc="workflow.workflowID === '0'"
+      no-fade
     >
       <template #modal-title>
         {{ $t('editor:workflow-configuration') }}
@@ -330,6 +317,7 @@
           data-test-id="button-export-workflow"
           :workflows="[workflow.workflowID]"
           :file-name="workflow.meta.name || workflow.handle"
+          size="lg"
           class="ml-1"
         />
 
@@ -339,7 +327,6 @@
           :target="workflow.meta.name || workflow.handle || workflow.workflowID"
           :resource="`corteza::automation:workflow/${workflow.workflowID}`"
           :button-label="$t('general:permissions')"
-          button-variant="light"
           class="btn-lg ml-1"
         />
       </div>
@@ -358,21 +345,21 @@
             v-if="workflow.canDeleteWorkflow && !isDeleted"
             size="md"
             size-confirm="md"
+            :processing="processingDelete"
+            :text="$t('editor:delete')"
             :borderless="false"
             @confirmed="$emit('delete')"
-          >
-            {{ $t('editor:delete') }}
-          </c-input-confirm>
+          />
 
           <c-input-confirm
             v-else-if="isDeleted"
             size="md"
             size-confirm="md"
+            :processing="processingDelete"
+            :text="$t('editor:undelete')"
             :borderless="false"
             @confirmed="$emit('undelete')"
-          >
-            {{ $t('editor:undelete') }}
-          </c-input-confirm>
+          />
 
           <b-button
             v-if="workflow.workflowID === '0'"
@@ -382,15 +369,14 @@
             {{ $t('editor:back') }}
           </b-button>
 
-          <b-button
-            variant="primary"
+          <c-button-submit
             data-test-id="button-save-workflow"
-            class="ml-auto"
             :disabled="canSave"
-            @click="saveWorkflow()"
-          >
-            {{ $t('editor:save') }}
-          </b-button>
+            :processing="processingSave"
+            :text="$t('editor:save')"
+            class="ml-auto"
+            @submit="saveWorkflow()"
+          />
         </div>
       </template>
     </b-modal>
@@ -401,6 +387,7 @@
       size="lg"
       scrollable
       hide-footer
+      no-fade
       body-class="p-0"
     >
       <help />
@@ -411,6 +398,7 @@
       v-model="issuesModal.show"
       :title="$t('editor:issues')"
       hide-footer
+      no-fade
     >
       <div
         v-for="(issue, index) in issuesModal.issues"
@@ -430,9 +418,11 @@
       scrollable
       :body-class="dryRun.lookup ? '' : 'p-1'"
       :ok-only="dryRun.lookup"
-      :ok-title="`${dryRun.lookup ? this.$t('editor:load-and-configure') : this.$t('editor:run-workflow')}`"
+      :ok-title="`${dryRun.lookup ? $t('editor:load-and-configure') : $t('editor:run-workflow')}`"
       :cancel-title="$t('editor:back')"
       ok-variant="success"
+      cancel-variant="light"
+      no-fade
       @cancel.prevent="dryRun.lookup = true"
       @ok="dryRunOk"
     >
@@ -455,6 +445,7 @@
             v-if="p.lookup"
             :label="p.label"
             :description="p.description"
+            label-class="text-primary"
           >
             <b-form-input
               v-model="p.value"
@@ -555,17 +546,18 @@ export default {
 
     changeDetected: {
       type: Boolean,
-      default: false,
     },
 
     canCreate: {
       type: Boolean,
-      default: false,
     },
 
     processingSave: {
       type: Boolean,
-      default: false,
+    },
+
+    processingDelete: {
+      type: Boolean,
     },
   },
 
@@ -573,7 +565,7 @@ export default {
     return {
       initialized: false,
 
-      deffered: false,
+      deferred: false,
       triggersPathsChanged: false,
 
       graph: undefined,
@@ -640,21 +632,15 @@ export default {
 
   computed: {
     getSidebarItemType () {
-      const { itemType } = this.sidebar
-      if (itemType) {
-        if (itemType === 'edge') {
-          return 'Connector'
-        }
-        return itemType.charAt(0).toUpperCase() + itemType.slice(1)
-      }
-      return itemType
+      const { item } = this.sidebar
+      return this.$t(`steps:${item.node.style}.short`) || item.node.style
     },
 
     getSidebarItemIcon () {
       const { item } = this.sidebar
 
       if (item && item.config) {
-        return getStyleFromKind(item.config).icon
+        return this.getIcon(getStyleFromKind(item.config).icon, this.currentTheme)
       }
       return undefined
     },
@@ -697,6 +683,10 @@ export default {
         return name || username || email || `<@${userID}>`
       }
       return undefined
+    },
+
+    currentTheme () {
+      return this.$auth.user ? this.$auth.user.meta.theme : 'light'
     },
   },
 
@@ -793,7 +783,7 @@ export default {
 
   methods: {
     deleteSelectedCells () {
-      if (this.sidebar.item && this.graph.get().isSelected(this.sidebar.item.node)) {
+      if (this.sidebar.item && this.graph.isCellSelected(this.sidebar.item.node)) {
         this.sidebarClose()
       }
       this.graph.removeCells()
@@ -851,7 +841,7 @@ export default {
       this.graph.zoomFactor = 1.2
 
       // Sets a background image and restricts child movement to its bounds
-      this.graph.setBackgroundImage(new mxImage(`${mxClient.imageBasePath}/grid.svg`, 8192, 8192))
+      this.graph.setBackgroundImage(new mxImage(this.getIcon('grid', this.currentTheme), 8192, 8192))
       this.graph.maximumGraphBounds = new mxRectangle(0, 0, 8192, 8192)
       this.graph.gridSize = 8
 
@@ -859,6 +849,7 @@ export default {
       this.graph.setConnectable(true)
       this.graph.setAllowDanglingEdges(false)
       this.graph.setTooltips(true)
+
       /* eslint-disable no-new */
       new mxRubberband(this.graph) // Enables multiple selection
       this.graph.edgeLabelsMovable = false
@@ -870,11 +861,10 @@ export default {
       mxGraphHandler.prototype.guidesEnabled = true
 
       // Prevent cloning with ctrl + drag
-      mxGraphHandler.prototype.cloneEnabled = false
 
       // Alt disables guides
       mxGraphHandler.prototype.useGuidesForEvent = (evt) => {
-        return mxEvent.isAltDown(evt.getEvent())
+        return !mxEvent.isAltDown(evt.getEvent())
       }
 
       const mxGraphHandlerIsValidDropTarget = mxGraphHandler.prototype.isValidDropTarget
@@ -911,22 +901,22 @@ export default {
 
         if (cell.edge) {
           if (cell.value) {
-            label = `<div id="openSidebar" class="text-nowrap py-1 px-3 mb-0 rounded bg-white pointer" style="border: 2px solid #A7D0E3; border-radius: 5px; color: #2D2D2D;">${encodeHTML(cell.value)}</div>`
+            label = `<div id="openSidebar" class="text-nowrap py-1 px-3 mb-0 rounded bg-white pointer" style="border: 2px solid #A7D0E3; border-radius: 5px; color: var(--dark);">${encodeHTML(cell.value)}</div>`
           }
         } else if (this.vertices[cell.id]) {
           const vertex = this.vertices[cell.id]
           const { kind } = vertex.config
           const { style } = vertex.node
+
           if (vertex && kind !== 'visual') {
-            const icon = getStyleFromKind(vertex.config).icon
+            const icon = this.getIcon(getStyleFromKind(vertex.config).icon, this.currentTheme)
             const type = this.$t(`steps:${style}.short`)
             const isSelected = this.selection.includes(cell.mxObjectId)
-            const border = isSelected ? 'selected-border' : 'border-light'
-            const shadow = isSelected ? 'shadow-lg' : 'shadow'
-            const cog = 'icons/cog.svg'
-            const issue = 'icons/issue.svg'
-            const playIcon = 'icons/play.svg'
-            const stopIcon = 'icons/stop.svg'
+            const shadow = isSelected ? 'shadow' : 'shadow-sm'
+            const cog = this.getIcon('cog')
+            const issue = this.getIcon('issue')
+            const playIcon = this.getIcon('play')
+            const stopIcon = this.getIcon('stop')
             const opacity = kind === 'trigger' && !vertex.triggers.enabled ? 'opacity: 0.7;' : ''
 
             let test = ''
@@ -1002,7 +992,7 @@ export default {
                 properties = [
                   '<tr class="title"><td><b>Initial scope</b></td><td/><td/></tr>',
                   ...properties.map(({ name = '', type = '' }) => {
-                    return `<tr><td><var>${name}</var></td><td/><td><samp>${type || 'Any'}</samp></td><td/></tr>`
+                    return `<tr><td><var>${name}</var></td><td/><td><samp>${type || 'Any'}</samp></td></tr>`
                   }),
                 ]
               }
@@ -1050,7 +1040,7 @@ export default {
               }
             }
 
-            label = `<div class="d-flex flex-column bg-white border rounded step position-relative ${shadow} ${border}" style="min-width: 200px; border-radius: 5px;${opacity}">` +
+            label = `<div class="d-flex flex-column bg-white border rounded step position-relative ${shadow}" style="min-width: 200px; border-radius: 5px;${opacity}">` +
                       '<div class=label-container">' +
                         '<div class="d-flex flex-row align-items-center text-primary px-2 my-1 h6 mb-0" style="width: 200px; height: 36px;">' +
                           `<img src="${icon}" class="mr-2"/>${type}` +
@@ -1068,7 +1058,7 @@ export default {
                       values +
                     '</div>'
           } else {
-            label = `<div id="openSidebar" class="d-flex"><span class="d-inline-block mb-0 text-truncate">${encodeHTML(cell.value || '')}</span></div>`
+            label = cell.value
           }
         }
 
@@ -1126,6 +1116,8 @@ export default {
           value = style.split('gateway')[1]
         } else if (style === 'expressions') {
           value = 'Define and mutate scope variables'
+        } else if (style === 'content') {
+          value = 'Text here'
         }
 
         const cell = new mxCell(
@@ -1595,15 +1587,24 @@ export default {
       this.graph.addListener(mxEvent.CELLS_ADDED, (sender, evt) => {
         if (!this.rendering) {
           const cells = evt.getProperty('cells')
+          let lastVertexID = null
           cells.forEach(cell => {
             if (cell && cell.vertex) {
               if (!this.rendering) {
                 cell.defaultName = true
                 this.addCellToVertices(cell)
                 this.graph.setSelectionCells([cell])
+                lastVertexID = cell.id
               }
             }
           })
+
+          if (lastVertexID) {
+            this.$nextTick(() => {
+              const vertex = this.vertices[lastVertexID]
+              this.sidebarReopen(vertex, vertex.config.kind)
+            })
+          }
         }
       })
 
@@ -1645,21 +1646,6 @@ export default {
             }
           }
         })
-      })
-
-      this.graph.addListener(mxEvent.DOUBLE_CLICK, (sender, evt) => {
-        const event = evt.getProperty('event')
-        const cell = evt.getProperty('cell')
-        if (event && cell) {
-          const isVisual = ((this.vertices[cell.id] || {}).config || {}).kind === 'visual'
-          if (cell.edge || isVisual) {
-            const item = cell.edge ? this.edges[cell.id] : this.vertices[cell.id]
-            const itemType = cell.edge ? 'edge' : item.config.kind
-            this.sidebarReopen(item, itemType)
-          }
-        }
-
-        evt.consume()
       })
 
       // Zoom event
@@ -1717,9 +1703,10 @@ export default {
               // Prevent sidebar opening/closing when CTRL(CMD) is pressed while clicking
             } else if (cell) {
               // If clicked on Cog icon
-              if (event.target.id === 'openSidebar') {
-                const item = cell.edge ? this.edges[cell.id] : this.vertices[cell.id]
-                const itemType = cell.edge ? 'edge' : item.config.kind
+              const item = cell.edge ? this.edges[cell.id] : this.vertices[cell.id]
+              const itemType = cell.edge ? 'edge' : item.config.kind
+
+              if (event.target.id === 'openSidebar' || item.config.kind === 'visual') {
                 this.sidebarReopen(item, itemType)
               } else if (event.target.id === 'openIssues') {
                 this.issuesModal.issues = this.issues[cell.id]
@@ -1754,21 +1741,30 @@ export default {
 
     styling () {
       // General
-      mxConstants.VERTEX_SELECTION_COLOR = 'none'
+      mxConstants.VERTEX_SELECTION_COLOR = '#A7D0E3'
+      mxConstants.VERTEX_SELECTION_STROKEWIDTH = 2
       mxConstants.EDGE_SELECTION_COLOR = '#A7D0E3'
       mxConstants.EDGE_SELECTION_STROKEWIDTH = 2
       mxConstants.DEFAULT_FONTFAMILY = 'Poppins-Regular'
       mxConstants.DEFAULT_FONTSIZE = 13
 
-      mxConstants.HANDLE_FILLCOLOR = '#4D7281'
+      mxConstants.HANDLE_FILLCOLOR = '#A7D0E3'
       mxConstants.HANDLE_STROKECOLOR = 'none'
-      mxConstants.CONNECT_HANDLE_FILLCOLOR = '#4D7281'
+      mxConstants.CONNECT_HANDLE_FILLCOLOR = '#A7D0E3'
+      mxConstants.OUTLINE_HIGHLIGHT_COLOR = '#A7D0E3'
+      mxConstants.TARGET_HIGHLIGHT_COLOR = '#A7D0E3'
+      mxConstants.DROP_TARGET_COLOR = '#A7D0E3'
+      mxConstants.DEFAULT_VALID_COLOR = '#A7D0E3'
       mxConstants.VALID_COLOR = '#A7D0E3'
+      mxGraphHandler.prototype.previewColor = '#A7D0E3'
 
-      mxConstants.GUIDE_COLOR = '#2D2D2D'
+      mxConstants.STYLE_PERIMETER = mxPerimeter.RectanglePerimeter
+
+      mxConstants.GUIDE_COLOR = 'var(--dark)'
       mxConstants.GUIDE_STROKEWIDTH = 1
 
       // Creates the default style for vertices
+
       let style = this.graph.getStylesheet().getDefaultVertexStyle()
       style[mxConstants.STYLE_SHAPE] = mxConstants.SHAPE_RECTANGLE
       style[mxConstants.STYLE_PERIMETER] = mxPerimeter.RectanglePerimeter
@@ -1778,7 +1774,7 @@ export default {
       style[mxConstants.STYLE_ARCSIZE] = 5
       style[mxConstants.STYLE_RESIZABLE] = false
       style[mxConstants.STYLE_FILLCOLOR] = 'none'
-      style[mxConstants.STYLE_FONTCOLOR] = '#2D2D2D'
+      style[mxConstants.STYLE_FONTCOLOR] = 'var(--dark)'
       style[mxConstants.STYLE_FONTSIZE] = 13
       this.graph.getStylesheet().putDefaultVertexStyle(style)
 
@@ -1789,7 +1785,7 @@ export default {
       style[mxConstants.STYLE_ROUNDED] = true
       style[mxConstants.STYLE_ORTHOGONAL] = true
       style[mxConstants.STYLE_MOVABLE] = false
-      style[mxConstants.STYLE_FONTCOLOR] = '#2D2D2D'
+      style[mxConstants.STYLE_FONTCOLOR] = 'var(--dark)'
       style[mxConstants.STYLE_STROKEWIDTH] = 2
       style[mxConstants.STYLE_ENDSIZE] = 15
       style[mxConstants.STYLE_STARTSIZE] = 15
@@ -1807,11 +1803,25 @@ export default {
       style[mxConstants.STYLE_HORIZONTAL] = false
       style[mxConstants.STYLE_VERTICAL_LABEL_POSITION] = mxConstants.ALIGN_MIDDLE
       style[mxConstants.STYLE_VERTICAL_ALIGN] = mxConstants.ALIGN_MIDDLE
-      style[mxConstants.STYLE_FILLCOLOR] = 'white'
-      style[mxConstants.STYLE_STROKECOLOR] = '#2D2D2D'
-      style[mxConstants.STYLE_STROKEWIDTH] = 0
-      style[mxConstants.STYLE_STROKEWIDTH] = 2
+      style[mxConstants.STYLE_FILLCOLOR] = 'var(--white)'
+      style[mxConstants.STYLE_STROKECOLOR] = 'var(--dark)'
+      style[mxConstants.STYLE_STROKEWIDTH] = 1
       this.graph.getStylesheet().putCellStyle('swimlane', style)
+
+      // Content
+      style = {}
+      style[mxConstants.STYLE_RESIZABLE] = true
+      style[mxConstants.STYLE_CONNECTABLE] = false
+      style[mxConstants.STYLE_FILLCOLOR] = 'var(--white)'
+      style[mxConstants.STYLE_STROKECOLOR] = 'var(--extra-light)'
+      style[mxConstants.STYLE_STROKEWIDTH] = 1
+      style[mxConstants.STYLE_VERTICAL_ALIGN] = mxConstants.ALIGN_TOP
+      style[mxConstants.STYLE_ALIGN] = mxConstants.ALIGN_LEFT
+      style[mxConstants.STYLE_SPACING_TOP] = 10
+      style[mxConstants.STYLE_SPACING_LEFT] = 10
+      style[mxConstants.STYLE_WHITE_SPACE] = 'wrap'
+      style[mxConstants.STYLE_OVERFLOW] = 'hidden'
+      this.graph.getStylesheet().putCellStyle('content', style)
     },
 
     translateCell (style) {
@@ -1846,7 +1856,8 @@ export default {
         }
 
         const { cell } = terminal
-        let isConnectable = this.model.isVertex(cell) && !cell.style.includes('swimlane')
+
+        let isConnectable = this.model.isVertex(cell) && !['swimlane', 'content'].includes(cell.style)
 
         // Only one outbound connection per trigger
         if (cell.style.includes('trigger') && cell.edges) {
@@ -1943,13 +1954,11 @@ export default {
       }
 
       // Image for fixed point
-      mxConstraintHandler.prototype.pointImage = new mxImage(`${mxClient.imageBasePath}/connection-point.svg`, 8, 8)
+      mxConstraintHandler.prototype.pointImage = new mxImage(this.getIcon('connection-point'), 16, 16)
 
       // On hover outline for fixed point
       mxConstraintHandler.prototype.createHighlightShape = function () {
-        var hl = new mxEllipse(null, '#A7D0E3', '#A7D0E3', 1)
-
-        return hl
+        return new mxEllipse(null, '#A7D0E3', '#A7D0E3', 1)
       }
     },
 
@@ -1969,6 +1978,8 @@ export default {
       dragElt.style.border = 'dashed #A7D0E3 2px'
       dragElt.style.width = `${prototype.geometry.width}px`
       dragElt.style.height = `${prototype.geometry.height}px`
+
+      icon = this.getIcon(icon, this.currentTheme)
 
       const img = toolbar.addMode(title, icon, funct)
 
@@ -2209,12 +2220,6 @@ export default {
                 }
               }
 
-              // Reset state and refresh the trigger label so spinner disappears
-              this.dryRun.lookup = true
-              this.dryRun.processing = false
-              this.dryRun.sessionID = undefined
-              this.redrawLabel(this.graph.model.getCell(this.dryRun.cellID).mxObjectId)
-
               // If error or no stacktrace, raise an error/warning
               if (error) {
                 throw new Error(error)
@@ -2246,6 +2251,13 @@ export default {
 
           setTimeout(sessionReader, 1000)
         }).catch(this.toastErrorHandler(this.$t('notification:failed-test')))
+        .finally(() => {
+          // Reset state and refresh the trigger label so spinner disappears
+          this.dryRun.lookup = true
+          this.dryRun.processing = false
+          this.dryRun.sessionID = undefined
+          this.redrawLabel(this.graph.model.getCell(this.dryRun.cellID).mxObjectId)
+        })
     },
 
     cancelWorkflow () {
@@ -2318,7 +2330,7 @@ export default {
         })
       }
 
-      this.deffered = false
+      this.deferred = false
       this.triggersPathsChanged = false
 
       const steps = workflow.steps || []
@@ -2350,7 +2362,7 @@ export default {
               this.addCellToVertices(newCell)
 
               // Only set if not yet true
-              this.deffered = this.deffered || this.deferredKinds.includes(config.kind)
+              this.deferred = this.deferred || this.deferredKinds.includes(config.kind)
             }
           })
 
@@ -2425,10 +2437,10 @@ export default {
       this.highlights = []
 
       // Handle first cell & edge
-      this.highlights[this.highlights.push(new mxCellHighlight(this.graph, '#719430', 2)) - 1].highlight(this.graph.view.getState(this.graph.model.getCell(this.dryRun.cellID)))
+      this.highlights[this.highlights.push(new mxCellHighlight(this.graph, 'var(--success)', 2)) - 1].highlight(this.graph.view.getState(this.graph.model.getCell(this.dryRun.cellID)))
       const firstEdge = this.graph.model.getEdgesBetween(this.graph.model.getCell(this.dryRun.cellID), this.graph.model.getCell(firstStepID), true)[0]
       if (firstEdge) {
-        this.highlights[this.highlights.push(new mxCellHighlight(this.graph, '#719430', 2)) - 1].highlight(this.graph.view.getState(firstEdge))
+        this.highlights[this.highlights.push(new mxCellHighlight(this.graph, 'var(--success)', 2)) - 1].highlight(this.graph.view.getState(firstEdge))
       }
 
       // Handle others
@@ -2442,7 +2454,7 @@ export default {
             if (cell && cell.index !== 0) {
               this.graph.model.getEdgesBetween(this.graph.model.getCell(cell.parentID), this.graph.model.getCell(stepID), true)
                 .forEach(edge => {
-                  this.highlights[this.highlights.push(new mxCellHighlight(this.graph, '#719430', 2)) - 1].highlight(this.graph.view.getState(edge))
+                  this.highlights[this.highlights.push(new mxCellHighlight(this.graph, 'var(--success)', 2)) - 1].highlight(this.graph.view.getState(edge))
                 })
             }
           } else {
@@ -2472,7 +2484,7 @@ export default {
               time.sum += stepTime
               this.graph.model.getEdgesBetween(this.graph.model.getCell(parentID), this.graph.model.getCell(stepID), true)
                 .forEach(edge => {
-                  this.highlights[this.highlights.push(new mxCellHighlight(this.graph, '#719430', 2)) - 1].highlight(this.graph.view.getState(edge))
+                  this.highlights[this.highlights.push(new mxCellHighlight(this.graph, 'var(--success)', 2)) - 1].highlight(this.graph.view.getState(edge))
                 })
             })
 
@@ -2481,14 +2493,14 @@ export default {
           }
 
           // Set info overlay
-          const time = new mxCellOverlay(new mxImage(`${mxClient.imageBasePath}/clock-${error ? 'danger' : 'success'}.svg`, 16, 16), `<span>${log}</span>`)
+          const time = new mxCellOverlay(new mxImage(this.getIcon(`clock-${error ? 'danger' : 'success'}`), 16, 16), `<span>${log}</span>`)
           this.graph.addCellOverlay(this.graph.model.getCell(stepID), time)
 
           // Highlight cell based on error
           if (error) {
-            this.highlights[this.highlights.push(new mxCellHighlight(this.graph, '#E54122', 2)) - 1].highlight(this.graph.view.getState(this.graph.model.getCell(stepID)))
+            this.highlights[this.highlights.push(new mxCellHighlight(this.graph, 'var(--danger)', 2)) - 1].highlight(this.graph.view.getState(this.graph.model.getCell(stepID)))
           } else {
-            this.highlights[this.highlights.push(new mxCellHighlight(this.graph, '#719430', 2)) - 1].highlight(this.graph.view.getState(this.graph.model.getCell(stepID)))
+            this.highlights[this.highlights.push(new mxCellHighlight(this.graph, 'var(--success)', 2)) - 1].highlight(this.graph.view.getState(this.graph.model.getCell(stepID)))
           }
         }
       })
@@ -2547,17 +2559,25 @@ export default {
         })
         .catch(this.toastErrorHandler(this.$t('notification:event-type-fetch-failed')))
     },
+
+    getIcon (icon, mode = 'light') {
+      return `${mxClient.imageBasePath}/${mode === 'dark' ? 'dark/' : ''}${icon}.svg`
+    },
   },
 }
 </script>
 
 <style lang="scss" scoped>
+#workflow-editor {
+  color: var(--dark);
+}
+
 #graph {
   outline: none;
 }
 
 .toolbar {
-  background-color: #F3F3F5 !important;
+  background-color: var(--sidebar-bg) !important;
   width: 66px;
 }
 
@@ -2657,15 +2677,11 @@ export default {
 }
 
 .step-values tr.title {
-  background-color: white !important;
+  background-color: var(--light) !important;
 }
 
 .step-values tr.title th {
   border-top: none;
-}
-
-.selected-border {
-  border: 2px dashed #A7D0E3 !important;
 }
 
 #toolbar > hr {

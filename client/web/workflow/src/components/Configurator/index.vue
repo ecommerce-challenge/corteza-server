@@ -3,11 +3,12 @@
     class="d-flex flex-column"
   >
     <b-card
+      v-if="kind !== 'Content'"
       class="flex-grow-1 border-bottom border-light rounded-0"
     >
       <b-card-header
         header-tag="header"
-        class="bg-white p-0 mb-3"
+        class="p-0 mb-3"
       >
         <h5
           class="mb-0"
@@ -32,6 +33,7 @@
       :edges.sync="edges"
       :out-edges="outEdges"
       :is-subworkflow="isSubworkflow"
+      @update-value="$emit('update-value', $event)"
       @update-default-value="updateDefaultName"
     />
   </div>
@@ -64,10 +66,18 @@ export default {
     },
 
     kind () {
-      const { kind } = this.item.config
+      const { kind, ref } = this.item.config
 
       if (kind === 'exec-workflow') {
         return 'ExecWorkflow'
+      }
+
+      if (kind === 'error-handler') {
+        return 'ErrorHandler'
+      }
+
+      if (kind === 'visual' && ref === 'content') {
+        return 'Content'
       }
 
       if (kind) {

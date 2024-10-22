@@ -1,15 +1,14 @@
 <template>
   <b-card
     data-test-id="card-template-toolbox"
-    class="shadow-sm h-100"
-    header-bg-variant="white"
-    footer-bg-variant="white"
     no-body
+    header-class="border-bottom"
+    class="shadow-sm h-100"
   >
     <template #header>
-      <h3 class="m-0">
+      <h4 class="m-0">
         {{ $t('title') }}
-      </h3>
+      </h4>
     </template>
 
     <b-card-body>
@@ -18,7 +17,7 @@
         :key="sec.key"
       >
         <b-btn
-          :data-test-id="`button-${$t(sec.key)}`"
+          :data-test-id="toolboxSectionLabelCypressId(sec.key)"
           variant="light"
           class="mb-2"
           block
@@ -35,7 +34,7 @@
             <b-list-group-item
               v-for="(opt, i) in sec.options"
               :key="opt.label + i"
-              data-test-id="section-item"
+              :data-test-id="toolboxOptionLabelCypressId(opt.label)"
               class="px-0 text-wrap"
               @click="opt.onClick || (() => {})"
             >
@@ -150,7 +149,16 @@ export default {
     openSection (sec) {
       this.$set(this.expandedSections, sec, !this.expandedSections[sec])
     },
+
     copyToCb: copy,
+
+    toolboxSectionLabelCypressId (section) {
+      return `button-${this.$t(section).toLowerCase()}`
+    },
+
+    toolboxOptionLabelCypressId (label) {
+      return label.toLowerCase().split(' ').join('-')
+    },
   },
 
 }

@@ -2,37 +2,30 @@
   <div
     class="position-relative"
   >
-    <ace-editor
+    <c-ace-editor
       v-model="expressionValue"
       :lang="lang"
-      :mode="lang"
-      theme="chrome"
-      width="100%"
       :height="height"
-      :class="{ 'border': border }"
+      :show-line-numbers="showLineNumbers"
+      :font-size="fontSize"
+      :show-popout="showPopout"
+      auto-complete
+      :border="border"
+      :auto-complete-suggestions="expressionAutoCompleteValues"
       v-on="$listeners"
-      @init="editorInit"
     />
-
-    <b-button
-      v-if="showPopout"
-      variant="link"
-      class="popout position-absolute px-2 py-1"
-      @click="$emit('open')"
-    >
-      <font-awesome-icon
-        :icon="['fas', 'expand-alt']"
-      />
-    </b-button>
   </div>
 </template>
 
 <script>
-import AceEditor from 'vue2-ace-editor'
+import { components } from '@cortezaproject/corteza-vue'
+import { EXPRESSION_EDITOR_AUTO_COMPLETE_VALUES } from '../lib/editor-auto-complete.js'
+
+const { CAceEditor } = components
 
 export default {
   components: {
-    AceEditor,
+    CAceEditor,
   },
 
   props: {
@@ -72,6 +65,12 @@ export default {
     },
   },
 
+  data () {
+    return {
+      expressionAutoCompleteValues: EXPRESSION_EDITOR_AUTO_COMPLETE_VALUES,
+    }
+  },
+
   computed: {
     expressionValue: {
       get () {
@@ -83,35 +82,10 @@ export default {
       },
     },
   },
-
-  methods: {
-    editorInit (editor) {
-      require('brace/mode/text')
-      require('brace/mode/javascript')
-      require('brace/theme/chrome')
-
-      editor.setOptions({
-        tabSize: 2,
-        fontSize: this.fontSize,
-        wrap: true,
-        indentedSoftWrap: false,
-        showLineNumbers: this.showLineNumbers,
-        showGutter: this.showLineNumbers,
-        displayIndentGuides: this.lang !== 'text',
-        useWorker: false,
-      })
-    },
-  },
 }
 </script>
 
 <style lang="scss" scoped>
-.border {
-  background-color: #FFF;
-  border: 2px solid #E4E9EF;
-  border-radius: 0.25rem;
-}
-
 .popout {
   z-index: 7;
   bottom: 0;

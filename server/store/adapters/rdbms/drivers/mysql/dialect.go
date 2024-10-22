@@ -42,6 +42,50 @@ func (mysqlDialect) Nuances() drivers.Nuances {
 	return nuances
 }
 
+func (d mysqlDialect) AggregateBase(t drivers.TableCodec, groupBy []dal.AggregateAttr, out []dal.AggregateAttr) (slct *goqu.SelectDataset) {
+	var (
+		cols = t.Columns()
+
+		// working around a bug inside goqu lib that adds
+		// * to the list of columns to be selected
+		// even if we clear the columns first
+		q = d.GOQU().
+			From(t.Ident())
+	)
+
+	for _, g := range groupBy {
+		// Special handling for multi value fields
+		if g.MultiValue {
+			// Only straight up columns can be multi value so we can freely use RawExpr
+			colName := g.RawExpr
+			ax, err := t.AttributeExpressionQuoted(colName)
+			if err != nil {
+				q = q.SetError(err)
+				return q
+			}
+
+			q = q.From(
+				t.Ident(),
+				goqu.Func("JSON_TABLE",
+					ax,
+					exp.NewLiteralExpression(fmt.Sprintf(`'$[*]' COLUMNS (%s TEXT PATH '$')`, colName)),
+				).As(colName),
+			)
+		}
+	}
+
+	if len(cols) == 0 {
+		return q.SetError(fmt.Errorf("can not create SELECT without columns"))
+	}
+
+	q = q.Select(t.Ident().Col(cols[0].Name()))
+	for _, col := range cols[1:] {
+		q = q.SelectAppend(t.Ident().Col(col.Name()))
+	}
+
+	return q
+}
+
 func (mysqlDialect) GOQU() goqu.DialectWrapper                 { return goquDialectWrapper }
 func (mysqlDialect) DialectOptions() *sqlgen.SQLDialectOptions { return goquDialectOptions }
 func (mysqlDialect) QuoteIdent(i string) string                { return quoteIdent + i + quoteIdent }
@@ -161,6 +205,10 @@ func (mysqlDialect) AttributeCast(attr *dal.Attribute, val exp.Expression) (exp.
 	return exp.NewLiteralExpression("?", c), nil
 }
 
+func (mysqlDialect) AttributeExpression(attr *dal.Attribute, modelIdent string, ident string) (expr exp.Expression, err error) {
+	return exp.NewLiteralExpression("?", exp.NewIdentifierExpression("", modelIdent, ident)), nil
+}
+
 func (mysqlDialect) AttributeToColumn(attr *dal.Attribute) (col *ddl.Column, err error) {
 	col = &ddl.Column{
 		Ident:   attr.StoreIdent(),
@@ -232,6 +280,121 @@ func (mysqlDialect) AttributeToColumn(attr *dal.Attribute) (col *ddl.Column, err
 	return
 }
 
+// target is the existing one
+func (mysqlDialect) ColumnFits(target, assert *ddl.Column) bool {
+	targetType, targetName, targetMeta := ddl.ParseColumnTypes(target)
+	assertType, assertName, assertMeta := ddl.ParseColumnTypes(assert)
+
+	// If everything matches up perfectly use that
+	if assertType == targetType {
+		return true
+	}
+
+	// See if we can guess it
+	// [the type of the target column][what types fit the target col. type]
+	matches := map[string]map[string]bool{
+		"bigint unsigned": {
+			"varchar":    true,
+			"text":       true,
+			"mediumtext": true,
+			"longtext":   true,
+
+			"decimal": true,
+		},
+		"bigint signed": {
+			"varchar":    true,
+			"text":       true,
+			"mediumtext": true,
+			"longtext":   true,
+
+			"decimal": true,
+		},
+		"bigint": {
+			"varchar":    true,
+			"text":       true,
+			"mediumtext": true,
+
+			"decimal": true,
+		},
+		"datetime": {
+			"varchar":    true,
+			"text":       true,
+			"mediumtext": true,
+		},
+		"time": {
+			"varchar":    true,
+			"text":       true,
+			"mediumtext": true,
+			"longtext":   true,
+
+			"datetime": true,
+		},
+		"date": {
+			"varchar":    true,
+			"text":       true,
+			"mediumtext": true,
+
+			"datetime": true,
+		},
+		"decimal": {
+			"double":     true,
+			"varchar":    true,
+			"text":       true,
+			"mediumtext": true,
+			"longtext":   true,
+		},
+		"varchar": {
+			"text":       true,
+			"mediumtext": true,
+			"longtext":   true,
+			"char":       true,
+		},
+		"text": {
+			"varchar":  true,
+			"char":     true,
+			"longtext": true,
+		},
+		"json": {},
+		"blob": {},
+		"tinyint": {
+			"varchar":    true,
+			"bigint":     true,
+			"decimal":    true,
+			"text":       true,
+			"mediumtext": true,
+			"longtext":   true,
+		},
+		"char": {
+			"varchar":    true,
+			"text":       true,
+			"mediumtext": true,
+			"longtext":   true,
+		},
+	}
+
+	baseMatch := assertName == targetName || matches[assertName][targetName]
+
+	// Special cases
+	switch {
+	case assertName == "varchar" && targetName == "varchar":
+		// Check varchar size
+		return baseMatch && cast.ToInt(assertMeta[0]) <= cast.ToInt(targetMeta[0])
+
+	case assertName == "decimal" && targetName == "decimal":
+		// Check numeric size and precision
+		for i := len(assertMeta); i < 2; i++ {
+			assertMeta = append(assertMeta, "0")
+		}
+		for i := len(targetMeta); i < 2; i++ {
+			targetMeta = append(targetMeta, "0")
+		}
+
+		return baseMatch && cast.ToInt(assertMeta[0]) <= cast.ToInt(targetMeta[0]) && cast.ToInt(assertMeta[1]) <= cast.ToInt(targetMeta[1])
+	}
+
+	return baseMatch
+}
+
 func (d mysqlDialect) ExprHandler(n *ql.ASTNode, args ...exp.Expression) (expr exp.Expression, err error) {
 	switch ref := strings.ToLower(n.Ref); ref {
 	case "in":
@@ -239,9 +402,14 @@ func (d mysqlDialect) ExprHandler(n *ql.ASTNode, args ...exp.Expression) (expr e
 
 	case "nin":
 		return drivers.OpHandlerNotIn(d, n, args...)
+
+	case "like", "nlike":
+		for a := range args {
+			args[a] = exp.NewLiteralExpression("LOWER(?)", args[a])
+		}
 	}
 
-	return ql.DefaultRefHandler(n, args...)
+	return ref2exp.RefHandler(n, args...)
 }
 
 func (d mysqlDialect) ValHandler(n *ql.ASTNode) (out exp.Expression, err error) {

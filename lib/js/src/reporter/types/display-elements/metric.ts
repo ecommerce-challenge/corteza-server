@@ -28,8 +28,8 @@ const defaults: Readonly<Options> = Object.freeze({
   prefix: '',
   suffix: '',
 
-  color: '#000000',
-  backgroundColor: '#ffffff',
+  color: '#162425',
+  backgroundColor: '#FFFFFF00',
 })
 
 export class DisplayElementMetric extends DisplayElement {

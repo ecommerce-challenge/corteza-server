@@ -1,12 +1,12 @@
 <template>
   <div>
     <b-form-group
-      label-class="sticky-top bg-white pb-0"
+      label-class="sticky-top bg-white pb-0 text-primary"
       class="p-2 mb-0"
     >
       <template #label>
         <h5
-          class="d-flex align-items-center text-primary p-2 mb-0"
+          class="d-flex align-items-center p-2 mb-0"
         >
           {{ $t('help:basic-controls-label') }}
           <font-awesome-icon
@@ -22,12 +22,12 @@
       />
     </b-form-group>
     <b-form-group
-      label-class="sticky-top bg-white pb-0"
+      label-class="sticky-top bg-white pb-0 text-primary"
       class="p-2 mb-0"
     >
       <template #label>
         <h5
-          class="d-flex align-items-center text-primary pt-2 px-2 mb-0"
+          class="d-flex align-items-center pt-2 px-2 mb-0"
         >
           {{ $t('help:keyboard-shortcuts-label') }}
           <font-awesome-icon
@@ -74,7 +74,7 @@ export default {
         { action: this.$t('help:keyboard-shortcuts.action.paste'), shortcut: 'Ctrl + V' },
         { action: this.$t('help:keyboard-shortcuts.action.save'), shortcut: 'Ctrl + S' },
         { action: this.$t('help:keyboard-shortcuts.action.nudge'), shortcut: `${this.$t('help:keyboard-shortcuts.shortcut.arrow-keys')} Shift ${this.$t('help:keyboard-shortcuts.shortcut.adjust-distance')}` },
-        { action: this.$t('help:keyboard-shortcuts.action.show-guides'), shortcut: `${this.$t('help:keyboard-shortcuts.shortcut.hold')} Alt` },
+        { action: this.$t('help:keyboard-shortcuts.action.hide-guides'), shortcut: `${this.$t('help:keyboard-shortcuts.shortcut.hold')} Alt` },
         { action: this.$t('help:keyboard-shortcuts.action.show-help'), shortcut: 'Shift + ?' },
       ],
     }

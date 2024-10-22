@@ -19,6 +19,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // dummy vars to prevent
@@ -45,6 +46,11 @@ type (
 		//
 		// Search roles for member
 		MemberID uint64 `json:",string"`
+
+		// RoleID GET parameter
+		//
+		// Search roles by ID
+		RoleID []string
 
 		// Deleted GET parameter
 		//
@@ -139,6 +145,11 @@ type (
 		//
 		// Labels
 		Labels map[string]string
+
+		// UpdatedAt POST parameter
+		//
+		// Last update (or creation) date
+		UpdatedAt *time.Time
 	}
 
 	RoleRead struct {
@@ -271,6 +282,7 @@ func (r RoleList) Auditable() map[string]interface{} {
 	return map[string]interface{}{
 		"query":      r.Query,
 		"memberID":   r.MemberID,
+		"roleID":     r.RoleID,
 		"deleted":    r.Deleted,
 		"archived":   r.Archived,
 		"labels":     r.Labels,
@@ -289,6 +301,11 @@ func (r RoleList) GetQuery() string {
 // Auditable returns all auditable/loggable parameters
 func (r RoleList) GetMemberID() uint64 {
 	return r.MemberID
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r RoleList) GetRoleID() []string {
+	return r.RoleID
 }
 
 // Auditable returns all auditable/loggable parameters
@@ -341,6 +358,17 @@ func (r *RoleList) Fill(req *http.Request) (err error) {
 		}
 		if val, ok := tmp["memberID"]; ok && len(val) > 0 {
 			r.MemberID, err = payload.ParseUint64(val[0]), nil
+			if err != nil {
+				return err
+			}
+		}
+		if val, ok := tmp["roleID[]"]; ok {
+			r.RoleID, err = val, nil
+			if err != nil {
+				return err
+			}
+		} else if val, ok := tmp["roleID"]; ok {
+			r.RoleID, err = val, nil
 			if err != nil {
 				return err
 			}
@@ -563,12 +591,13 @@ func NewRoleUpdate() *RoleUpdate {
 // Auditable returns all auditable/loggable parameters
 func (r RoleUpdate) Auditable() map[string]interface{} {
 	return map[string]interface{}{
-		"roleID":  r.RoleID,
-		"name":    r.Name,
-		"handle":  r.Handle,
-		"members": r.Members,
-		"meta":    r.Meta,
-		"labels":  r.Labels,
+		"roleID":    r.RoleID,
+		"name":      r.Name,
+		"handle":    r.Handle,
+		"members":   r.Members,
+		"meta":      r.Meta,
+		"labels":    r.Labels,
+		"updatedAt": r.UpdatedAt,
 	}
 }
 
@@ -600,6 +629,11 @@ func (r RoleUpdate) GetMeta() *types.RoleMeta {
 // Auditable returns all auditable/loggable parameters
 func (r RoleUpdate) GetLabels() map[string]string {
 	return r.Labels
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r RoleUpdate) GetUpdatedAt() *time.Time {
+	return r.UpdatedAt
 }
 
 // Fill processes request and fills internal variables
@@ -660,6 +694,13 @@ func (r *RoleUpdate) Fill(req *http.Request) (err error) {
 					return err
 				}
 			}
+
+			if val, ok := req.MultipartForm.Value["updatedAt"]; ok && len(val) > 0 {
+				r.UpdatedAt, err = payload.ParseISODatePtrWithErr(val[0])
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -710,6 +751,13 @@ func (r *RoleUpdate) Fill(req *http.Request) (err error) {
 			}
 		} else if val, ok := req.Form["labels"]; ok {
 			r.Labels, err = label.ParseStrings(val)
+			if err != nil {
+				return err
+			}
+		}
+
+		if val, ok := req.Form["updatedAt"]; ok && len(val) > 0 {
+			r.UpdatedAt, err = payload.ParseISODatePtrWithErr(val[0])
 			if err != nil {
 				return err
 			}

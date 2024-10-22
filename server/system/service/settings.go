@@ -12,6 +12,7 @@ import (
 
 	"github.com/cortezaproject/corteza/server/pkg/errors"
 	"github.com/cortezaproject/corteza/server/pkg/logger"
+	"github.com/cortezaproject/corteza/server/pkg/options"
 	"github.com/cortezaproject/corteza/server/store"
 	"github.com/cortezaproject/corteza/server/system/types"
 	"go.uber.org/zap"
@@ -25,6 +26,7 @@ type (
 		accessControl accessController
 		logger        *zap.Logger
 		m             sync.RWMutex
+		webappsConf   options.WebappOpt
 
 		// Holds reference to the "current" settings that
 		// are used by the services
@@ -48,13 +50,14 @@ type (
 	}
 )
 
-func Settings(ctx context.Context, s store.SettingValues, log *zap.Logger, ac accessController, al actionlog.Recorder, current interface{}) *settings {
+func Settings(ctx context.Context, s store.SettingValues, log *zap.Logger, ac accessController, al actionlog.Recorder, current interface{}, webappsConf options.WebappOpt) *settings {
 	svc := &settings{
 		actionlog:     al,
 		store:         s,
 		accessControl: ac,
 		logger:        log.Named("settings"),
 		current:       current,
+		webappsConf:   webappsConf,
 		listeners:     make([]registeredSettingsListener, 0, 2),
 		update:        make(chan types.SettingValueSet, 0),
 	}
@@ -203,7 +206,7 @@ func (svc *settings) Set(ctx context.Context, v *types.SettingValue) (err error)
 		return
 	}
 
-	svc.logChange(ctx, types.SettingValueSet{v})
+	svc.logChange(ctx, v)
 	return svc.updateCurrent(ctx, types.SettingValueSet{v})
 }
 
@@ -243,20 +246,32 @@ func (svc *settings) BulkSet(ctx context.Context, vv types.SettingValueSet) (err
 		return
 	}
 
-	svc.logChange(ctx, vv)
+	for _, v := range vv {
+		// if any of webapps stylesheet settings is updated, we need to recompute and update affected theme css
+		if v.Name == "ui.studio.themes" || v.Name == "ui.studio.custom-css" {
+			var compStyles *types.SettingValue
+			if v.Name == "ui.studio.themes" {
+				compStyles = current.FindByName("ui.studio.custom-css")
+			} else {
+				compStyles = current.FindByName("ui.studio.themes")
+			}
+
+            DefaultStylesheet.updateCSS(v, current.FindByName(v.Name), compStyles, v.Name, svc.webappsConf.ScssDirPath, svc.logger)
+		}
+
+		svc.logChange(ctx, v)
+	}
 
 	return svc.updateCurrent(ctx, vv)
 }
 
-func (svc *settings) logChange(ctx context.Context, vv types.SettingValueSet) {
-	for _, v := range vv {
-		svc.log(ctx,
-			zap.String("name", v.Name),
-			zap.Uint64("owned-by", v.OwnedBy),
-			zap.Stringer("value", v.Value)).
-			WithOptions(zap.AddCallerSkip(1)).
-			Debug("setting value updated")
-	}
+func (svc *settings) logChange(ctx context.Context, v *types.SettingValue) {
+	svc.log(ctx,
+		zap.String("name", v.Name),
+		logger.Uint64("owned-by", v.OwnedBy),
+		zap.Stringer("value", v.Value)).
+		WithOptions(zap.AddCallerSkip(1)).
+		Debug("setting value updated")
 }
 
 func (svc *settings) Delete(ctx context.Context, name string, ownedBy uint64) error {
@@ -280,7 +295,7 @@ func (svc *settings) Delete(ctx context.Context, name string, ownedBy uint64) er
 
 	svc.log(ctx,
 		zap.String("name", name),
-		zap.Uint64("owned-by", ownedBy)).Info("setting value removed")
+		logger.Uint64("owned-by", ownedBy)).Info("setting value removed")
 
 	return svc.updateCurrent(ctx, vv)
 }

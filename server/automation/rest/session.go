@@ -2,20 +2,29 @@ package rest
 
 import (
 	"context"
+	"fmt"
+
 	"github.com/cortezaproject/corteza/server/automation/rest/request"
 	"github.com/cortezaproject/corteza/server/automation/service"
 	"github.com/cortezaproject/corteza/server/automation/types"
+	"github.com/cortezaproject/corteza/server/compose/automation"
+	cmpService "github.com/cortezaproject/corteza/server/compose/service"
+	cmpTypes "github.com/cortezaproject/corteza/server/compose/types"
 	"github.com/cortezaproject/corteza/server/pkg/api"
 	"github.com/cortezaproject/corteza/server/pkg/auth"
 	"github.com/cortezaproject/corteza/server/pkg/expr"
 	"github.com/cortezaproject/corteza/server/pkg/filter"
-	"github.com/cortezaproject/corteza/server/pkg/payload"
 	"github.com/cortezaproject/corteza/server/pkg/wfexec"
 )
 
 type (
 	Session struct {
 		svc sessionService
+
+		// cross-link with compose service to load module on resolved records
+		svcModule interface {
+			FindByID(ctx context.Context, namespaceID, moduleID uint64) (*cmpTypes.Module, error)
+		}
 	}
 
 	sessionService interface {
@@ -46,6 +55,7 @@ type (
 func (Session) New() *Session {
 	ctrl := &Session{}
 	ctrl.svc = service.DefaultSession
+	ctrl.svcModule = cmpService.DefaultModule
 	return ctrl
 }
 
@@ -53,9 +63,9 @@ func (ctrl Session) List(ctx context.Context, r *request.SessionList) (interface
 	var (
 		err error
 		f   = types.SessionFilter{
-			WorkflowID:   payload.ParseUint64s(r.WorkflowID),
-			SessionID:    payload.ParseUint64s(r.SessionID),
-			CreatedBy:    payload.ParseUint64s(r.CreatedBy),
+			WorkflowID:   r.WorkflowID,
+			SessionID:    r.SessionID,
+			CreatedBy:    r.CreatedBy,
 			EventType:    r.EventType,
 			ResourceType: r.ResourceType,
 			Completed:    filter.State(r.Completed),
@@ -65,6 +75,14 @@ func (ctrl Session) List(ctx context.Context, r *request.SessionList) (interface
 
 	if f.Paging, err = filter.NewPaging(r.Limit, r.PageCursor); err != nil {
 		return nil, err
+	}
+
+	// fixes issue with sorting of status column and pagination
+	// need to improve on cursor for this
+	if f.Paging.PageCursor != nil {
+		for _, status := range r.Status {
+			f.Paging.PageCursor.Set("status", status, false)
+		}
 	}
 
 	f.IncTotal = r.IncTotal
@@ -93,7 +111,37 @@ func (ctrl Session) ListPrompts(ctx context.Context, r *request.SessionListPromp
 	}, nil
 }
 
-func (ctrl Session) ResumeState(ctx context.Context, r *request.SessionResumeState) (interface{}, error) {
+func (ctrl Session) ResumeState(ctx context.Context, r *request.SessionResumeState) (_ interface{}, err error) {
+	if r.Input != nil {
+		if err = r.Input.ResolveTypes(service.Registry().Type); err != nil {
+			return nil, err
+		}
+	}
+
+	// Now when all types are resolved we have to load modules and link them to records
+	//
+	// Very naive approach for now.
+	//
+	// @note copied from https://github.com/cortezaproject/corteza/blob/2023.9.x/server/automation/rest/workflow.go#L189
+	//       copied to reduce the need for some dependency; should be good enough for now
+	r.Input.Each(func(k string, v expr.TypedValue) error {
+		switch c := v.(type) {
+		case *automation.ComposeRecord:
+			rec := c.GetValue()
+			if rec == nil {
+				return nil
+			}
+
+			mod, err := ctrl.svcModule.FindByID(ctx, rec.NamespaceID, rec.ModuleID)
+			if err != nil {
+				return fmt.Errorf("failed to resolve ComposeRecord type: %w", err)
+			}
+			c.GetValue().SetModule(mod)
+		}
+
+		return nil
+	})
+
 	return api.OK(), ctrl.svc.Resume(r.SessionID, r.StateID, auth.GetIdentityFromContext(ctx), r.Input)
 }
 

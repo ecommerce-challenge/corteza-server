@@ -1,29 +1,30 @@
 <template>
   <div
-    class="d-flex overflow-auto px-2 w-100"
+    class="d-flex overflow-auto p-2 w-100"
   >
-    <portal to="topbar-title">
+    <portal
+      v-if="!fetchingReport"
+      to="topbar-title"
+    >
       {{ pageTitle }}
     </portal>
 
     <portal to="topbar-tools">
-      <div
+      <c-input-select
         v-if="scenarioOptions.length"
-        class="d-inline-block mr-2"
-      >
-        <vue-select
-          v-model="scenarios.selected"
-          :options="scenarioOptions"
-          :placeholder="$t('pick-scenario')"
-          class="bg-white rounded"
-          @input="refreshReport()"
-        />
-      </div>
+        v-model="scenarios.selected"
+        :options="scenarioOptions"
+        :get-option-key="getOptionKey"
+        :placeholder="$t('pick-scenario')"
+        :disabled="processing || fetchingReport"
+        size="sm"
+        style="max-width: 300px; min-width: 150px;"
+        @input="refreshReport()"
+      />
 
       <b-button-group
         v-if="canUpdate"
         size="sm"
-        class="mr-1"
       >
         <b-button
           variant="primary"
@@ -33,24 +34,32 @@
           {{ $t('report.builder') }}
           <font-awesome-icon
             class="ml-2"
-            :icon="['fas', 'cogs']"
+            :icon="['fas', 'tools']"
           />
         </b-button>
         <b-button
+          v-b-tooltip.noninteractive.hover="{ title: $t('tooltip.edit.report'), container: '#body' }"
           variant="primary"
+          class="d-flex align-items-center justify-content-center"
           style="margin-left:2px;"
-          :title="$t('tooltip.edit.report')"
           :to="reportEditor"
         >
           <font-awesome-icon
-            :icon="['fas', 'pen']"
+            :icon="['far', 'edit']"
           />
         </b-button>
       </b-button-group>
     </portal>
 
+    <div
+      v-if="fetchingReport"
+      class="d-flex align-items-center justify-content-center w-100 h-100"
+    >
+      <b-spinner />
+    </div>
+
     <grid
-      v-if="report && canRead && showReport"
+      v-if="report && canRead && showReport && !fetchingReport"
       :blocks="report.blocks"
     >
       <template
@@ -71,7 +80,6 @@
 import { system } from '@cortezaproject/corteza-js'
 import Grid from 'corteza-webapp-reporter/src/components/Report/Grid'
 import Block from 'corteza-webapp-reporter/src/components/Report/Blocks'
-import VueSelect from 'vue-select'
 
 export default {
   name: 'ReportView',
@@ -83,13 +91,13 @@ export default {
   components: {
     Grid,
     Block,
-    VueSelect,
   },
 
   data () {
     return {
       processing: false,
       showReport: true,
+      fetchingReport: false,
 
       report: undefined,
       dataframes: [],
@@ -97,6 +105,7 @@ export default {
       scenarios: {
         selected: undefined,
       },
+
     }
   },
 
@@ -148,9 +157,21 @@ export default {
       immediate: true,
       handler (reportID) {
         this.scenarios.selected = undefined
+        this.report = undefined
 
         if (reportID) {
+          this.fetchingReport = true
+          this.processing = true
           this.fetchReport(reportID)
+            .catch(() => {
+              this.toastErrorHandler(this.$t('notification:report.loadFailed'))
+            })
+            .finally(() => {
+              setTimeout(() => {
+                this.fetchingReport = false
+                this.processing = false
+              }, 400)
+            })
         }
       },
     },
@@ -165,8 +186,6 @@ export default {
     },
 
     async fetchReport (reportID) {
-      this.processing = true
-
       this.report = undefined
 
       return this.$SystemAPI.reportRead({ reportID })
@@ -179,9 +198,10 @@ export default {
           })
         })
         .catch(this.toastErrorHandler(this.$t('notification:report.fetchFailed')))
-        .finally(() => {
-          this.processing = false
-        })
+    },
+
+    getOptionKey (scenario) {
+      return scenario
     },
   },
 }

@@ -42,12 +42,11 @@ type (
 		prompted map[uint64]*prompted
 
 		// how often we check for delayed states and how often idle stat is checked in Wait()
-		workerInterval time.Duration
+		workerIntervalSuspended time.Duration
+		workerIntervalWaiter    time.Duration
 
 		// only one worker routine per session
 		workerLock chan struct{}
-
-		statusChange chan int
 
 		// holds final result
 		result *expr.Vars
@@ -62,6 +61,7 @@ type (
 
 		eventHandler StateChangeHandler
 
+		// This keeps track of workflow calls
 		callStack []uint64
 	}
 
@@ -171,9 +171,12 @@ func NewSession(ctx context.Context, g *Graph, oo ...SessionOpt) *Session {
 		delayed:  make(map[uint64]*delayed),
 		prompted: make(map[uint64]*prompted),
 
-		//workerInterval: time.Millisecond,
-		workerInterval: time.Millisecond * 250, // debug mode rate
-		workerLock:     make(chan struct{}, 1),
+		// Setting this one to something higher since it'll need external interaction
+		workerIntervalSuspended: time.Millisecond * 100,
+		// Setting this to a smaller number since the wait fnc. is a tight loop
+		workerIntervalWaiter: time.Millisecond,
+
+		workerLock: make(chan struct{}, 1),
 
 		log: zap.NewNop(),
 
@@ -187,7 +190,7 @@ func NewSession(ctx context.Context, g *Graph, oo ...SessionOpt) *Session {
 	}
 
 	s.log = s.log.
-		With(zap.Uint64("sessionID", s.id))
+		With(logger.Uint64("sessionID", s.id))
 
 	s.callStack = append(s.callStack, s.id)
 
@@ -395,15 +398,14 @@ func (s *Session) enqueue(ctx context.Context, st *State) error {
 }
 
 // Wait does not wait for the whole wf to be complete but until:
-//  - context timeout
-//  - idle state
-//  - error in error queue
+//   - context timeout
+//   - idle state
+//   - error in error queue
 func (s *Session) Wait(ctx context.Context) error {
 	return s.WaitUntil(ctx, SessionFailed, SessionDelayed, SessionCompleted)
 }
 
 // WaitUntil blocks until workflow session gets into expected status
-//
 func (s *Session) WaitUntil(ctx context.Context, expected ...SessionStatus) error {
 	indexed := make(map[SessionStatus]bool)
 	for _, status := range expected {
@@ -418,17 +420,18 @@ func (s *Session) WaitUntil(ctx context.Context, expected ...SessionStatus) erro
 	s.log.Debug(
 		"waiting for status change",
 		zap.Any("expecting", expected),
-		zap.Duration("interval", s.workerInterval),
+		zap.Duration("interval", s.workerIntervalWaiter),
 	)
 
-	waitCheck := time.NewTicker(s.workerInterval)
+	waitCheck := time.NewTicker(s.workerIntervalWaiter)
 	defer waitCheck.Stop()
 
 	for {
 		select {
 		case <-waitCheck.C:
-			if indexed[s.Status()] {
-				s.log.Debug("waiting complete", zap.Stringer("status", s.Status()))
+			status := s.Status()
+			if indexed[status] {
+				s.log.Debug("waiting complete", zap.Stringer("status", status))
 				// nothing in the pipeline
 				return s.err
 			}
@@ -448,8 +451,7 @@ func (s *Session) worker(ctx context.Context) {
 	defer close(s.workerLock)
 	s.workerLock <- struct{}{}
 
-	workerTicker := time.NewTicker(s.workerInterval)
-
+	workerTicker := time.NewTicker(s.workerIntervalSuspended)
 	defer workerTicker.Stop()
 
 	for {
@@ -462,35 +464,27 @@ func (s *Session) worker(ctx context.Context) {
 			s.queueScheduledSuspended()
 
 		case st := <-s.qState:
-			if st == nil {
-				// stop worker
-				s.log.Debug("completed")
-				return
-			}
-
-			s.log.Debug("pulled state from queue", zap.Uint64("stateID", st.stateId))
+			s.log.Debug("pulled state from queue", logger.Uint64("stateID", st.stateId))
 			if st.step == nil {
-				// We should not terminate if the session contains any delayed or prompted steps.
-				status := s.Status()
-				if status == SessionPrompted || status == SessionDelayed {
+				// When there are any suspended steps we shouldn't kill the worker
+				// as those need to be processed.
+				if s.Suspended() {
 					break
 				}
 
 				s.log.Debug("done, setting results and stopping the worker")
 
-				func() {
-					// mini lambda fn to ensure we can properly unlock with defer
-					s.mux.Lock()
-					defer s.mux.Unlock()
-
-					// with merge we are making sure
-					// that result != nil even if state scope is
-					s.result = (&expr.Vars{}).MustMerge(st.scope)
-				}()
+				// Make sure we're serving a non-nil value
+				s.mux.Lock()
+				if st.scope.IsEmpty() {
+					s.result = &expr.Vars{}
+				} else {
+					s.result = st.scope
+				}
+				s.mux.Unlock()
 
 				// Call event handler with completed status
 				s.eventHandler(SessionCompleted, st, s)
-
 				return
 			}
 
@@ -507,12 +501,12 @@ func (s *Session) worker(ctx context.Context) {
 
 				var (
 					err error
-					log = s.log.With(zap.Uint64("stateID", st.stateId))
+					log = s.log.With(logger.Uint64("stateID", st.stateId))
 				)
 
 				nxt, err := s.exec(ctx, log, st)
 				if err != nil && st.err == nil {
-					// override the error from the execution
+					// If exec returns an error, use that one over the wf runtime error
 					st.err = err
 				}
 
@@ -545,7 +539,7 @@ func (s *Session) worker(ctx context.Context) {
 
 				s.log.Debug(
 					"executed",
-					zap.Uint64("stateID", st.stateId),
+					logger.Uint64("stateID", st.stateId),
 					zap.Stringer("status", status),
 					zap.Error(st.err),
 				)
@@ -554,9 +548,9 @@ func (s *Session) worker(ctx context.Context) {
 
 				for _, n := range nxt {
 					if n.step != nil {
-						log.Debug("next step queued", zap.Uint64("nextStepId", n.step.ID()))
+						log.Debug("next step queued", logger.Uint64("nextStepId", n.step.ID()))
 					} else {
-						log.Debug("next step queued", zap.Uint64("nextStepId", 0))
+						log.Debug("next step queued", logger.Uint64("nextStepId", 0))
 					}
 					if err = s.enqueue(ctx, n); err != nil {
 						log.Error("unable to enqueue", zap.Error(err))
@@ -592,10 +586,21 @@ func (s *Session) Stop() {
 	s.qErr <- nil
 }
 
-func (s *Session) Suspended() bool {
+func (s *Session) Delayed() bool {
 	defer s.mux.RUnlock()
 	s.mux.RLock()
 	return len(s.delayed) > 0
+}
+
+func (s *Session) Prompted() bool {
+	defer s.mux.RUnlock()
+	s.mux.RLock()
+	return len(s.prompted) > 0
+}
+
+// Suspended returns true if the workflow has either delayed or prompted steps
+func (s *Session) Suspended() bool {
+	return s.Delayed() || s.Prompted()
 }
 
 func (s *Session) queueScheduledSuspended() {
@@ -653,7 +658,7 @@ func (s *Session) exec(ctx context.Context, log *zap.Logger, st *State) (nxt []*
 	)
 
 	if st.step != nil {
-		log = log.With(zap.Uint64("stepID", st.step.ID()))
+		log = log.With(logger.Uint64("stepID", st.step.ID()))
 	}
 
 	{
@@ -685,11 +690,14 @@ func (s *Session) exec(ctx context.Context, log *zap.Logger, st *State) (nxt []*
 			// handling error with error handling
 			// step set in one of the previous steps
 			log.Warn("step execution error handled",
-				zap.Uint64("errorHandlerStepId", st.errHandler.ID()),
+				logger.Uint64("errorHandlerStepId", st.errHandler.ID()),
 				zap.Error(st.err),
 			)
 
-			_ = expr.Assign(scope, "error", expr.Must(expr.NewString(st.err.Error())))
+			err = setErrorHandlerResultsToScope(scope, st.results, st.err, st.step.ID())
+			if err != nil {
+				return nil, err
+			}
 
 			// copy error handler & disable it on state to prevent inf. loop
 			// in case of another error in the error-handling branch
@@ -731,6 +739,7 @@ func (s *Session) exec(ctx context.Context, log *zap.Logger, st *State) (nxt []*
 			// this step sets error handling step on current state
 			// and continues on the current path
 			st.errHandler = result.handler
+			st.results = st.results.MustMerge(result.results)
 
 			// find step that's not error handler and
 			// use it for the next step
@@ -837,7 +846,7 @@ func (s *Session) exec(ctx context.Context, log *zap.Logger, st *State) (nxt []*
 		// gracefully handling last step of iteration branch
 		// that does not point back to the iterator step
 		st.next = Steps{currLoop.Iterator()}
-		log.Debug("last step in iteration branch, going back", zap.Uint64("backStepId", st.next[0].ID()))
+		log.Debug("last step in iteration branch, going back", logger.Uint64("backStepId", st.next[0].ID()))
 	}
 
 	if len(st.next) == 0 {
@@ -860,9 +869,15 @@ func (s *Session) exec(ctx context.Context, log *zap.Logger, st *State) (nxt []*
 	return nxt, nil
 }
 
-func SetWorkerInterval(i time.Duration) SessionOpt {
+func SetWorkerIntervalSuspended(i time.Duration) SessionOpt {
 	return func(s *Session) {
-		s.workerInterval = i
+		s.workerIntervalSuspended = i
+	}
+}
+
+func SetWorkerIntervalWaiter(i time.Duration) SessionOpt {
+	return func(s *Session) {
+		s.workerIntervalWaiter = i
 	}
 }
 
@@ -940,4 +955,31 @@ func GetContextCallStack(ctx context.Context) []uint64 {
 	}
 
 	return v.([]uint64)
+}
+
+func setErrorHandlerResultsToScope(scope *expr.Vars, result *expr.Vars, e error, stepID uint64) (err error) {
+	var (
+		ehr = struct {
+			Error        string `json:"error"`
+			ErrorMessage string `json:"errorMessage"`
+			ErrorStepID  string `json:"errorStepID"`
+		}{}
+	)
+
+	err = result.Decode(&ehr)
+	if err != nil {
+		return
+	}
+
+	if len(ehr.Error) > 0 {
+		_ = expr.Assign(scope, ehr.Error, expr.Must(expr.NewAny(e)))
+	}
+	if len(ehr.ErrorMessage) > 0 {
+		_ = expr.Assign(scope, ehr.ErrorMessage, expr.Must(expr.NewString(e.Error())))
+	}
+	if len(ehr.ErrorStepID) > 0 {
+		_ = expr.Assign(scope, ehr.ErrorStepID, expr.Must(expr.NewInteger(stepID)))
+	}
+
+	return
 }

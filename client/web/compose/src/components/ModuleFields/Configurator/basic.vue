@@ -35,21 +35,22 @@
     <b-form-group
       v-if="showValueExpr"
       :label="$t('valueExpr.label')"
+      label-class="text-primary"
       class="mt-2"
     >
       <b-input-group>
-        <b-input-group-append>
-          <b-button variant="dark">
+        <b-input-group-prepend>
+          <b-button variant="extra-light">
             ƒ
           </b-button>
-        </b-input-group-append>
+        </b-input-group-prepend>
         <b-form-input
           v-model="field.expressions.value"
           :placeholder="$t('valueExpr.placeholder')"
         />
         <b-input-group-append>
           <b-button
-            variant="outline-secondary"
+            variant="outline-extra-light"
             :href="documentationURL"
             class="d-flex justify-content-center align-items-center"
             target="_blank"
@@ -66,11 +67,13 @@
     <b-form-group
       v-else-if="showDefaultField"
       :label="$t('defaultFieldValue')"
-      class="mt-3 mb-0"
+      label-class="text-primary"
+      class="mb-0"
     >
       <field-editor
         value-only
         v-bind="mock"
+        class="mb-1"
       />
     </b-form-group>
 
@@ -78,6 +81,7 @@
 
     <b-form-group
       :label="$t(`options.description.label.${noDescriptionEdit ? 'default' : 'view'}`)"
+      label-class="text-primary"
       class="mt-2"
     >
       <b-input-group>
@@ -92,7 +96,6 @@
             :module="module"
             :disabled="isNew"
             :highlight-key="`meta.description.view`"
-            button-variant="light"
           />
         </b-input-group-append>
       </b-input-group>
@@ -101,6 +104,7 @@
     <b-form-group
       v-if="!noDescriptionEdit"
       :label="$t('options.description.label.edit')"
+      label-class="text-primary"
       class="mt-2"
     >
       <b-input-group>
@@ -115,7 +119,6 @@
             :module="module"
             :disabled="isNew"
             :highlight-key="`meta.description.edit`"
-            button-variant="light"
           />
         </b-input-group-append>
       </b-input-group>
@@ -133,6 +136,7 @@
 
     <b-form-group
       :label="$t(`options.hint.label.${noHintEdit ? 'default' : 'view'}`)"
+      label-class="text-primary"
       class="mt-2"
     >
       <b-input-group>
@@ -147,7 +151,6 @@
             :module="module"
             :disabled="isNew"
             :highlight-key="`meta.hint.view`"
-            button-variant="light"
           />
         </b-input-group-append>
       </b-input-group>
@@ -156,6 +159,7 @@
     <b-form-group
       v-if="!noHintEdit"
       :label="$t('options.hint.label.edit')"
+      label-class="text-primary"
       class="mt-2"
     >
       <b-input-group>
@@ -170,7 +174,6 @@
             :module="module"
             :disabled="isNew"
             :highlight-key="`meta.hint.edit`"
-            button-variant="light"
           />
         </b-input-group-append>
       </b-input-group>

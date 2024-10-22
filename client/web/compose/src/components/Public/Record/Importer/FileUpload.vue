@@ -1,13 +1,9 @@
 <template>
-  <b-card
-    header-bg-variant="white"
-    footer-bg-variant="white"
-  >
-    <b-form-group>
-      <slot name="uploadLabel">
-        <label>{{ $t('recordList.import.uploadFile') }}</label>
-      </slot>
-
+  <b-card>
+    <b-form-group
+      :label="$t('recordList.import.uploadFile')"
+      label-class="text-primary"
+    >
       <uploader
         class="uploader"
         :label="dzLabel"
@@ -18,8 +14,10 @@
       />
     </b-form-group>
 
-    <b-form-group>
-      <label class="mr-3">{{ $t('recordList.import.onError') }}</label>
+    <b-form-group
+      :label="$t('recordList.import.onError')"
+      label-class="text-primary"
+    >
       <b-form-select
         v-model="onError"
         class="w-auto"
@@ -39,7 +37,7 @@
       class="text-right"
     >
       <b-button
-        variant="dark"
+        variant="primary"
         :disabled="!canContinue"
         @click="fileUploaded"
       >
@@ -118,9 +116,3 @@ export default {
   },
 }
 </script>
-
-<style lang="scss" scoped>
-.uploader {
-  height: 130px;
-}
-</style>

@@ -4,6 +4,9 @@ import {
   Metric,
   Report,
   ChartType,
+  formatChartValue,
+  formatChartTooltip,
+  TooltipParams,
 } from './util'
 import { getColorschemeColors } from '../../../shared'
 
@@ -81,50 +84,90 @@ export default class FunnelChart extends BaseChart {
         fixed: !!m.fixTooltips,
         relative: !!m.relativeValue,
       },
+      formatting: m.formatting,
     }
   }
 
   makeOptions (data: any) {
-    const { colorScheme, noAnimation = false } = this.config
-    const { labels, datasets = [], tooltip } = data
-    const colors = getColorschemeColors(colorScheme)
+    const { reports = [], colorScheme, noAnimation = false, toolbox } = this.config
+    const { saveAsImage } = toolbox || {}
 
-    const tooltipFormatter = `{b}<br />{c} ${tooltip.relative ? ' ({d}%)' : ''}`
-    const labelFormatter = `{c}${tooltip.relative ? ' ({d}%)' : ''}`
+    const { labels, datasets = [], tooltip, themeVariables = {} } = data
+    const { fixed, relative } = tooltip
+
+    const { legend: l } = reports[0] || {}
+    const { formatting } = datasets[0] || {}
+
+    const colors = getColorschemeColors(colorScheme, data.customColorSchemes)
 
     return {
       animation: !noAnimation,
       textStyle: {
-        fontFamily: 'Poppins-Regular',
+        fontFamily: themeVariables['font-regular'],
+        overflow: 'break',
+        color: themeVariables.black,
+      },
+      toolbox: {
+        feature: {
+          saveAsImage: saveAsImage ? {
+            name: this.name,
+          } : undefined,
+        },
+        top: 15,
+        right: 5,
       },
       tooltip: {
-        show: true,
         trigger: 'item',
-        formatter: tooltipFormatter,
+        formatter: (params: TooltipParams): string => {
+          const { value = '', percent = '' } = params
+
+          const v = formatChartValue(value, formatting)
+
+          return `${params.seriesName}<br>${params.marker}${params.name}<span style="float: right; margin-left: 20px">${v}${relative ? ' (' + percent + '%)' : ''}</span>`
+        },
         appendToBody: true,
       },
       legend: {
-        show: true,
-        type: 'scroll',
+        show: !l?.isHidden,
+        type: l?.isScrollable ? 'scroll' : 'plain',
+        top: (l?.position?.isDefault ? undefined : l?.position?.top) || undefined,
+        right: (l?.position?.isDefault ? undefined : l?.position?.right) || undefined,
+        bottom: (l?.position?.isDefault ? undefined : l?.position?.bottom) || undefined,
+        left: (l?.position?.isDefault ? l?.align || 'center' : l?.position?.left) || 'auto',
+        orient: l?.orientation || 'horizontal',
+        textStyle: {
+          color: themeVariables.black,
+        },
+        pageTextStyle: {
+          color: themeVariables.black,
+        },
+        pageIconColor: themeVariables.black,
+        pageIconInactiveColor: themeVariables.light,
       },
-      series: datasets.map(({ data }: any) => {
+      series: datasets.map(({ data, label, formatting }: any) => {
         return {
+          name: label,
           type: 'funnel',
           sort: 'descending',
-          top: 35,
+          top: 45,
           bottom: 10,
           left: '5%',
           width: '90%',
           label: {
-            show: tooltip.fixed,
+            show: fixed,
             position: 'inside',
             align: 'center',
             verticalAlign: 'middle',
-            formatter: labelFormatter,
+            formatter: (params: TooltipParams): string => {
+              const { value = '', percent = '' } = params
+              const formattedValue = formatChartValue(value, formatting)
+
+              return `${formattedValue}${relative ? ' (' + percent + '%)' : ''}`
+            },
           },
           emphasis: {
             label: {
-              show: false,
+              show: fixed,
               fontSize: 14,
             },
           },
@@ -150,6 +193,8 @@ export default class FunnelChart extends BaseChart {
     const values = []
 
     let tooltip = {}
+    let label = ''
+    let formatting = {}
 
     // Above provided data sets might not have their labels/values ordered
     // correctly
@@ -163,12 +208,18 @@ export default class FunnelChart extends BaseChart {
       })
 
       tooltip = { ...tooltip, ...r.datasets[0].tooltip }
+      label = r.datasets[0].label
+      formatting = r.datasets[0].formatting
 
       // Construct labels & data based on provided reports
       const report = this.config.reports?.[ri]
       const d = report?.dimensions?.[0] as Dimension
 
-      for (const { value } of d.meta?.fields || []) {
+      let { fields = [] } = d.meta || {}
+      fields = fields.length ? fields : r.labels
+
+      for (const label of fields) {
+        const value = typeof label === 'object' ? label.value : label
         values.push({
           // Use value for label and resolve it on FE (i18n)
           label: value,
@@ -205,7 +256,9 @@ export default class FunnelChart extends BaseChart {
     return {
       labels,
       datasets: [{
+        label,
         data,
+        formatting,
       }],
       tooltip,
     }
@@ -226,8 +279,8 @@ export default class FunnelChart extends BaseChart {
     return cumulative
   }
 
-  defMetrics (): Metric {
-    return Object.assign({}, {
+  defMetric (): Metric {
+    return Object.assign(super.defMetric(), {
       type: ChartType.funnel,
       fixTooltips: false,
       relativeValue: true,
@@ -237,7 +290,7 @@ export default class FunnelChart extends BaseChart {
   defDimension (): Dimension {
     return Object.assign({}, {
       conditions: {},
-      meta: { fields: [] }
+      meta: { fields: [] },
     })
   }
 }

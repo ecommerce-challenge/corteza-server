@@ -1,7 +1,8 @@
 <template>
   <b-container
     data-tets-id="profiler"
-    class="py-3"
+    fluid="xl"
+    class="d-flex flex-column flex-fill pt-2 pb-3"
   >
     <c-content-header
       :title="$t('title')"
@@ -10,80 +11,77 @@
     <b-card
       no-body
       data-test-id="card-profiler"
-      class="shadow-sm"
-      footer-class="d-flex align-items-center justify-content-center"
-      footer-bg-variant="white"
-      header-bg-variant="white"
+      header-class="border-bottom"
+      body-class="p-0"
+      footer-class="border-top d-flex align-items-center justify-content-center"
+      class="flex-fill shadow-sm"
     >
       <template #header>
-        <h3>
+        <h4>
           {{ $t('general:label.routes') }}
-        </h3>
+        </h4>
         <em>{{ description }}</em>
-
-        <div
-          class="d-flex align-items-center justify-content-between mt-2"
-        >
-          <div>
-            <b-button
-              data-test-id="button-refresh"
-              variant="primary"
-              :disabled="loading"
-              @click="loadItems()"
-            >
-              {{ $t('general:label.refresh') }}
-            </b-button>
-            <span
-              class="ml-1"
-              :class="{ 'loading': loading }"
-            >
-              {{ autoRefreshLabel }}
-            </span>
-          </div>
-
-          <c-input-confirm
-            :disabled="!items.length"
-            :borderless="false"
-            variant="danger"
-            @confirmed="purgeRequests"
-          >
-            {{ $t('purge.all') }}
-          </c-input-confirm>
-        </div>
       </template>
 
-      <b-card-body
-        class="p-0"
+      <div class="d-flex align-items-center flex-wrap p-3 gap-1">
+        <div class="flex-fill">
+          <b-button
+            data-test-id="button-refresh"
+            variant="primary"
+            :disabled="loading"
+            size="lg"
+            @click="loadItems()"
+          >
+            {{ $t('general:label.refresh') }}
+          </b-button>
+          <span
+            class="ml-1"
+            :class="{ 'loading': loading }"
+          >
+            {{ autoRefreshLabel }}
+          </span>
+        </div>
+
+        <c-input-confirm
+          :disabled="!items.length"
+          :processing="processingPurgeRequests"
+          :text="$t('purge.all')"
+          variant="danger"
+          size="lg"
+          button-class="flex-fill"
+          class="d-flex justify-content-end ml-auto"
+          @confirmed="purgeRequests"
+        />
+      </div>
+
+      <b-table
+        id="route-list"
+        hover
+        responsive
+        head-variant="light"
+        class="mb-0"
+        primary-key="routeID"
+        :sort-by.sync="sorting.sortBy"
+        :sort-desc.sync="sorting.sortDesc"
+        :items="items"
+        :fields="fields"
+        :busy="loading"
+        no-local-sorting
+        @sort-changed="resetItems"
       >
-        <b-table
-          id="route-list"
-          hover
-          responsive
-          head-variant="light"
-          class="mb-0"
-          primary-key="routeID"
-          :sort-by.sync="sorting.sortBy"
-          :sort-desc.sync="sorting.sortDesc"
-          :items="items"
-          :fields="fields"
-          :busy="loading"
-          no-local-sorting
-          @sort-changed="resetItems"
-        >
-          <template #cell(actions)="row">
-            <b-button
-              variant="link"
-              class="p-0"
-              :to="{ name: 'system.apigw.profiler.route.list', params: { routeID: row.item.routeID } }"
-            >
-              <font-awesome-icon
-                :icon="['fas', 'info-circle']"
-                class="text-primary"
-              />
-            </b-button>
-          </template>
-        </b-table>
-      </b-card-body>
+        <template #cell(actions)="row">
+          <b-button
+            variant="link"
+            class="p-0"
+            :to="{ name: 'system.apigw.profiler.route.list', params: { routeID: row.item.routeID } }"
+          >
+            <font-awesome-icon
+              :icon="['fas', 'info-circle']"
+              class="text-primary"
+            />
+          </b-button>
+        </template>
+      </b-table>
 
       <template #footer>
         <b-button
@@ -115,6 +113,8 @@ export default {
   data () {
     return {
       id: 'routes',
+
+      processingPurgeRequests: false,
 
       filter: {
         next: '',
@@ -255,12 +255,16 @@ export default {
     },
 
     purgeRequests () {
+      this.processingPurgeRequests = true
       this.$SystemAPI.apigwProfilerPurgeAll()
         .then(() => {
           this.loadItems()
           this.toastSuccess(this.$t('notification:gateway.profiler.purge.success'))
         })
         .catch(this.toastErrorHandler(this.$t('notification:gateway.profiler.purge.error')))
+        .finally(() => {
+          this.processingPurgeRequests = false
+        })
     },
 
     resetItems (sorting = this.sorting) {

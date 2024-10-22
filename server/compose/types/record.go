@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cortezaproject/corteza/server/pkg/cast2"
-
 	"github.com/cortezaproject/corteza/server/pkg/filter"
 	"github.com/modern-go/reflect2"
 	"github.com/spf13/cast"
@@ -19,10 +17,20 @@ type (
 	OperationType string
 
 	RecordBulkOperation struct {
-		Record    *Record
+		Record      *Record
+		RecordID    uint64
+		NamespaceID uint64
+		ModuleID    uint64
+
 		LinkBy    string
 		Operation OperationType
 		ID        string
+	}
+	RecordBulkOperationResult struct {
+		Record           *Record
+		Error            error
+		ValueError       *RecordValueErrorSet
+		DuplicationError *RecordValueErrorSet
 	}
 
 	RecordBulk struct {
@@ -38,7 +46,7 @@ type (
 		ID       uint64 `json:"recordID,string"`
 		ModuleID uint64 `json:"moduleID,string"`
 
-		Revision uint `json:"revision,omitempty"`
+		Revision int `json:"revision,omitempty"`
 
 		module *Module
 
@@ -93,9 +101,14 @@ type (
 )
 
 const (
-	OperationTypeCreate OperationType = "create"
-	OperationTypeUpdate OperationType = "update"
-	OperationTypeDelete OperationType = "delete"
+	OperationTypeCreate   OperationType = "create"
+	OperationTypeUpdate   OperationType = "update"
+	OperationTypeDelete   OperationType = "delete"
+	OperationTypePatch    OperationType = "patch"
+	OperationTypeUndelete OperationType = "undelete"
+
+	DateOnlyLayout = "2006-01-02"
+	TimeOnlyLayout = "15:04:05"
 )
 
 func (f RecordFilter) ToConstraintedFilter(c map[string][]any) filter.Filter {
@@ -148,39 +161,16 @@ func (r Record) Clone() *Record {
 	return c
 }
 
-func (r *Record) GetValue(name string, pos uint) (any, error) {
-	switch name {
-	case "ID", "id", "recordID":
-		return r.ID, nil
-	case "moduleID":
-		return r.ModuleID, nil
-	case "namespaceID":
-		return r.NamespaceID, nil
-	case "revision":
-		return r.Revision, nil
-	case "meta":
-		return r.Meta, nil
-	case "createdAt":
-		return r.CreatedAt, nil
-	case "createdBy":
-		return r.CreatedBy, nil
-	case "updatedAt":
-		return r.UpdatedAt, nil
-	case "updatedBy":
-		return r.UpdatedBy, nil
-	case "deletedAt":
-		return r.DeletedAt, nil
-	case "deletedBy":
-		return r.DeletedBy, nil
-	case "ownedBy":
-		return r.OwnedBy, nil
-	default:
-		if val := r.Values.Get(name, pos); val != nil {
-			return val.Value, nil
-		}
-
+func (r *Record) getValue(name string, pos uint) (any, error) {
+	if r.Values == nil {
 		return nil, nil
 	}
+
+	if val := r.Values.Get(name, pos); val != nil {
+		return val.Value, nil
+	}
+
+	return nil, nil
 }
 
 // CountValues returns how many values per field are there
@@ -223,48 +213,25 @@ func (r *Record) CountValues() (pos map[string]uint) {
 	return
 }
 
-func (r *Record) SetValue(name string, pos uint, value any) (err error) {
-	switch name {
-	case "ID":
-		return cast2.Uint64(value, &r.ID)
-	case "moduleID":
-		return cast2.Uint64(value, &r.ModuleID)
-	case "namespaceID":
-		return cast2.Uint64(value, &r.NamespaceID)
-	case "createdBy":
-		return cast2.Uint64(value, &r.CreatedBy)
-	case "updatedBy":
-		return cast2.Uint64(value, &r.UpdatedBy)
-	case "deletedBy":
-		return cast2.Uint64(value, &r.DeletedBy)
-	case "ownedBy":
-		return cast2.Uint64(value, &r.OwnedBy)
-	case "revision":
-		return cast2.Uint(value, &r.Revision)
-	case "meta":
-		return cast2.Meta(value, &r.Meta)
-	case "createdAt":
-		return cast2.Time(value, &r.CreatedAt)
-	case "updatedAt":
-		return cast2.TimePtr(value, &r.UpdatedAt)
-	case "deletedAt":
-		return cast2.TimePtr(value, &r.DeletedAt)
-	default:
-		if reflect2.IsNil(value) {
-			r.Values, _ = r.Values.Filter(func(rv *RecordValue) (bool, error) {
-				if rv.Name == name && rv.Place == pos {
-					return false, nil
-				}
+func (r *Record) setValue(name string, pos uint, value any) (err error) {
+	if reflect2.IsNil(value) {
+		r.Values, _ = r.Values.Filter(func(rv *RecordValue) (bool, error) {
+			if rv.Name == name && rv.Place == pos {
+				return false, nil
+			}
 
-				return true, nil
-			})
+			return true, nil
+		})
 
-			return
-		}
+		return
+	}
 
-		rv := &RecordValue{Name: name, Place: pos}
+	rv := &RecordValue{Name: name, Place: pos}
+
+	if cv, ok := value.(*RecordValue); ok {
+		rv = cv
+	} else {
 		var auxv string
-
 		switch aux := value.(type) {
 		case *time.Time:
 			auxv = aux.Format(time.RFC3339)
@@ -274,27 +241,59 @@ func (r *Record) SetValue(name string, pos uint, value any) (err error) {
 
 		default:
 			auxv, err = cast.ToStringE(aux)
-		}
 
+			if r.module != nil {
+				f := r.module.Fields.FindByName(name)
+				if f != nil {
+					switch f.Kind {
+					case "DateTime":
+						// @note temporary solution to make timestamps consistent; we should handle
+						// timezones (or the lack of) more properly
+						parseAndFormat := func(value interface{}, format string) string {
+							auxt, err := cast.ToTimeE(value)
+							if err != nil || auxt.IsZero() {
+								return ""
+							}
+							return auxt.Format(format)
+						}
+
+						switch {
+						case f.IsDateOnly():
+							auxv = parseAndFormat(auxv, DateOnlyLayout)
+
+						case f.IsTimeOnly():
+							auxt, err := time.Parse(TimeOnlyLayout, auxv)
+							if err != nil || auxt.IsZero() {
+								auxv = ""
+							}
+
+						default:
+							auxv = parseAndFormat(auxv, time.RFC3339)
+						}
+					}
+				}
+			}
+		}
 		if err != nil {
 			return
 		}
 
-		// Try to utilize the module when possible
-		// It can be omitted for some cases for easier test cases
-		if r.module != nil {
-			f := r.module.Fields.FindByName(name)
-			if f != nil {
-				switch f.Kind {
-				case "Record", "User", "File":
-					rv.Ref = cast.ToUint64(value)
-				}
+		rv.Value = auxv
+	}
+
+	// Try to utilize the module when possible
+	// It can be omitted for some cases for easier test cases
+	if r.module != nil {
+		f := r.module.Fields.FindByName(name)
+		if f != nil {
+			switch f.Kind {
+			case "Record", "User", "File":
+				rv.Ref = cast.ToUint64(value)
 			}
 		}
-
-		rv.Value = auxv
-		r.Values = r.Values.Set(rv)
 	}
+
+	r.Values = r.Values.Set(rv)
 
 	return
 }
@@ -382,7 +381,7 @@ func (set RecordBulkSet) ToBulkOperations(dftModule uint64, dftNamespace uint64)
 }
 
 // GetValuesByName filters values for records by names
-func (set RecordSet) GetValuesByName(names ...string) (out RecordValueSet) {
+func (set RecordSet) GetValuesByName(names ...string) (out map[uint64]RecordValueSet) {
 	nameMap := make(map[string]bool)
 	for _, n := range names {
 		if len(n) > 0 {
@@ -390,11 +389,13 @@ func (set RecordSet) GetValuesByName(names ...string) (out RecordValueSet) {
 		}
 	}
 
+	out = make(map[uint64]RecordValueSet)
 	err := set.Walk(func(rec *Record) error {
 		_ = rec.Values.Walk(func(val *RecordValue) error {
 			if val != nil && nameMap[val.Name] {
 				val.RecordID = rec.ID
-				out = append(out, val)
+
+				out[val.RecordID] = append(out[val.RecordID], val)
 			}
 			return nil
 		})

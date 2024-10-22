@@ -5,24 +5,14 @@ interface FeedOptions {
   color: string;
   prefilter: string;
   moduleID: string;
-  resource: string;
-  titleField: string;
-  geometryField: string;
-  displayMarker: boolean;
-  displayPolygon: boolean;
 }
 
 export type FeedInput = Partial<Feed> | Feed
 
 const defOptions = {
   moduleID: NoID,
-  color: '#2f85cb',
+  color: '#0B344E',
   prefilter: '',
-  resource: 'compose:record',
-  titleField: '',
-  geometryField: '',
-  displayMarker: false,
-  displayPolygon: true,
 }
 
 /**
@@ -31,10 +21,9 @@ const defOptions = {
 export default class Feed {
   public resource = 'compose:record'
   public titleField = ''
-  public color = '#2f85cb'
   public geometryField = ''
-  public displayMarker = false
-  public displayPolygon = true
+  public displayMarker = true
+  public displayPolygon = false
   public options: FeedOptions = { ...defOptions }
 
   constructor (i?: FeedInput) {
@@ -45,12 +34,16 @@ export default class Feed {
     if (!i) return
 
     if (IsOf<Feed>(i, 'resource')) {
-      Apply(this, i, String, 'resource', 'color', 'titleField', 'geometryField')
+      Apply(this, i, String, 'resource', 'titleField', 'geometryField')
       Apply(this, i, Boolean, 'displayMarker', 'displayPolygon')
 
       if (i.options) {
         this.options = { ...this.options, ...i.options }
       }
     }
+  }
+
+  isValid (): boolean {
+    return this.options.moduleID !== NoID && !!this.geometryField
   }
 }

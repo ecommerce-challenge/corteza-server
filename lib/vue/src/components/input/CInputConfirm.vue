@@ -1,56 +1,82 @@
 <template>
-  <span class="text-center">
-    <span v-if="!inConfirmation">
+  <div class="d-inline-flex">
+    <template v-if="!inConfirmation">
       <b-button
-        data-test-id="button-delete"
+        v-b-tooltip.noninteractive.hover="{ title: tooltip, container: '#body' }"
+        :data-test-id="dataTestId"
         :variant="variant"
         :size="size"
-        :disabled="disabled"
-        :title="tooltip"
-        :class="`${buttonClass} ${borderless ? 'border-0' : ''}`"
+        :disabled="disabled || processing"
+        :class="`${buttonClass} ${borderless ? 'border-0' : ''} flex-fill`"
         @click.stop.prevent="onPrompt"
       >
-        <slot>
-          <font-awesome-icon
-            :icon="['far', 'trash-alt']"
-          />
+        <b-spinner
+          v-if="processing"
+          data-test-id="spinner"
+          class="align-middle"
+          small
+        />
+
+        <slot v-else>
+          <template v-if="!$slots.default">
+            <font-awesome-icon
+              v-if="showIcon || !text"
+              :icon="icon"
+              :class="iconClass"
+            />
+
+            <span
+              v-if="text"
+              :class="textClass"
+            >
+              {{ text }}
+            </span>
+          </template>
         </slot>
       </b-button>
+    </template>
 
-    </span>
-    <span v-else>
+    <template v-else>
       <b-button
-        data-test-id="button-delete-confirm"
+        :data-test-id="`${dataTestId}-confirm`"
         :variant="variantOk"
         :size="sizeConfirm"
         :disabled="okDisabled"
-        class="mr-1"
-        :class="[ borderless && 'border-0' ]"
+        :class="{ 'border-0': borderless }"
+        class="flex-fill mr-1"
+        style="min-width: 2rem;"
         @blur.prevent="onCancel()"
         @click.prevent.stop="onConfirmation()"
       >
         <slot name="yes">
           <font-awesome-icon
+            data-test-id="confirm"
             :icon="['fas', 'check']"
           />
         </slot>
       </b-button>
+
       <b-button
-        data-test-id="button-delete-cancel"
+        :data-test-id="`${dataTestId}-cancel`"
         :variant="variantCancel"
         :size="sizeConfirm"
         :disabled="cancelDisabled"
         :class="[ borderless && 'border-0' ]"
+        class="flex-fill"
+        style="min-width: 2rem;"
         @click.prevent.stop="onCancel()"
       >
         <slot name="no">
           <font-awesome-icon
+            data-test-id="reject"
             :icon="['fas', 'times']"
-          /></slot>
+          />
+        </slot>
       </b-button>
-    </span>
-  </span>
+    </template>
+  </div>
 </template>
+
 <script lang="js">
 export default {
   props: {
@@ -58,38 +84,72 @@ export default {
     okDisabled: Boolean,
     cancelDisabled: Boolean,
     noPrompt: Boolean,
+    processing: Boolean,
+    showIcon: Boolean,
+
+    icon: {
+      type: Array,
+      default: () => ['far', 'trash-alt'],
+    },
 
     buttonClass: {
       type: String,
       default: '',
     },
+
+    iconClass: {
+      type: String,
+      default: '',
+    },
+
+    textClass: {
+      type: String,
+      default: '',
+    },
+
     borderless: {
       type: Boolean,
       default: true,
     },
+
     variant: {
       type: String,
       default: 'outline-danger',
     },
+
     size: {
       type: String,
       default: 'sm',
     },
+
     variantOk: {
       type: String,
       default: 'danger',
     },
+
     variantCancel: {
       type: String,
-      default: undefined,
+      default: 'light',
     },
+
     sizeConfirm: {
       type: String,
       default: 'sm',
     },
+
     tooltip: {
       type: String,
       default: '',
+    },
+
+    text: {
+      type: String,
+      default: '',
+    },
+
+    dataTestId: {
+      type: String,
+      default: 'button-delete',
     },
   },
 

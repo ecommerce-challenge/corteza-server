@@ -1,31 +1,35 @@
 <template>
   <b-form-group
-    label-class="text-primary"
+    :label-cols-md="horizontal && '5'"
+    :label-cols-xl="horizontal && '4'"
+    :content-cols-md="horizontal && '7'"
+    :content-cols-xl="horizontal && '8'"
     :class="formGroupStyleClasses"
   >
     <template
-      v-if="!valueOnly"
       #label
     >
       <div
-        class="d-flex align-items-top"
+        v-if="!valueOnly"
+        class="d-flex align-items-center text-primary p-0"
       >
-        <label
-          class="mb-0"
+        <span
+          :title="label"
+          class="d-inline-block mw-100"
         >
           {{ label }}
-        </label>
+        </span>
 
-        <hint
-          :id="field.fieldID"
-          :text="hint"
-        />
+        <c-hint :tooltip="hint" />
+
+        <slot name="tools" />
       </div>
-      <small
-        class="text-muted"
+      <div
+        class="small text-muted"
+        :class="{ 'mb-1': description }"
       >
         {{ description }}
-      </small>
+      </div>
     </template>
 
     <multi
@@ -33,23 +37,19 @@
       :value.sync="value"
       :errors="errors"
       :single-input="field.options.selectType !== 'each'"
-      :removable="field.options.selectType !== 'multiple'"
+      :show-list="field.options.selectType !== 'multiple'"
     >
-      <template v-slot:single>
-        <vue-select
+      <template #single>
+        <c-input-select
           v-if="field.options.selectType === 'default'"
           ref="singleSelect"
           :placeholder="$t('kind.user.suggestionPlaceholder')"
           :options="options"
           :get-option-label="getOptionLabel"
           :get-option-key="getOptionKey"
-          :append-to-body="appendToBody"
-          :calculate-position="calculatePosition"
-          :clearable="false"
           :filterable="false"
-          :selectable="option => option.selectable"
+          :selectable="isSelectable"
           :loading="processing"
-          class="bg-white w-100"
           @search="search"
           @input="updateValue($event)"
         >
@@ -61,21 +61,19 @@
             @prev="goToPage(false)"
             @next="goToPage(true)"
           />
-        </vue-select>
-        <vue-select
+        </c-input-select>
+
+        <c-input-select
           v-else-if="field.options.selectType === 'multiple'"
           v-model="multipleSelected"
           :placeholder="$t('kind.user.suggestionPlaceholder')"
           :options="options"
           :get-option-label="getOptionLabel"
           :get-option-key="getOptionKey"
-          :append-to-body="appendToBody"
-          :calculate-position="calculatePosition"
           :filterable="false"
-          :selectable="option => option.selectable"
+          :selectable="isSelectable"
           :loading="processing"
           multiple
-          class="bg-white w-100"
           @search="search"
         >
           <pagination
@@ -86,23 +84,20 @@
             @prev="goToPage(false)"
             @next="goToPage(true)"
           />
-        </vue-select>
+        </c-input-select>
       </template>
-      <template v-slot:default="ctx">
-        <vue-select
+
+      <template #default="ctx">
+        <c-input-select
           v-if="field.options.selectType === 'each'"
           :placeholder="$t('kind.user.suggestionPlaceholder')"
           :options="options"
           :get-option-label="getOptionLabel"
           :get-option-key="getOptionKey"
-          :value="getUserByIndex(ctx.index)"
-          :append-to-body="appendToBody"
-          :calculate-position="calculatePosition"
-          :clearable="false"
+          :value="getUserIDByIndex(ctx.index)"
           :filterable="false"
-          :selectable="option => option.selectable"
+          :selectable="isSelectable"
           :loading="processing"
-          class="bg-white w-100"
           @search="search"
           @input="updateValue($event, ctx.index)"
         >
@@ -114,25 +109,22 @@
             @prev="goToPage(false)"
             @next="goToPage(true)"
           />
-        </vue-select>
-        <span v-else>{{ getOptionLabel(getUserByIndex(ctx.index)) }}</span>
+        </c-input-select>
+        <span v-else>{{ getOptionLabel(getUserIDByIndex(ctx.index)) }}</span>
       </template>
     </multi>
-    <template
-      v-else
-    >
-      <vue-select
+
+    <template v-else>
+      <c-input-select
         :placeholder="$t('kind.user.suggestionPlaceholder')"
         :options="options"
         :get-option-label="getOptionLabel"
         :get-option-key="getOptionKey"
-        :value="getUserByIndex()"
-        :append-to-body="appendToBody"
-        :calculate-position="calculatePosition"
+        :value="getUserIDByIndex()"
+        :clearable="field.name !== 'ownedBy'"
         :filterable="false"
-        :selectable="option => option.selectable"
+        :selectable="isSelectable"
         :loading="processing"
-        class="bg-white w-100"
         @input="updateValue($event)"
         @search="search"
       >
@@ -144,17 +136,17 @@
           @prev="goToPage(false)"
           @next="goToPage(true)"
         />
-      </vue-select>
+      </c-input-select>
+
       <errors :errors="errors" />
     </template>
   </b-form-group>
 </template>
 <script>
 import { debounce } from 'lodash'
-import base from './base'
-import { VueSelect } from 'vue-select'
 import { mapActions, mapGetters } from 'vuex'
-import calculatePosition from 'corteza-webapp-compose/src/mixins/vue-select-position'
+import { NoID } from '@cortezaproject/corteza-js'
+import base from './base'
 import Pagination from '../Common/Pagination.vue'
 
 export default {
@@ -163,15 +155,10 @@ export default {
   },
 
   components: {
-    VueSelect,
     Pagination,
   },
 
   extends: base,
-
-  mixins: [
-    calculatePosition,
-  ],
 
   data () {
     return {
@@ -197,16 +184,14 @@ export default {
     }),
 
     options () {
-      return this.users.map(u => {
-        return { ...u, selectable: this.field.isMulti ? !(this.value || []).includes(u.userID) : this.value !== u.userID }
-      })
+      return this.users
     },
 
     // This is used in the case of using the multiple select option
     multipleSelected: {
       get () {
         const map = userID => {
-          return this.findByID(userID) || { userID }
+          return userID && userID !== NoID ? this.findByID(userID) || { userID } : undefined
         }
 
         return this.field.isMulti ? this.value.map(map) : map(this.value)
@@ -214,7 +199,7 @@ export default {
 
       set (users) {
         if (users && Array.isArray(users)) {
-          // When adding/removing items from vue-selects[multiple],
+          // When adding/removing items from c-input-selects[multiple],
           // we get array of options back
 
           this.addUserToResolved(users)
@@ -257,25 +242,51 @@ export default {
 
   created () {
     // Prefill value with current user
-    if ((!this.value || this.value.length === 0) && this.field.options.presetWithAuthenticated) {
+    const isNewRecord = this.record && this.record.recordID === NoID
+
+    if ((!this.value || this.value.length === 0) && (this.field.options.presetWithAuthenticated || (isNewRecord && this.field.name === 'ownedBy'))) {
       this.updateValue(this.$auth.user)
     }
 
     this.fetchUsers()
   },
 
+  beforeDestroy () {
+    this.setDefaultValues()
+  },
+
   methods: {
     ...mapActions({
-      resolveUsers: 'user/fetchUsers',
+      resolveUsers: 'user/resolveUsers',
       addUserToResolved: 'user/push',
     }),
 
-    getOptionKey ({ userID }) {
-      return userID
+    getOptionKey (user) {
+      if (typeof user === 'string') {
+        return user
+      }
+      return user.userID
     },
 
-    getOptionLabel ({ userID, email, name, username }) {
+    getOptionLabel (user) {
+      if (typeof user === 'string') {
+        user = this.findByID(user)
+      }
+
+      const { name, username, email, userID } = user || {}
       return name || username || email || `<@${userID}>`
+    },
+
+    isSelectable ({ userID } = {}) {
+      if (!userID) {
+        return false
+      }
+
+      if (this.field.isMulti) {
+        return !this.field.options.isUniqueMultiValue || !this.value.includes(userID)
+      } else {
+        return this.value !== userID
+      }
     },
 
     /**
@@ -293,11 +304,11 @@ export default {
         // update list of resolved users for every item we add
         this.addUserToResolved({ ...user })
 
-        // update valie on record
+        // update value on record
         const { userID } = user
         if (this.field.isMulti) {
           if (index >= 0) {
-            this.value[index] = userID
+            this.value.splice(index, 1, userID)
           } else {
             // <0, assume we're appending
             this.value.push(userID)
@@ -318,11 +329,9 @@ export default {
      * Retrives user (via value) from record field
      * Handles single & multi value fields
      */
-    getUserByIndex (index = 0) {
-      const userID = this.field.isMulti ? this.value[index] : this.value
-      if (userID) {
-        return this.findByID(userID) || {}
-      }
+    getUserIDByIndex (index = 0) {
+      const value = this.field.isMulti ? this.value[index] : this.value
+      return value && value !== NoID ? value : undefined
     },
 
     search: debounce(function (query = '') {
@@ -354,6 +363,12 @@ export default {
 
     goToPage (next = true) {
       this.filter.pageCursor = next ? this.filter.nextPage : this.filter.prevPage
+    },
+
+    setDefaultValues () {
+      this.processing = false
+      this.users = []
+      this.filter = {}
     },
   },
 }

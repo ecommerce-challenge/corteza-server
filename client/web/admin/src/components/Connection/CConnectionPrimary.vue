@@ -1,25 +1,27 @@
 
 <template>
   <b-card
+    data-test-id="card-primary-database"
     class="shadow-sm"
-    header-bg-variant="white"
-    footer-bg-variant="white"
+    header-class="border-bottom"
   >
-    <template>
-      <h3 class="d-flex justify-content-between m-0 mb-3">
+    <template #header>
+      <h4 class="d-flex align-items-center gap-1 mb-0">
         {{ $t('title') }}
 
         <b-button
           v-if="connection"
+          data-test-id="button-edit"
           size="sm"
-          variant="link"
+          variant="outline-light"
+          class="d-flex align-items-center text-primary border-0 p-1"
           :to="{ name: 'system.connection.edit', params: { connectionID: (connection || {}).connectionID } }"
         >
           <font-awesome-icon
-            :icon="['fas', 'pen']"
+            :icon="['far', 'edit']"
           />
         </b-button>
-      </h3>
+      </h4>
     </template>
 
     <div
@@ -32,7 +34,8 @@
         >
           <b-form-group
             :label="$t('name')"
-            class="mb-3 text-primary"
+            label-class="text-primary"
+            class="mb-3"
           >
             {{ connection.meta.name || '-' }}
           </b-form-group>

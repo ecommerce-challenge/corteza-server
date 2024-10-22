@@ -2,84 +2,80 @@
   <div>
     <b-tab :title="$t('navigation.label')">
       <div class="mb-3">
-        <h5 class="text-primary">
+        <h5>
           {{ $t("navigation.displayOptions") }}
         </h5>
 
-        <b-row class="justify-content-between">
+        <b-row
+          class="justify-content-between text-primary"
+        >
           <b-col
             cols="12"
-            sm="4"
-            class="mb-2 mb-sm-0"
+            lg="4"
           >
             <b-form-group
-              horizontal
               :label="$t('navigation.appearance')"
+              horizontal
+              variant="primary"
+              label-class="text-primary"
             >
               <b-form-radio-group
                 v-model="options.display.appearance"
+                :options="appearanceOptions"
                 buttons
                 button-variant="outline-secondary"
-                :options="appearanceOptions"
+                size="sm"
               />
             </b-form-group>
           </b-col>
 
           <b-col
-            sm="4"
-            class="mb-2 mb-sm-0"
+            cols="12"
+            lg="4"
           >
             <b-form-group
+              :label="$t('navigation.justify')"
               horizontal
-              :label="$t('navigation.fillJustify')"
+              label-class="text-primary"
             >
               <b-form-radio-group
-                v-model="options.display.fillJustify"
+                v-model="options.display.justify"
+                :options="justifyOptions"
                 buttons
                 button-variant="outline-secondary"
-
-                :options="fillJustifyOptions"
+                size="sm"
               />
             </b-form-group>
           </b-col>
 
           <b-col
-            sm="4"
-            class="mb-2 mb-sm-0"
+            cols="12"
+            lg="4"
           >
             <b-form-group
-              horizontal
               :label="$t('navigation.alignment')"
+              horizontal
+              label-class="text-primary"
             >
               <b-form-radio-group
                 v-model="options.display.alignment"
+                :options="alignmentOptions"
                 buttons
                 button-variant="outline-secondary"
-                :options="alignmentOptions"
+                size="sm"
               />
             </b-form-group>
           </b-col>
         </b-row>
       </div>
 
+      <hr class="my-2">
+
       <div class="mb-3 mt-2">
         <div class="d-flex align-items-center mb-4">
-          <h5 class="text-primary mb-0">
+          <h5 class="mb-0">
             {{ $t("navigation.navigationItems") }}
           </h5>
-
-          <b-button
-            variant="link"
-            class="d-flex align-items-center text-decoration-none"
-            @click="addNavigationItem"
-          >
-            <font-awesome-icon
-              :icon="['fas', 'plus']"
-              size="sm"
-              class="mr-1"
-            />
-            {{ $t("navigation.add") }}
-          </b-button>
         </div>
 
         <div class="mt-3">
@@ -96,64 +92,91 @@
 
               <b-table-simple
                 borderless
+                responsive="lg"
+                small
               >
-                <thead>
+                <thead class="text-primary">
                   <tr>
                     <th style="width: auto;" />
-                    <th>
+
+                    <th style="min-width: 200px;">
                       {{ $t("navigation.type") }}
                     </th>
-                    <th>
+
+                    <th style="min-width: 200px;">
                       {{ $t("navigation.color") }}
                     </th>
-                    <th>
+
+                    <th style="min-width: 200px;">
                       {{ $t("navigation.background") }}
                     </th>
-                    <th class="text-center">
+
+                    <th
+                      class="text-center"
+                      style="width: 50px; min-width: 50px;"
+                    >
                       {{ $t("navigation.enabled") }}
                     </th>
+
                     <th style="width: auto; min-width: 100px;" />
                   </tr>
                 </thead>
+
                 <tbody>
                   <tr>
-                    <td class="align-middle">
+                    <td class="grab align-middle text-center">
                       <font-awesome-icon
                         :icon="['fas', 'bars']"
-                        class="grab text-grey"
+                        class="text-secondary"
                       />
                     </td>
+
                     <td class="align-middle">
                       <b-form-select
                         v-model="item.type"
                         :options="navigationItemTypes"
                       />
                     </td>
+
                     <td class="align-middle">
-                      <b-form-input
+                      <c-input-color-picker
                         v-model="item.options.textColor"
-                        type="color"
-                        debounce="300"
+                        :translations="{
+                          modalTitle: $t('navigation.colorPicker'),
+                          light: $t('general:themes.labels.light'),
+                          dark: $t('general:themes.labels.dark'),
+                          cancelBtnLabel: $t('general:label.cancel'),
+                          saveBtnLabel: $t('general:label.saveAndClose')
+                        }"
+                        :theme-settings="themeSettings"
                         class="w-100"
                       />
                     </td>
+
                     <td class="align-middle">
-                      <b-form-input
+                      <c-input-color-picker
                         v-model="item.options.backgroundColor"
-                        type="color"
-                        debounce="300"
+                        :translations="{
+                          modalTitle: $t('navigation.colorPicker'),
+                          light: $t('general:themes.labels.light'),
+                          dark: $t('general:themes.labels.dark'),
+                          cancelBtnLabel: $t('general:label.cancel'),
+                          saveBtnLabel: $t('general:label.saveAndClose')
+                        }"
+                        :theme-settings="themeSettings"
                         class="w-100"
                       />
                     </td>
-                    <td class="align-middle text-center">
-                      <b-form-checkbox
+                    <td class="d-flex align-items-center justify-content-center">
+                      <c-input-checkbox
                         v-model="item.options.enabled"
                         switch
-                        class="mb-0"
+                        :labels="{}"
                       />
                     </td>
-                    <td class="align-middle">
+                    <td class="text-right align-middle">
                       <c-input-confirm
+                        show-icon
                         button-class="px-2"
                         size="md"
                         @confirmed="options.navigationItems.splice(index, 1)"
@@ -171,6 +194,30 @@
               </b-table-simple>
             </div>
           </draggable>
+
+          <div
+            v-if="!block.options.navigationItems.length"
+            class="text-center my-4"
+          >
+            <p>
+              {{ $t('navigation.noNavigationItems') }}
+            </p>
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center mb-4">
+          <b-button
+            variant="primary"
+            class="d-flex align-items-center text-decoration-none"
+            @click="addNavigationItem"
+          >
+            <font-awesome-icon
+              :icon="['fas', 'plus']"
+              size="sm"
+              class="mr-1"
+            />
+            {{ $t("navigation.add") }}
+          </b-button>
         </div>
       </div>
     </b-tab>
@@ -185,6 +232,8 @@ import Text from './NavTypes/Text.vue'
 import Url from './NavTypes/Url.vue'
 import Compose from './NavTypes/ComposePage.vue'
 import Dropdown from './NavTypes/Dropdown.vue'
+import { components } from '@cortezaproject/corteza-vue'
+const { CInputColorPicker } = components
 
 export default {
   i18nOptions: {
@@ -197,6 +246,7 @@ export default {
     Url,
     Compose,
     Dropdown,
+    CInputColorPicker,
   },
 
   extends: base,
@@ -215,9 +265,9 @@ export default {
         { value: 'right', text: this.$t('navigation.right') },
       ],
 
-      fillJustifyOptions: [
-        { value: 'fill', text: this.$t('navigation.fill') },
+      justifyOptions: [
         { value: 'justify', text: this.$t('navigation.justify') },
+        { value: 'none', text: this.$t('navigation.none') },
       ],
 
       backgroundColors: [
@@ -238,16 +288,29 @@ export default {
     }
   },
 
+  computed: {
+    themeSettings () {
+      return this.$Settings.get('ui.studio.themes', [])
+    },
+  },
+
+  beforeDestroy () {
+    this.setDefaultValues()
+  },
+
   methods: {
     addNavigationItem () {
       this.block.options.navigationItems.push(
         compose.PageBlockNavigation.makeNavigationItem({
           type: 'compose',
           options: {
-            backgroundColor: '#ffffff',
+            backgroundColor: '#FFFFFF00',
             item: {
+              label: '',
+              url: '',
               align: 'bottom',
               target: 'sameTab',
+              displaySubPages: false,
               dropdown: {
                 label: '',
                 items: [],
@@ -256,6 +319,14 @@ export default {
           },
         }),
       )
+    },
+
+    setDefaultValues () {
+      this.appearanceOptions = []
+      this.alignmentOptions = []
+      this.justifyOptions = []
+      this.backgroundColors = []
+      this.navigationItemTypes = []
     },
   },
 }

@@ -11,15 +11,18 @@ package request
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cortezaproject/corteza/server/compose/types"
 	"github.com/cortezaproject/corteza/server/pkg/label"
 	"github.com/cortezaproject/corteza/server/pkg/locale"
 	"github.com/cortezaproject/corteza/server/pkg/payload"
+	"github.com/cortezaproject/corteza/server/pkg/str"
 	"github.com/go-chi/chi/v5"
 	sqlxTypes "github.com/jmoiron/sqlx/types"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // dummy vars to prevent
@@ -138,6 +141,11 @@ type (
 		//
 		// Config JSON
 		Config sqlxTypes.JSONText
+
+		// Meta POST parameter
+		//
+		// Meta
+		Meta types.PageMeta
 	}
 
 	PageRead struct {
@@ -219,6 +227,16 @@ type (
 		//
 		// Config JSON
 		Config sqlxTypes.JSONText
+
+		// Meta POST parameter
+		//
+		// Meta
+		Meta types.PageMeta
+
+		// UpdatedAt POST parameter
+		//
+		// Last update (or creation) date
+		UpdatedAt *time.Time
 	}
 
 	PageReorder struct {
@@ -321,6 +339,33 @@ type (
 		//
 		// Resource translation to upsert
 		Translations locale.ResourceTranslationSet
+	}
+
+	PageUpdateIcon struct {
+		// NamespaceID PATH parameter
+		//
+		// Namespace ID
+		NamespaceID uint64 `json:",string"`
+
+		// PageID PATH parameter
+		//
+		// Page ID
+		PageID uint64 `json:",string"`
+
+		// Type POST parameter
+		//
+		// Icon type
+		Type types.IconType
+
+		// Source POST parameter
+		//
+		// Icon source/library
+		Source string
+
+		// Style POST parameter
+		//
+		// Icon style
+		Style map[string]string
 	}
 )
 
@@ -485,6 +530,7 @@ func (r PageCreate) Auditable() map[string]interface{} {
 		"visible":     r.Visible,
 		"blocks":      r.Blocks,
 		"config":      r.Config,
+		"meta":        r.Meta,
 	}
 }
 
@@ -541,6 +587,11 @@ func (r PageCreate) GetBlocks() sqlxTypes.JSONText {
 // Auditable returns all auditable/loggable parameters
 func (r PageCreate) GetConfig() sqlxTypes.JSONText {
 	return r.Config
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r PageCreate) GetMeta() types.PageMeta {
+	return r.Meta
 }
 
 // Fill processes request and fills internal variables
@@ -638,6 +689,18 @@ func (r *PageCreate) Fill(req *http.Request) (err error) {
 					return err
 				}
 			}
+
+			if val, ok := req.MultipartForm.Value["meta[]"]; ok {
+				r.Meta, err = types.ParsePageMeta(val)
+				if err != nil {
+					return err
+				}
+			} else if val, ok := req.MultipartForm.Value["meta"]; ok {
+				r.Meta, err = types.ParsePageMeta(val)
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -718,6 +781,18 @@ func (r *PageCreate) Fill(req *http.Request) (err error) {
 
 		if val, ok := req.Form["config"]; ok && len(val) > 0 {
 			r.Config, err = payload.ParseJSONTextWithErr(val[0])
+			if err != nil {
+				return err
+			}
+		}
+
+		if val, ok := req.Form["meta[]"]; ok {
+			r.Meta, err = types.ParsePageMeta(val)
+			if err != nil {
+				return err
+			}
+		} else if val, ok := req.Form["meta"]; ok {
+			r.Meta, err = types.ParsePageMeta(val)
 			if err != nil {
 				return err
 			}
@@ -841,6 +916,8 @@ func (r PageUpdate) Auditable() map[string]interface{} {
 		"visible":     r.Visible,
 		"blocks":      r.Blocks,
 		"config":      r.Config,
+		"meta":        r.Meta,
+		"updatedAt":   r.UpdatedAt,
 	}
 }
 
@@ -902,6 +979,16 @@ func (r PageUpdate) GetBlocks() sqlxTypes.JSONText {
 // Auditable returns all auditable/loggable parameters
 func (r PageUpdate) GetConfig() sqlxTypes.JSONText {
 	return r.Config
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r PageUpdate) GetMeta() types.PageMeta {
+	return r.Meta
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r PageUpdate) GetUpdatedAt() *time.Time {
+	return r.UpdatedAt
 }
 
 // Fill processes request and fills internal variables
@@ -999,6 +1086,25 @@ func (r *PageUpdate) Fill(req *http.Request) (err error) {
 					return err
 				}
 			}
+
+			if val, ok := req.MultipartForm.Value["meta[]"]; ok {
+				r.Meta, err = types.ParsePageMeta(val)
+				if err != nil {
+					return err
+				}
+			} else if val, ok := req.MultipartForm.Value["meta"]; ok {
+				r.Meta, err = types.ParsePageMeta(val)
+				if err != nil {
+					return err
+				}
+			}
+
+			if val, ok := req.MultipartForm.Value["updatedAt"]; ok && len(val) > 0 {
+				r.UpdatedAt, err = payload.ParseISODatePtrWithErr(val[0])
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -1079,6 +1185,25 @@ func (r *PageUpdate) Fill(req *http.Request) (err error) {
 
 		if val, ok := req.Form["config"]; ok && len(val) > 0 {
 			r.Config, err = payload.ParseJSONTextWithErr(val[0])
+			if err != nil {
+				return err
+			}
+		}
+
+		if val, ok := req.Form["meta[]"]; ok {
+			r.Meta, err = types.ParsePageMeta(val)
+			if err != nil {
+				return err
+			}
+		} else if val, ok := req.Form["meta"]; ok {
+			r.Meta, err = types.ParsePageMeta(val)
+			if err != nil {
+				return err
+			}
+		}
+
+		if val, ok := req.Form["updatedAt"]; ok && len(val) > 0 {
+			r.UpdatedAt, err = payload.ParseISODatePtrWithErr(val[0])
 			if err != nil {
 				return err
 			}
@@ -1586,6 +1711,151 @@ func (r *PageUpdateTranslations) Fill(req *http.Request) (err error) {
 		//        return err
 		//    }
 		//}
+	}
+
+	{
+		var val string
+		// path params
+
+		val = chi.URLParam(req, "namespaceID")
+		r.NamespaceID, err = payload.ParseUint64(val), nil
+		if err != nil {
+			return err
+		}
+
+		val = chi.URLParam(req, "pageID")
+		r.PageID, err = payload.ParseUint64(val), nil
+		if err != nil {
+			return err
+		}
+
+	}
+
+	return err
+}
+
+// NewPageUpdateIcon request
+func NewPageUpdateIcon() *PageUpdateIcon {
+	return &PageUpdateIcon{}
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r PageUpdateIcon) Auditable() map[string]interface{} {
+	return map[string]interface{}{
+		"namespaceID": r.NamespaceID,
+		"pageID":      r.PageID,
+		"type":        r.Type,
+		"source":      r.Source,
+		"style":       r.Style,
+	}
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r PageUpdateIcon) GetNamespaceID() uint64 {
+	return r.NamespaceID
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r PageUpdateIcon) GetPageID() uint64 {
+	return r.PageID
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r PageUpdateIcon) GetType() types.IconType {
+	return r.Type
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r PageUpdateIcon) GetSource() string {
+	return r.Source
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r PageUpdateIcon) GetStyle() map[string]string {
+	return r.Style
+}
+
+// Fill processes request and fills internal variables
+func (r *PageUpdateIcon) Fill(req *http.Request) (err error) {
+
+	if strings.HasPrefix(strings.ToLower(req.Header.Get("content-type")), "application/json") {
+		err = json.NewDecoder(req.Body).Decode(r)
+
+		switch {
+		case err == io.EOF:
+			err = nil
+		case err != nil:
+			return fmt.Errorf("error parsing http request body: %w", err)
+		}
+	}
+
+	{
+		// Caching 32MB to memory, the rest to disk
+		if err = req.ParseMultipartForm(32 << 20); err != nil && err != http.ErrNotMultipart {
+			return err
+		} else if err == nil {
+			// Multipart params
+
+			if val, ok := req.MultipartForm.Value["type"]; ok && len(val) > 0 {
+				r.Type, err = types.IconType(val[0]), nil
+				if err != nil {
+					return err
+				}
+			}
+
+			if val, ok := req.MultipartForm.Value["source"]; ok && len(val) > 0 {
+				r.Source, err = val[0], nil
+				if err != nil {
+					return err
+				}
+			}
+
+			if val, ok := req.MultipartForm.Value["style[]"]; ok {
+				r.Style, err = str.ParseStrings(val)
+				if err != nil {
+					return err
+				}
+			} else if val, ok := req.MultipartForm.Value["style"]; ok {
+				r.Style, err = str.ParseStrings(val)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	{
+		if err = req.ParseForm(); err != nil {
+			return err
+		}
+
+		// POST params
+
+		if val, ok := req.Form["type"]; ok && len(val) > 0 {
+			r.Type, err = types.IconType(val[0]), nil
+			if err != nil {
+				return err
+			}
+		}
+
+		if val, ok := req.Form["source"]; ok && len(val) > 0 {
+			r.Source, err = val[0], nil
+			if err != nil {
+				return err
+			}
+		}
+
+		if val, ok := req.Form["style[]"]; ok {
+			r.Style, err = str.ParseStrings(val)
+			if err != nil {
+				return err
+			}
+		} else if val, ok := req.Form["style"]; ok {
+			r.Style, err = str.ParseStrings(val)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	{

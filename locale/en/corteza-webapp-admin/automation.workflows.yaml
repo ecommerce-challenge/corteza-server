@@ -1,18 +1,19 @@
 editor:
   info:
     createdAt: Created at
+    createdBy: Created by
     delete: Delete
     deletedAt: Deleted at
     enabled: Enabled
     handle: Handle
-    invalid-handle-characters: Should be at least 2 characters long and start with a letter. Can contain only letters, numbers, dashes, underscores and dots
+    invalid-handle-characters: Should be at least 2 characters long. Can contain only letters, numbers, underscores and dots. Must end with letter or number
     id: ID
     name: Name *
     openBuilder: Open builder
     title: Basic information
     undelete: Undelete
     updatedAt: Updated at
-  new: New
+  new: New Workflow
   permissions: Permissions
   title:
     create: Create workflow
@@ -32,6 +33,9 @@ list:
     handle: Handle
     name: Name
     state: State
+  delete: Delete
+  undelete: Undelete
+
   export: Export
   rows:
     filters:
@@ -49,7 +53,7 @@ list:
       label: Filter workflows list
       placeholder: Filter workflows by name
   loading: Loading workflows
-  new: New
+  new: New Workflow
   numFound: '{{count}} workflow found'
   numFound_plural: '{{count}} workflows found'
   permissions: Permissions

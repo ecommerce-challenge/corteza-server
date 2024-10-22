@@ -1,10 +1,14 @@
 <template>
-  <div class="d-flex flex-column w-100 vh-100 overflow-hidden">
+  <div
+    :id="namespaceID"
+    class="d-flex flex-column w-100 vh-100 overflow-hidden"
+  >
     <header>
       <c-topbar
         :sidebar-pinned="pinned"
         :settings="$Settings.get('ui.topbar', {})"
         :labels="{
+          appMenu: $t('appMenu'),
           helpForum: $t('help.forum'),
           helpDocumentation: $t('help.documentation'),
           helpFeedback: $t('help.feedback'),
@@ -13,6 +17,8 @@
           userSettingsProfile: $t('userSettings.profile'),
           userSettingsChangePassword: $t('userSettings.changePassword'),
           userSettingsLogout: $t('userSettings.logout'),
+          lightTheme: $t('general:themes.labels.light'),
+          darkTheme: $t('general:themes.labels.dark'),
         }"
       >
         <template #title>
@@ -60,13 +66,13 @@
       -->
       <template>
         <div
-          class="spacer d-print-none"
+          class="sidebar-spacer d-print-none"
           :class="{
             'expanded': expanded && pinned,
           }"
         />
       </template>
-      <router-view />
+      <router-view class="overflow-hidden" />
     </main>
 
     <c-prompts />
@@ -159,6 +165,11 @@ export default {
     logo () {
       return this.$Settings.attachment('ui.mainLogo')
     },
+
+    namespaceID () {
+      const { params = {} } = this.$route
+      return params.slug
+    },
   },
 
   watch: {
@@ -178,16 +189,14 @@ export default {
      * Listen for incoming warnings, alerts and other messages
      * from the (mostly) Corredor scripts and display them using toasts
      */
-    this.$root.$on('alert', ({ message, ...params }) => this.toast(message, params))
+    this.$root.$on('alert', this.showAlert)
     this.$root.$on('reminder.show', this.showReminder)
-
     this.$root.$on('check-namespace-sidebar', this.checkNamespaceSidebar)
   },
 
   beforeDestroy () {
-    this.$root.$off('alert')
-    this.$root.$off('reminder.show', this.showReminder)
-    this.$root.$off('check-namespace-sidebar', this.checkNamespaceSidebar)
+    this.destroyEvents()
+    this.setDefaultValues()
   },
 
   methods: {
@@ -231,6 +240,10 @@ export default {
         })
     },
 
+    showAlert ({ message, ...params }) {
+      this.toast(message, params)
+    },
+
     showReminder (r) {
       const i = this.toasts.findIndex(({ reminderID }) => reminderID === r.reminderID)
       if (i > -1 && (!r.editedAt || r.editedAt === this.toasts[i].editedAt)) {
@@ -257,7 +270,7 @@ export default {
 
       r.actions.snooze = {
         cb: this.onReminderSnooze,
-        label: `<b>${this.$t('general:reminder.snooze')}</b>`,
+        label: `<b>${this.$t('general:reminder.snooze.label')}</b>`,
         kind: 'Select',
         options: {
           variant: 'outline-warning',
@@ -279,24 +292,19 @@ export default {
         this.toasts.push(r)
       }
     },
+
+    setDefaultValues () {
+      this.expanded = false
+      this.pinned = false
+      this.toasts = []
+      this.disabledRoutes = []
+    },
+
+    destroyEvents () {
+      this.$root.$off('alert', this.showAlert)
+      this.$root.$off('reminder.show', this.showReminder)
+      this.$root.$off('check-namespace-sidebar', this.checkNamespaceSidebar)
+    },
   },
 }
 </script>
-
-<style lang="scss" scoped>
-.spacer {
-  min-width: 0;
-  -webkit-transition: min-width 0.2s ease-in-out;
-  -moz-transition: min-width 0.2s ease-in-out;
-  -o-transition: min-width 0.2s ease-in-out;
-  transition: min-width 0.2s ease-in-out;
-
-  &.expanded {
-    min-width: $sidebar-width;
-    -webkit-transition: min-width 0.2s ease-in-out;
-    -moz-transition: min-width 0.2s ease-in-out;
-    -o-transition: min-width 0.2s ease-in-out;
-    transition: min-width 0.2s ease-in-out;
-  }
-}
-</style>

@@ -24,6 +24,7 @@ func Users(ctx context.Context, app serviceInitializer) *cobra.Command {
 		flagPassword         string
 		flagMakePasswordLink bool
 		flagRoles            []string
+		flagSendEmail        bool
 	)
 
 	// User management commands.
@@ -93,7 +94,7 @@ func Users(ctx context.Context, app serviceInitializer) *cobra.Command {
 		Short: "Add new user",
 		Args:  cobra.MinimumNArgs(1),
 
-		PreRunE: commandPreRunInitService(app),
+		PreRunE: commandPreRunInitActivate(app),
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx = auth.SetIdentityToContext(ctx, auth.ServiceUser())
 
@@ -117,7 +118,7 @@ func Users(ctx context.Context, app serviceInitializer) *cobra.Command {
 
 			if !flagNoPassword && !flagMakePasswordLink && len(password) == 0 {
 				cmd.Print("Set password: ")
-				if password, err = terminal.ReadPassword(syscall.Stdin); err != nil {
+				if password, err = terminal.ReadPassword(int(syscall.Stdin)); err != nil {
 					cli.HandleError(err)
 				}
 			}
@@ -144,6 +145,12 @@ func Users(ctx context.Context, app serviceInitializer) *cobra.Command {
 			if flagNoPassword && len(password) == 0 && flagMakePasswordLink {
 				url, err = authSvc.GeneratePasswordCreateToken(ctx, user.Email)
 				if err != nil {
+					cli.HandleError(err)
+				}
+			}
+
+			if flagSendEmail {
+				if err = authSvc.SendInviteEmail(ctx, user.Email); err != nil {
 					cli.HandleError(err)
 				}
 			}
@@ -195,6 +202,12 @@ func Users(ctx context.Context, app serviceInitializer) *cobra.Command {
 		nil,
 		"Add user to roles (use ID or handle, repeat for multiple roles)")
 
+	addCmd.Flags().BoolVar(
+		&flagSendEmail,
+		"send-invite",
+		false,
+		"Send invite email to user with accept invite link")
+
 	pwdCmd := &cobra.Command{
 		Use:     "password [email]",
 		Short:   "Change password for user",
@@ -217,7 +230,7 @@ func Users(ctx context.Context, app serviceInitializer) *cobra.Command {
 			}
 
 			cmd.Print("Set password: ")
-			if password, err = terminal.ReadPassword(syscall.Stdin); err != nil {
+			if password, err = terminal.ReadPassword(int(syscall.Stdin)); err != nil {
 				cli.HandleError(err)
 			}
 

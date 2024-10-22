@@ -1,5 +1,6 @@
 <template>
   <div
+    id="namespace-view"
     class="d-flex w-100"
   >
     <router-view
@@ -9,40 +10,17 @@
 
     <div
       v-else
-      class="loader flex-column w-100 h-100"
+      class="loader flex-column align-items-center justify-content-center w-100 h-50"
     >
-      <div>
-        <div class="logo w-100" />
+      <h1>
+        {{ namespace ? (namespace.name || namespace.slug || namespace.namespaceID) : '...' }}
+      </h1>
 
-        <h1 class="text-center">
-          {{ namespace ? (namespace.name || namespace.slug || namespace.namespaceID) : '...' }}
-        </h1>
-
-        <div>
-          <div
-            v-for="(pending, part) in parts"
-            :key="part"
-            class="p-1"
-          >
-            <div
-              class="pending pr-3 d-inline-block text-right"
-            >
-              <b-spinner
-                v-if="pending"
-                small
-              />
-              <font-awesome-icon
-                v-else
-                :icon="['fas', 'check']"
-              />
-            </div>
-            <div
-              class="d-inline-block"
-            >
-              {{ $t('navigation.' + part) }}
-            </div>
-          </div>
-        </div>
+      <div class="d-flex align-items-center justify-content-center mt-4">
+        <b-spinner />
+        <h4 class="mb-0 ml-2">
+          {{ $t('general:label.loading') }}
+        </h4>
       </div>
     </div>
 
@@ -88,6 +66,7 @@ export default {
       modulePending: 'module/pending',
       chartPending: 'chart/pending',
       pagePending: 'page/pending',
+      pageLayoutPending: 'pageLayout/pending',
       pages: 'page/set',
     }),
 
@@ -97,6 +76,7 @@ export default {
         module: this.modulePending,
         page: this.pagePending,
         chart: this.chartPending,
+        pageLayout: this.pageLayoutPending,
       }
     },
   },
@@ -123,6 +103,10 @@ export default {
 
   created () {
     this.error = ''
+  },
+
+  beforeDestroy () {
+    this.setDefaultValues()
   },
 
   methods: {
@@ -157,8 +141,13 @@ export default {
         this.$store.dispatch('page/load', p)
           .catch(this.errHandler),
 
+        this.$store.dispatch('pageLayout/load', p)
+          .catch(this.errHandler),
+
       ]).catch(this.errHandler).then(() => {
-        this.loaded = true
+        setTimeout(() => {
+          this.loaded = true
+        }, 500)
       })
     },
 
@@ -171,16 +160,40 @@ export default {
 
       return Promise.reject(error)
     },
+
+    setDefaultValues () {
+      this.loaded = false
+      this.error = ''
+      this.namespace = null
+    },
   },
 }
 </script>
 <style lang="scss" scoped>
 .error {
   font-size: 24px;
-  background-color: $white;
+  background-color: var(--white);
   width: 100vw;
   height: 20vh;
   padding: 60px;
   top: 40vh;
+}
+
+.loader {
+  height: calc(100vh - 2 * #{var(--topbar-height)});
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+
+  .pending {
+    width: 30px;
+  }
+
+  .logo {
+    height: 30px;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 130px;
+  }
 }
 </style>

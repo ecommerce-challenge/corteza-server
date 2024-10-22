@@ -7,6 +7,7 @@
     :change-detected="changeDetected"
     :can-create="canCreate"
     :processing-save="processingSave"
+    :processing-delete="processingDelete"
     class="overflow-hidden"
     @save="saveWorkflow"
     @delete="deleteWorkflow"
@@ -27,10 +28,20 @@ export default {
     WorkflowEditor,
   },
 
+  beforeRouteLeave (to, from, next) {
+    if (this.changeDetected && !this.workflow.deletedAt) {
+      next(window.confirm(this.$t('notification:confirm-unsaved-changes')))
+    } else {
+      window.onbeforeunload = null
+      next()
+    }
+  },
+
   data () {
     return {
       processing: true,
       processingSave: false,
+      processingDelete: false,
 
       workflow: {},
       triggers: [],
@@ -82,22 +93,10 @@ export default {
         runAs: '0',
         enabled: true,
         handle: '',
-        meta: {
-          name: this.$t('general:unnamed-workflow'),
-        },
       })
     }
 
     this.processing = false
-  },
-
-  beforeRouteLeave (to, from, next) {
-    if (this.changeDetected) {
-      next(window.confirm(this.$t('notification:confirm-unsaved-changes')))
-    } else {
-      window.onbeforeunload = null
-      next()
-    }
   },
 
   beforeDestroy () {
@@ -174,7 +173,7 @@ export default {
         window.onbeforeunload = null
 
         this.workflow = wf
-        this.toastSuccess(this.$t('notification:updated-workflow'))
+        this.toastSuccess(this.$t('notification:update.success'))
 
         if (isNew) {
           // Redirect to edit route if new
@@ -189,28 +188,37 @@ export default {
 
     deleteWorkflow () {
       if (this.workflow.workflowID) {
+        this.processingDelete = true
+
         this.$AutomationAPI.workflowDelete(this.workflow)
           .then(() => {
             // Disable unsaved changes prompt
             this.workflow = {}
+            this.workflow.deletedAt = new Date()
             this.$router.push({ name: 'workflow.list' })
-
-            this.toastSuccess(this.$t('notification:deleted-workflow'))
+            this.toastSuccess(this.$t('notification:delete.success'))
           })
-          .catch(this.toastErrorHandler(this.$t('notification:delete-failed')))
+          .catch(this.toastErrorHandler(this.$t('notification:delete.failed')))
+          .finally(() => {
+            this.processingDelete = false
+          })
       }
     },
 
     undeleteWorkflow () {
       if (this.workflow.workflowID) {
+        this.processingDelete = true
+
         this.$AutomationAPI.workflowUndelete(this.workflow)
           .then(() => {
             this.workflow.deletedAt = undefined
             this.workflow.deletedBy = undefined
-
-            this.toastSuccess(this.$t('notification:undelete-workflow'))
+            this.toastSuccess(this.$t('notification:undelete.success'))
           })
-          .catch(this.toastErrorHandler(this.$t('notification:undelete-failed')))
+          .catch(this.toastErrorHandler(this.$t('notification:undelete.failed')))
+          .finally(() => {
+            this.processingDelete = false
+          })
       }
     },
   },
@@ -236,7 +244,7 @@ export default {
     margin: 0 auto;
     border-left: 10px solid transparent;
     border-right: 10px solid transparent;
-    border-bottom: 10px solid $light;
+    border-bottom: 10px solid var(--light);
   }
 }
 </style>

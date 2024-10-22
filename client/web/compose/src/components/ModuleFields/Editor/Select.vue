@@ -1,78 +1,89 @@
 <template>
   <b-form-group
-    label-class="text-primary"
+    :label-cols-md="horizontal && '5'"
+    :label-cols-xl="horizontal && '4'"
+    :content-cols-md="horizontal && '7'"
+    :content-cols-xl="horizontal && '8'"
     :class="formGroupStyleClasses"
   >
     <template
-      v-if="!valueOnly"
       #label
     >
       <div
-        class="d-flex align-items-top"
+        v-if="!valueOnly"
+        class="d-flex align-items-center text-primary p-0"
       >
-        <label
-          class="mb-0"
+        <span
+          :title="label"
+          class="d-inline-block mw-100"
         >
           {{ label }}
-        </label>
+        </span>
 
-        <hint
-          :id="field.fieldID"
-          :text="hint"
-        />
+        <c-hint :tooltip="hint" />
+
+        <slot name="tools" />
       </div>
-      <small
-        class="form-text font-weight-light text-muted"
+      <div
+        class="small text-muted"
+        :class="{ 'mb-1': description }"
       >
         {{ description }}
-      </small>
+      </div>
     </template>
 
     <template v-if="field.isMulti">
+      <template v-if="field.options.selectType === 'list'">
+        <b-form-checkbox-group
+          v-model="value"
+          :options="selectOptions"
+          stacked
+        />
+
+        <errors :errors="errors" />
+      </template>
+
       <multi
+        v-else
         :value.sync="value"
         :errors="errors"
         :single-input="field.options.selectType !== 'each'"
       >
-        <template v-slot:single>
-          <b-form-select
+        <template #single>
+          <c-input-select
             v-if="field.options.selectType === 'default'"
             ref="singleSelect"
             :options="selectOptions"
-            @change="selectChange"
-          >
-            <template slot="first">
-              <option
-                :value="undefined"
-                disabled
-              >
-                {{ $t('kind.select.placeholder') }}
-              </option>
-            </template>
-          </b-form-select>
-          <b-form-select
+            :placeholder="$t('kind.select.placeholder')"
+            :reduce="o => o.value"
+            :selectable="isSelectable"
+            label="text"
+            @input="selectChange"
+          />
+
+          <c-input-select
             v-if="field.options.selectType === 'multiple'"
             v-model="value"
             :options="selectOptions"
-            :select-size="6"
+            :placeholder="$t('kind.select.placeholder')"
+            :reduce="o => o.value"
+            :selectable="isSelectable"
+            label="text"
             multiple
           />
         </template>
-        <template v-slot:default="ctx">
-          <b-form-select
+
+        <template #default="ctx">
+          <c-input-select
             v-if="field.options.selectType === 'each'"
             v-model="value[ctx.index]"
             :options="selectOptions"
-          >
-            <template slot="first">
-              <option
-                :value="undefined"
-                disabled
-              >
-                {{ $t('kind.select.placeholder') }}
-              </option>
-            </template>
-          </b-form-select>
+            :reduce="o => o.value"
+            :placeholder="$t('kind.select.placeholder')"
+            :selectable="isSelectable"
+            label="text"
+          />
+
           <span v-else>{{ findLabel(value[ctx.index]) }}</span>
         </template>
       </multi>
@@ -81,16 +92,23 @@
     <template
       v-else
     >
-      <b-form-select
+      <c-input-select
+        v-if="field.options.selectType === 'default'"
+        v-model="value"
+        :placeholder="$t('kind.select.optionNotSelected')"
+        :options="selectOptions"
+        :reduce="o => o.value"
+        :selectable="isSelectable"
+        label="text"
+      />
+
+      <b-form-radio-group
+        v-else
         v-model="value"
         :options="selectOptions"
-      >
-        <template slot="first">
-          <option :value="undefined">
-            {{ $t('kind.select.optionNotSelected') }}
-          </option>
-        </template>
-      </b-form-select>
+        stacked
+      />
+
       <errors :errors="errors" />
     </template>
   </b-form-group>
@@ -107,10 +125,7 @@ export default {
 
   computed: {
     selectOptions () {
-      return this.field.options.options.map(o => {
-        const disabled = o.value && this.field.isMulti ? (this.value || []).includes(o.value) : this.value === o.value
-        return { ...o, disabled }
-      }).filter(({ value = '' }) => value)
+      return this.field.options.options.filter(({ value = '', text = '' }) => value && text)
     },
   },
 
@@ -128,6 +143,16 @@ export default {
      */
     findLabel (v) {
       return (this.selectOptions.find(({ value }) => value === v) || {}).text || v
+    },
+
+    isSelectable ({ value } = {}) {
+      if (this.field.options.selectType === 'list') return true
+
+      if (this.field.isMulti) {
+        return !this.field.options.isUniqueMultiValue || !(this.value || []).includes(value)
+      } else {
+        return this.value !== value
+      }
     },
   },
 }

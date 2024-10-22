@@ -1,64 +1,67 @@
 <template>
   <tr>
     <td
-      v-b-tooltip.hover
-      class="handle align-middle"
+      class="handle align-middle pr-2"
     >
       <font-awesome-icon
         :icon="['fas', 'bars']"
-        class="text-light grab"
+        class="text-secondary grab"
       />
     </td>
+
     <td
-      style="width: 25%;"
+      style="min-width: 250px;"
     >
       <b-form-input
         v-model="value.name"
+        v-b-tooltip.noninteractive.hover="{ title: nameState === false ? $t('module:edit.tooltip.name') : '', placement: 'right', container: '#body' }"
         required
-        :readonly="disabled"
+        :readonly="hasData"
         :state="nameState"
         type="text"
-        class="form-control"
       />
     </td>
-    <td>
+
+    <td
+      style="min-width: 250px;"
+    >
       <b-input-group>
         <b-form-input
           v-model="value.label"
           type="text"
-          class="form-control"
         />
+
         <b-input-group-append>
           <field-translator
             :field.sync="value"
             :module="module"
             :disabled="isNew"
+            button-variant="extra-light"
             highlight-key="label"
-            button-variant="light"
           />
         </b-input-group-append>
       </b-input-group>
     </td>
-    <td>
+
+    <td
+      style="min-width: 250px;"
+    >
       <b-input-group class="field-type">
-        <b-select
+        <c-input-select
           v-model="value.kind"
-          :disabled="disabled"
-        >
-          <option
-            v-for="({ kind, label }) in fieldKinds"
-            :key="kind"
-            :value="kind"
-          >
-            {{ label }}
-          </option>
-        </b-select>
+          v-b-tooltip.hover="{ title: hasData ? $t('field:not-configurable') : '', placement: 'left', container: '#body' }"
+          :options="fieldKinds"
+          :reduce="kind => kind.kind"
+          :disabled="hasData"
+          :clearable="false"
+          @input="$emit('updateKind')"
+        />
+
         <b-input-group-append>
           <b-button
-            variant="light"
-            :title="$t('tooltip.field')"
-            :disabled="!value.cap.configurable"
-            class="px-2"
+            data-test-id="button-configure-field"
+            variant="extra-light"
+            :disabled="isEditDisabled"
             @click.prevent="$emit('edit')"
           >
             <font-awesome-icon
@@ -68,8 +71,10 @@
         </b-input-group-append>
       </b-input-group>
     </td>
+
     <td />
     <td />
+
     <td
       class="align-middle text-center"
     >
@@ -92,22 +97,23 @@
     </td>
 
     <td
-      class="text-right align-middle pr-2"
-      style="min-width: 100px;"
+      class="text-right align-middle"
+      style="min-width: 110px;"
     >
-      <c-input-confirm
-        :no-prompt="!value.name"
-        class="mr-2"
-        @confirmed="$emit('delete')"
-      />
       <c-permissions-button
-        v-if="canGrant && exists"
-        class="text-dark px-0"
-        button-variant="link"
+        v-if="canGrant && !isNew"
+        button-variant="outline-light"
+        size="sm"
         :title="value.label || value.name || value.fieldID"
         :target="value.label || value.name || value.fieldID"
         :tooltip="$t('permissions:resources.compose.module-field.tooltip')"
         :resource="`corteza::compose:module-field/${module.namespaceID}/${module.moduleID}/${value.fieldID}`"
+        class="text-dark border-0 mr-2"
+      />
+
+      <c-input-confirm
+        show-icon
+        @confirmed="$emit('delete')"
       />
     </td>
   </tr>
@@ -161,7 +167,7 @@ export default {
 
   computed: {
     nameState () {
-      if (this.disabled) {
+      if (this.hasData) {
         return null
       }
 
@@ -172,8 +178,8 @@ export default {
       return this.value.isValid ? null : false
     },
 
-    disabled () {
-      return this.value.fieldID !== NoID && this.hasRecords
+    hasData () {
+      return !this.isNew && this.hasRecords
     },
 
     isNew () {
@@ -185,11 +191,11 @@ export default {
         // for now this field is hidden, since it's implementation is mia.
         .map(kind => {
           return { kind, label: this.$t('fieldKinds.' + kind + '.label') }
-        }).sort((a, b) => a.label.localeCompare(b.text))
+        }).sort((a, b) => a.label.localeCompare(b.label))
     },
 
-    exists () {
-      return this.module.ID !== NoID && this.value.fieldID !== NoID
+    isEditDisabled () {
+      return !this.value.cap.configurable || this.nameState !== null
     },
   },
 }

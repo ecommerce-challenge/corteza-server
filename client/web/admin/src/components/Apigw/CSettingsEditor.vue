@@ -1,13 +1,13 @@
 <template>
   <b-card
+    header-class="border-bottom"
+    footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
     class="shadow-sm"
-    header-bg-variant="white"
-    footer-bg-variant="white"
   >
     <template #header>
-      <h3 class="m-0">
+      <h4 class="m-0">
         {{ $t('title') }}
-      </h3>
+      </h4>
     </template>
 
     <b-form-row
@@ -15,13 +15,11 @@
     >
       <b-col
         cols="12"
-        md="6"
-        class="mb-3 mb-md-0"
+        lg="6"
       >
         <b-form-group
           :label="$t('profiler.label')"
           label-class="text-primary"
-          class="mb-0"
         >
           <b-form-radio-group
             v-model="profilerSetting"
@@ -35,12 +33,11 @@
 
       <b-col
         cols="12"
-        md="6"
+        lg="6"
       >
         <b-form-group
           :label="$t('proxy.label')"
           label-class="text-primary"
-          class="mb-0"
         >
           <b-form-checkbox
             v-model="settings['apigw.proxy.follow-redirects']"
@@ -52,10 +49,11 @@
     </b-form-row>
 
     <template #footer>
-      <c-submit-button
-        class="float-right"
+      <c-button-submit
         :processing="processing"
         :success="success"
+        :text="$t('admin:general.label.submit')"
+        class="ml-auto"
         @submit="$emit('submit', settings)"
       />
     </template>
@@ -63,7 +61,6 @@
 </template>
 
 <script>
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
 
 export default {
   name: 'CSettingsEditor',
@@ -71,10 +68,6 @@ export default {
   i18nOptions: {
     namespaces: 'system.apigw',
     keyPrefix: 'settings',
-  },
-
-  components: {
-    CSubmitButton,
   },
 
   props: {

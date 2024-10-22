@@ -20,6 +20,7 @@ type (
 		RequestPasswordReset,
 		PasswordResetRequested,
 		ResetPassword,
+		AcceptInvite,
 		Sessions,
 		AuthorizedClients,
 		Logout,
@@ -28,6 +29,7 @@ type (
 		OAuth2AuthorizeClient,
 		OAuth2Token,
 		OAuth2Info,
+		OAuth2UserInfo,
 		OAuth2DefaultClient,
 		OAuth2PublicKeys,
 
@@ -56,6 +58,7 @@ var (
 	invalidLinkChars        = regexp.MustCompile(`[^-A-Za-z0-9+&@#/%?=~_|!:,.;\\(\\)]`)
 	stripSchema             = regexp.MustCompile(`(.*\/\/)`)
 	BasePath         string = "/"
+	WebappBasePath   string = "/"
 )
 
 func GetLinks() Links {
@@ -73,6 +76,7 @@ func GetLinks() Links {
 		RequestPasswordReset:     b + "auth/request-password-reset",
 		PasswordResetRequested:   b + "auth/password-reset-requested",
 		ResetPassword:            b + "auth/reset-password",
+		AcceptInvite:             b + "auth/accept-invite",
 		Sessions:                 b + "auth/sessions",
 		AuthorizedClients:        b + "auth/authorized-clients",
 		Logout:                   b + "auth/logout",
@@ -81,6 +85,7 @@ func GetLinks() Links {
 		OAuth2AuthorizeClient: b + "auth/oauth2/authorize-client",
 		OAuth2Token:           b + "auth/oauth2/token",
 		OAuth2Info:            b + "auth/oauth2/info",
+		OAuth2UserInfo:        b + "auth/oauth2/userinfo",
 		OAuth2DefaultClient:   b + "auth/oauth2/default-client",
 		OAuth2PublicKeys:      b + "auth/oauth2/public-keys",
 

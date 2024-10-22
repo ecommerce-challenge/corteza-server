@@ -9,9 +9,9 @@ package rdbms
 import (
 	automationType "github.com/cortezaproject/corteza/server/automation/types"
 	composeType "github.com/cortezaproject/corteza/server/compose/types"
+	discoveryType "github.com/cortezaproject/corteza/server/discovery/types"
 	federationType "github.com/cortezaproject/corteza/server/federation/types"
 	actionlogType "github.com/cortezaproject/corteza/server/pkg/actionlog"
-	discoveryType "github.com/cortezaproject/corteza/server/pkg/discovery/types"
 	"github.com/cortezaproject/corteza/server/pkg/expr"
 	flagType "github.com/cortezaproject/corteza/server/pkg/flag/types"
 	labelsType "github.com/cortezaproject/corteza/server/pkg/label/types"
@@ -293,6 +293,7 @@ type (
 		SelfID      uint64                 `db:"self_id"`
 		ModuleID    uint64                 `db:"module_id"`
 		NamespaceID uint64                 `db:"namespace_id"`
+		Meta        composeType.PageMeta   `db:"meta"`
 		Config      composeType.PageConfig `db:"config"`
 		Blocks      composeType.PageBlocks `db:"blocks"`
 		Visible     bool                   `db:"visible"`
@@ -301,6 +302,23 @@ type (
 		CreatedAt   time.Time              `db:"created_at"`
 		UpdatedAt   *time.Time             `db:"updated_at"`
 		DeletedAt   *time.Time             `db:"deleted_at"`
+	}
+
+	// auxComposePageLayout is an auxiliary structure used for transporting to/from RDBMS store
+	auxComposePageLayout struct {
+		ID          uint64                       `db:"id"`
+		Handle      string                       `db:"handle"`
+		PageID      uint64                       `db:"page_id"`
+		ParentID    uint64                       `db:"parent_id"`
+		NamespaceID uint64                       `db:"namespace_id"`
+		Weight      int                          `db:"weight"`
+		Meta        composeType.PageLayoutMeta   `db:"meta"`
+		Config      composeType.PageLayoutConfig `db:"config"`
+		Blocks      composeType.PageLayoutBlocks `db:"blocks"`
+		OwnedBy     uint64                       `db:"owned_by"`
+		CreatedAt   time.Time                    `db:"created_at"`
+		UpdatedAt   *time.Time                   `db:"updated_at"`
+		DeletedAt   *time.Time                   `db:"deleted_at"`
 	}
 
 	// auxCredential is an auxiliary structure used for transporting to/from RDBMS store
@@ -331,6 +349,29 @@ type (
 		CreatedBy uint64                      `db:"created_by"`
 		UpdatedBy uint64                      `db:"updated_by"`
 		DeletedBy uint64                      `db:"deleted_by"`
+	}
+
+	// auxDalSchemaAlteration is an auxiliary structure used for transporting to/from RDBMS store
+	auxDalSchemaAlteration struct {
+		ID           uint64                                `db:"id"`
+		BatchID      uint64                                `db:"batchID"`
+		DependsOn    uint64                                `db:"dependsOn"`
+		Resource     string                                `db:"resource"`
+		ResourceType string                                `db:"resourceType"`
+		ConnectionID uint64                                `db:"connectionID"`
+		Kind         string                                `db:"kind"`
+		Params       *systemType.DalSchemaAlterationParams `db:"params"`
+		Error        string                                `db:"error"`
+		CreatedAt    time.Time                             `db:"created_at"`
+		UpdatedAt    *time.Time                            `db:"updated_at"`
+		DeletedAt    *time.Time                            `db:"deleted_at"`
+		CompletedAt  *time.Time                            `db:"completed_at"`
+		DismissedAt  *time.Time                            `db:"dismissed_at"`
+		CreatedBy    uint64                                `db:"created_by"`
+		UpdatedBy    uint64                                `db:"updated_by"`
+		DeletedBy    uint64                                `db:"deleted_by"`
+		CompletedBy  uint64                                `db:"completed_by"`
+		DismissedBy  uint64                                `db:"dismissed_by"`
 	}
 
 	// auxDalSensitivityLevel is an auxiliary structure used for transporting to/from RDBMS store
@@ -1601,6 +1642,7 @@ func (aux *auxComposePage) encode(res *composeType.Page) (_ error) {
 	aux.SelfID = res.SelfID
 	aux.ModuleID = res.ModuleID
 	aux.NamespaceID = res.NamespaceID
+	aux.Meta = res.Meta
 	aux.Config = res.Config
 	aux.Blocks = res.Blocks
 	aux.Visible = res.Visible
@@ -1623,6 +1665,7 @@ func (aux auxComposePage) decode() (res *composeType.Page, _ error) {
 	res.SelfID = aux.SelfID
 	res.ModuleID = aux.ModuleID
 	res.NamespaceID = aux.NamespaceID
+	res.Meta = aux.Meta
 	res.Config = aux.Config
 	res.Blocks = aux.Blocks
 	res.Visible = aux.Visible
@@ -1645,11 +1688,74 @@ func (aux *auxComposePage) scan(row scanner) error {
 		&aux.SelfID,
 		&aux.ModuleID,
 		&aux.NamespaceID,
+		&aux.Meta,
 		&aux.Config,
 		&aux.Blocks,
 		&aux.Visible,
 		&aux.Weight,
 		&aux.Description,
+		&aux.CreatedAt,
+		&aux.UpdatedAt,
+		&aux.DeletedAt,
+	)
+}
+
+// encodes ComposePageLayout to auxComposePageLayout
+//
+// This function is auto-generated
+func (aux *auxComposePageLayout) encode(res *composeType.PageLayout) (_ error) {
+	aux.ID = res.ID
+	aux.Handle = res.Handle
+	aux.PageID = res.PageID
+	aux.ParentID = res.ParentID
+	aux.NamespaceID = res.NamespaceID
+	aux.Weight = res.Weight
+	aux.Meta = res.Meta
+	aux.Config = res.Config
+	aux.Blocks = res.Blocks
+	aux.OwnedBy = res.OwnedBy
+	aux.CreatedAt = res.CreatedAt
+	aux.UpdatedAt = res.UpdatedAt
+	aux.DeletedAt = res.DeletedAt
+	return
+}
+
+// decodes ComposePageLayout from auxComposePageLayout
+//
+// This function is auto-generated
+func (aux auxComposePageLayout) decode() (res *composeType.PageLayout, _ error) {
+	res = new(composeType.PageLayout)
+	res.ID = aux.ID
+	res.Handle = aux.Handle
+	res.PageID = aux.PageID
+	res.ParentID = aux.ParentID
+	res.NamespaceID = aux.NamespaceID
+	res.Weight = aux.Weight
+	res.Meta = aux.Meta
+	res.Config = aux.Config
+	res.Blocks = aux.Blocks
+	res.OwnedBy = aux.OwnedBy
+	res.CreatedAt = aux.CreatedAt
+	res.UpdatedAt = aux.UpdatedAt
+	res.DeletedAt = aux.DeletedAt
+	return
+}
+
+// scans row and fills auxComposePageLayout fields
+//
+// This function is auto-generated
+func (aux *auxComposePageLayout) scan(row scanner) error {
+	return row.Scan(
+		&aux.ID,
+		&aux.Handle,
+		&aux.PageID,
+		&aux.ParentID,
+		&aux.NamespaceID,
+		&aux.Weight,
+		&aux.Meta,
+		&aux.Config,
+		&aux.Blocks,
+		&aux.OwnedBy,
 		&aux.CreatedAt,
 		&aux.UpdatedAt,
 		&aux.DeletedAt,
@@ -1765,6 +1871,86 @@ func (aux *auxDalConnection) scan(row scanner) error {
 		&aux.CreatedBy,
 		&aux.UpdatedBy,
 		&aux.DeletedBy,
+	)
+}
+
+// encodes DalSchemaAlteration to auxDalSchemaAlteration
+//
+// This function is auto-generated
+func (aux *auxDalSchemaAlteration) encode(res *systemType.DalSchemaAlteration) (_ error) {
+	aux.ID = res.ID
+	aux.BatchID = res.BatchID
+	aux.DependsOn = res.DependsOn
+	aux.Resource = res.Resource
+	aux.ResourceType = res.ResourceType
+	aux.ConnectionID = res.ConnectionID
+	aux.Kind = res.Kind
+	aux.Params = res.Params
+	aux.Error = res.Error
+	aux.CreatedAt = res.CreatedAt
+	aux.UpdatedAt = res.UpdatedAt
+	aux.DeletedAt = res.DeletedAt
+	aux.CompletedAt = res.CompletedAt
+	aux.DismissedAt = res.DismissedAt
+	aux.CreatedBy = res.CreatedBy
+	aux.UpdatedBy = res.UpdatedBy
+	aux.DeletedBy = res.DeletedBy
+	aux.CompletedBy = res.CompletedBy
+	aux.DismissedBy = res.DismissedBy
+	return
+}
+
+// decodes DalSchemaAlteration from auxDalSchemaAlteration
+//
+// This function is auto-generated
+func (aux auxDalSchemaAlteration) decode() (res *systemType.DalSchemaAlteration, _ error) {
+	res = new(systemType.DalSchemaAlteration)
+	res.ID = aux.ID
+	res.BatchID = aux.BatchID
+	res.DependsOn = aux.DependsOn
+	res.Resource = aux.Resource
+	res.ResourceType = aux.ResourceType
+	res.ConnectionID = aux.ConnectionID
+	res.Kind = aux.Kind
+	res.Params = aux.Params
+	res.Error = aux.Error
+	res.CreatedAt = aux.CreatedAt
+	res.UpdatedAt = aux.UpdatedAt
+	res.DeletedAt = aux.DeletedAt
+	res.CompletedAt = aux.CompletedAt
+	res.DismissedAt = aux.DismissedAt
+	res.CreatedBy = aux.CreatedBy
+	res.UpdatedBy = aux.UpdatedBy
+	res.DeletedBy = aux.DeletedBy
+	res.CompletedBy = aux.CompletedBy
+	res.DismissedBy = aux.DismissedBy
+	return
+}
+
+// scans row and fills auxDalSchemaAlteration fields
+//
+// This function is auto-generated
+func (aux *auxDalSchemaAlteration) scan(row scanner) error {
+	return row.Scan(
+		&aux.ID,
+		&aux.BatchID,
+		&aux.DependsOn,
+		&aux.Resource,
+		&aux.ResourceType,
+		&aux.ConnectionID,
+		&aux.Kind,
+		&aux.Params,
+		&aux.Error,
+		&aux.CreatedAt,
+		&aux.UpdatedAt,
+		&aux.DeletedAt,
+		&aux.CompletedAt,
+		&aux.DismissedAt,
+		&aux.CreatedBy,
+		&aux.UpdatedBy,
+		&aux.DeletedBy,
+		&aux.CompletedBy,
+		&aux.DismissedBy,
 	)
 }
 

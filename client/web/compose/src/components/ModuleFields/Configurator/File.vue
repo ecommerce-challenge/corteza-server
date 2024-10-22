@@ -2,6 +2,7 @@
   <div>
     <b-form-group
       :label="$t('kind.file.view.maxSizeLabel')"
+      label-class="text-primary"
     >
       <b-input-group>
         <b-form-input
@@ -15,6 +16,7 @@
     <b-form-group
       :label="$t('kind.file.view.mimetypesLabel')"
       :description="$t('kind.file.view.mimetypesFootnote')"
+      label-class="text-primary"
       class="mt-2"
     >
       <b-form-input
@@ -25,6 +27,7 @@
     <b-form-group
       :description="$t('kind.file.view.modeFootnote')"
       :label="$t('kind.file.view.modeLabel')"
+      label-class="text-primary"
     >
       <b-form-radio-group
         v-model="f.options.mode"
@@ -36,14 +39,24 @@
       />
     </b-form-group>
 
-    <b-form-group
-      v-if="enablePreviewStyling"
-      class="mb-0"
-    >
+    <b-form-group>
       <b-form-checkbox
+        v-if="enablePreviewStyling"
         v-model="f.options.hideFileName"
       >
         {{ $t('kind.file.view.showName') }}
+      </b-form-checkbox>
+
+      <b-form-checkbox
+        v-model="f.options.clickToView"
+      >
+        {{ $t('kind.file.view.clickToView') }}
+      </b-form-checkbox>
+
+      <b-form-checkbox
+        v-model="f.options.enableDownload"
+      >
+        {{ $t('kind.file.view.enableDownload') }}
       </b-form-checkbox>
     </b-form-group>
 
@@ -54,142 +67,115 @@
         {{ $t('kind.file.view.previewStyle') }}
       </h5>
 
+      <small>{{ $t('kind.file.view.description' ) }}</small>
+
       <b-row
         align-v="center"
         class="mb-2 mt-2"
       >
         <b-col
-          sm="12"
-          md="6"
+          cols="12"
+          lg="6"
         >
           <b-form-group
             :label="$t('kind.file.view.height')"
-          >
-            <b-input-group
-              :append="$t('kind.file.view.px')"
-            >
-              <b-form-input
-                v-model="f.options.height"
-                type="number"
-                number
-                :placeholder="$t('kind.file.view.height')"
-              />
-            </b-input-group>
-          </b-form-group>
-        </b-col>
-
-        <b-col
-          sm="12"
-          md="6"
-        >
-          <b-form-group
-            :label="$t('kind.file.view.width')"
-          >
-            <b-input-group
-              :append="$t('kind.file.view.px')"
-            >
-              <b-form-input
-                v-model="f.options.width"
-                type="number"
-                number
-                :placeholder="$t('kind.file.view.width')"
-              />
-            </b-input-group>
-          </b-form-group>
-        </b-col>
-
-        <b-col
-          sm="12"
-          md="6"
-        >
-          <b-form-group
-            :label="$t('kind.file.view.maxHeight')"
-          >
-            <b-input-group
-              :append="$t('kind.file.view.px')"
-            >
-              <b-form-input
-                v-model="f.options.maxHeight"
-                type="number"
-                number
-                :placeholder="$t('kind.file.view.maxHeight')"
-              />
-            </b-input-group>
-          </b-form-group>
-        </b-col>
-
-        <b-col
-          sm="12"
-          md="6"
-        >
-          <b-form-group
-            :label="$t('kind.file.view.maxWidth')"
-          >
-            <b-input-group
-              :append="$t('kind.file.view.px')"
-            >
-              <b-form-input
-                v-model="f.options.maxWidth"
-                type="number"
-                number
-                :placeholder="$t('kind.file.view.maxWidth')"
-              />
-            </b-input-group>
-          </b-form-group>
-        </b-col>
-
-        <b-col
-          sm="12"
-          md="6"
-        >
-          <b-form-group
-            :label="$t('kind.file.view.borderRadius')"
-          >
-            <b-input-group
-              :append="$t('kind.file.view.px')"
-            >
-              <b-form-input
-                v-model="f.options.borderRadius"
-                type="number"
-                number
-                :placeholder="$t('kind.file.view.borderRadius')"
-              />
-            </b-input-group>
-          </b-form-group>
-        </b-col>
-
-        <b-col
-          sm="12"
-          md="6"
-        >
-          <b-form-group
-            :label="$t('kind.file.view.background')"
+            label-class="text-primary"
           >
             <b-form-input
-              v-model="f.options.backgroundColor"
-              type="color"
-              debounce="300"
+              v-model="f.options.height"
             />
           </b-form-group>
         </b-col>
 
         <b-col
-          sm="12"
-          md="6"
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('kind.file.view.width')"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="f.options.width"
+            />
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('kind.file.view.maxHeight')"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="f.options.maxHeight"
+            />
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('kind.file.view.maxWidth')"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="f.options.maxWidth"
+            />
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('kind.file.view.borderRadius')"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="f.options.borderRadius"
+            />
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
         >
           <b-form-group
             :label="$t('kind.file.view.margin')"
+            label-class="text-primary"
           >
-            <b-input-group
-              :append="$t('kind.file.view.px')"
-            >
-              <b-form-input
-                v-model="f.options.margin"
-                type="number"
-                number
-                :placeholder="$t('kind.file.view.margin')"
-              />
-            </b-input-group>
+            <b-form-input
+              v-model="f.options.margin"
+            />
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('kind.file.view.background')"
+            label-class="text-primary"
+          >
+            <c-input-color-picker
+              v-model="f.options.backgroundColor"
+              :translations="{
+                modalTitle: $t('kind.file.view.colorPicker'),
+                light: $t('general:themes.labels.light'),
+                dark: $t('general:themes.labels.dark'),
+                cancelBtnLabel: $t('general:label.cancel'),
+                saveBtnLabel: $t('general:label.saveAndClose')
+              }"
+              :theme-settings="themeSettings"
+            />
           </b-form-group>
         </b-col>
       </b-row>
@@ -199,10 +185,16 @@
 
 <script>
 import base from './base'
+import { components } from '@cortezaproject/corteza-vue'
+const { CInputColorPicker } = components
 
 export default {
   i18nOptions: {
     namespaces: 'field',
+  },
+
+  components: {
+    CInputColorPicker,
   },
 
   extends: base,
@@ -211,15 +203,17 @@ export default {
     modes () {
       return [
         { value: 'list', text: this.$t('kind.file.view.list') },
-        { value: 'grid', text: this.$t('kind.file.view.grid') },
-        { value: 'single', text: this.$t('kind.file.view.single') },
         { value: 'gallery', text: this.$t('kind.file.view.gallery') },
       ]
     },
 
     enablePreviewStyling () {
       const { mode } = this.f.options
-      return (mode === 'single') || (mode === 'gallery')
+      return mode === 'gallery'
+    },
+
+    themeSettings () {
+      return this.$Settings.get('ui.studio.themes', [])
     },
   },
 }

@@ -1,19 +1,25 @@
 <template>
   <b-tab :title="$t('recordOrganizer.label')">
-    <b-form-group>
-      <label>{{ $t('general.module') }}</label>
-      <b-form-select
+    <b-form-group
+      :label="$t('general.module')"
+      label-class="text-primary"
+    >
+      <c-input-select
         v-model="options.moduleID"
-        :options="moduleOptions"
-        text-field="name"
-        value-field="moduleID"
+        :options="modules"
+        label="name"
+        :reduce="m => m.moduleID"
+        :placeholder="$t('recordOrganizer.module.placeholder')"
+        default-value="0"
         required
       />
     </b-form-group>
 
     <div v-if="selectedModule">
-      <b-form-group>
-        <label>{{ $t('field.selector.available') }}</label>
+      <b-form-group
+        :label="$t('field.selector.available')"
+        label-class="text-primary"
+      >
         <div class="d-flex">
           <div class="border fields w-100 p-2">
             <div
@@ -22,9 +28,12 @@
               class="field"
             >
               <span v-if="field.label">{{ field.label }} ({{ field.name }})</span>
+
               <span v-else>{{ field.name }}</span>
+
               <span class="small float-right">
                 <span v-if="field.isSystem">{{ $t('field.selector.systemField') }}</span>
+
                 <span v-else>{{ field.kind }}</span>
               </span>
             </div>
@@ -33,143 +42,168 @@
       </b-form-group>
 
       <b-form-group
-        horizontal
-        :label-cols="3"
-        breakpoint="md"
         :label="$t('recordList.record.prefilterLabel')"
+        label-class="text-primary"
       >
-        <b-form-textarea
+        <c-input-expression
           v-model.trim="options.filter"
-          :value="true"
+          height="3.688rem"
+          lang="javascript"
+          :suggestion-params="recordAutoCompleteParams"
           :placeholder="$t('recordList.record.prefilterPlaceholder')"
         />
-        <b-form-text>
-          <i18next
-            path="recordList.record.prefilterFootnote"
-            tag="label"
-          >
-            <code>${recordID}</code>
-            <code>${ownerID}</code>
-            <code>${userID}</code>
-          </i18next>
-        </b-form-text>
+        <i18next
+          path="recordList.record.prefilterFootnote"
+          tag="small"
+          class="text-muted"
+        >
+          <code>${record.values.fieldName}</code>
+          <code>${recordID}</code>
+          <code>${ownerID}</code>
+          <span><code>${userID}</code>, <code>${user.name}</code></span>
+        </i18next>
       </b-form-group>
 
-      <b-form-group
-        horizontal
-        :label-cols="3"
-        breakpoint="md"
-        :label="$t('recordOrganizer.labelField.label')"
-      >
-        <b-form-select v-model="options.labelField">
-          <option value="">
-            {{ $t('general.label.none') }}
-          </option>
-          <option
-            v-for="(field, index) in selectedModuleFields"
-            :key="index"
-            :value="field.name"
+      <b-row>
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('recordOrganizer.labelField.label')"
+            label-class="text-primary"
           >
-            {{ field.label || field.name }} ({{ field.kind }})
-          </option>
-        </b-form-select>
-        <b-form-text>{{ $t('recordOrganizer.labelField.footnote') }}</b-form-text>
-      </b-form-group>
+            <c-input-select
+              v-model="options.labelField"
+              :options="selectedModuleFields"
+              :reduce="o => o.name"
+              :get-option-label="fieldLabel"
+              :placeholder="$t('general.label.none')"
+            />
+            <b-form-text>{{ $t('recordOrganizer.labelField.footnote') }}</b-form-text>
+          </b-form-group>
+        </b-col>
 
-      <b-form-group
-        horizontal
-        :label-cols="3"
-        breakpoint="md"
-        :label="$t('recordOrganizer.descriptionField.label')"
-      >
-        <b-form-select v-model="options.descriptionField">
-          <option value="">
-            {{ $t('general.label.none') }}
-          </option>
-          <option
-            v-for="(field, index) in selectedModuleFields"
-            :key="index"
-            :value="field.name"
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('recordOrganizer.descriptionField.label')"
+            label-class="text-primary"
           >
-            {{ field.label || field.name }} ({{ field.kind }})
-          </option>
-        </b-form-select>
-        <b-form-text class="text-secondary small">
-          {{ $t('recordOrganizer.descriptionField.footnote') }}
-        </b-form-text>
-      </b-form-group>
+            <c-input-select
+              v-model="options.descriptionField"
+              :options="selectedModuleFields"
+              :reduce="o => o.name"
+              :get-option-label="descriptionLabel"
+              :placeholder="$t('general.label.none')"
+            />
 
-      <b-form-group
-        horizontal
-        :label-cols="3"
-        breakpoint="md"
-        :label="$t('recordOrganizer.positionField.label')"
-      >
-        <b-form-select v-model="options.positionField">
-          <option value="">
-            {{ $t('general.label.none') }}
-          </option>
-          <option
-            v-for="(field, index) in positionFields"
-            :key="index"
-            :value="field.name"
+            <b-form-text class="text-secondary small">
+              {{ $t('recordOrganizer.descriptionField.footnote') }}
+            </b-form-text>
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('recordOrganizer.groupField.label')"
+            label-class="text-primary"
           >
-            {{ field.label || field.name }}
-          </option>
-        </b-form-select>
-        <b-form-text class="text-secondary small">
-          {{ $t('recordOrganizer.positionField.footnote') }}
-        </b-form-text>
-      </b-form-group>
+            <c-input-select
+              v-model="options.groupField"
+              :options="groupFields"
+              :reduce="o => o.name"
+              :get-option-label="groupFieldLabel"
+              :placeholder="$t('general.label.none')"
+            />
 
-      <b-form-group
-        horizontal
-        :label-cols="3"
-        breakpoint="md"
-        :label="$t('recordOrganizer.groupField.label')"
-      >
-        <b-form-select v-model="options.groupField">
-          <option value="">
-            {{ $t('general.label.none') }}
-          </option>
-          <option
-            v-for="(field, index) in groupFields"
-            :key="index"
-            :value="field.name"
+            <b-form-text class="text-secondary small">
+              {{ $t('recordOrganizer.groupField.footnote') }}
+            </b-form-text>
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('recordOrganizer.group.label')"
+            label-class="text-primary"
           >
-            {{ field.label || field.name }}
-          </option>
-        </b-form-select>
-        <b-form-text class="text-secondary small">
-          {{ $t('recordOrganizer.groupField.footnote') }}
-        </b-form-text>
-      </b-form-group>
+            <field-editor
+              v-if="options.groupField"
+              v-bind="mock"
+              value-only
+              class="mb-0"
+            />
 
-      <b-form-group
-        v-if="options.groupField"
-        :label="$t('recordOrganizer.group.label')"
-        :label-cols="3"
-        breakpoint="md"
-        horizontal
-        class="mb-0"
-      >
-        <field-editor
-          class="mb-0"
-          value-only
-          v-bind="mock"
-        />
-        <b-form-text class="text-secondary small">
-          {{ $t('recordOrganizer.group.footnote') }}
-        </b-form-text>
-      </b-form-group>
+            <b-form-input
+              v-else
+              disabled
+            />
+
+            <b-form-text class="text-secondary small">
+              {{ $t('recordOrganizer.group.footnote') }}
+            </b-form-text>
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('recordOrganizer.positionField.label')"
+            label-class="text-primary"
+          >
+            <c-input-select
+              v-model="options.positionField"
+              :placeholder="$t('recordOrganizer.positionField.placeholder')"
+              :reduce="f => f.name"
+              label="label"
+            />
+
+            <b-form-text class="text-secondary small">
+              {{ $t('recordOrganizer.positionField.footnote') }}
+            </b-form-text>
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('recordOrganizer.onRecordClick')"
+            label-class="text-primary"
+            class="mb-0"
+          >
+            <b-form-select
+              v-model="options.displayOption"
+              :options="displayOptions"
+            />
+          </b-form-group>
+        </b-col>
+      </b-row>
     </div>
   </b-tab>
 </template>
 <script>
 import FieldEditor from '../ModuleFields/Editor'
 import { mapGetters } from 'vuex'
-import { compose, validator, NoID } from '@cortezaproject/corteza-js'
+import { compose, validator } from '@cortezaproject/corteza-js'
+import { components } from '@cortezaproject/corteza-vue'
+import autocomplete from 'corteza-webapp-compose/src/mixins/autocomplete.js'
+
 import base from './base'
+
+const { CInputExpression } = components
 
 export default {
   i18nOptions: {
@@ -180,9 +214,12 @@ export default {
 
   components: {
     FieldEditor,
+    CInputExpression,
   },
 
   extends: base,
+
+  mixins: [autocomplete],
 
   data () {
     return {
@@ -204,13 +241,6 @@ export default {
     ...mapGetters({
       modules: 'module/set',
     }),
-
-    moduleOptions () {
-      return [
-        { moduleID: NoID, name: this.$t('general.label.none') },
-        ...this.modules,
-      ]
-    },
 
     selectedModule () {
       return this.modules.find(m => m.moduleID === this.options.moduleID)
@@ -247,6 +277,18 @@ export default {
     group () {
       return this.allFields.find(f => f.name === this.options.groupField)
     },
+
+    displayOptions () {
+      return [
+        { value: 'sameTab', text: this.$t('recordOrganizer.openInSameTab') },
+        { value: 'newTab', text: this.$t('recordOrganizer.openInNewTab') },
+        { value: 'modal', text: this.$t('recordOrganizer.openInModal') },
+      ]
+    },
+
+    recordAutoCompleteParams () {
+      return this.processRecordAutoCompleteParams({ module: this.selectedModule })
+    },
   },
 
   watch: {
@@ -282,6 +324,28 @@ export default {
       handler (group) {
         this.options.group = group
       },
+    },
+  },
+
+  beforeDestroy () {
+    this.setDefaultValues()
+  },
+
+  methods: {
+    setDefaultValues () {
+      this.mock = []
+    },
+
+    fieldLabel (option) {
+      return `${option.label || option.name} (${option.kind})`
+    },
+
+    descriptionLabel (option) {
+      return `${option.label || option.name} (${option.kind})`
+    },
+
+    groupFieldLabel (option) {
+      return `${option.label || option.name}`
     },
   },
 }

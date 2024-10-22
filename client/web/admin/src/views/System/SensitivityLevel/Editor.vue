@@ -1,23 +1,18 @@
 <template>
   <b-container
     v-if="sensitivityLevel"
-    class="py-3"
+    class="pt-2 pb-3"
   >
     <c-content-header
       :title="title"
     >
-      <span
-        class="text-nowrap"
+      <b-button
+        v-if="sensitivityLevelID && canCreate"
+        variant="primary"
+        :to="{ name: 'system.sensitivityLevel.new' }"
       >
-        <b-button
-          v-if="sensitivityLevelID && canCreate"
-          variant="primary"
-          class="mr-2"
-          :to="{ name: 'system.sensitivityLevel.new' }"
-        >
-          {{ $t('new') }}
-        </b-button>
-      </span>
+        {{ $t('new') }}
+      </b-button>
     </c-content-header>
 
     <c-sensitivity-level-editor-info
@@ -32,6 +27,7 @@
   </b-container>
 </template>
 <script>
+import { isEqual, cloneDeep } from 'lodash'
 import editorHelpers from 'corteza-webapp-admin/src/mixins/editorHelpers'
 import CSensitivityLevelEditorInfo from 'corteza-webapp-admin/src/components/SensitivityLevel/CSensitivityLevelEditorInfo'
 import { mapGetters } from 'vuex'
@@ -50,6 +46,14 @@ export default {
     editorHelpers,
   ],
 
+  beforeRouteUpdate (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
+
+  beforeRouteLeave (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
+
   props: {
     sensitivityLevelID: {
       type: String,
@@ -61,6 +65,7 @@ export default {
   data () {
     return {
       sensitivityLevel: undefined,
+      initialSensitivityLevelState: undefined,
 
       info: {
         processing: false,
@@ -102,6 +107,8 @@ export default {
               description: '',
             },
           }
+
+          this.initialSensitivityLevelState = cloneDeep(this.sensitivityLevel)
         }
       },
     },
@@ -114,6 +121,7 @@ export default {
       this.$SystemAPI.dalSensitivityLevelRead({ sensitivityLevelID })
         .then(sensitivityLevel => {
           this.sensitivityLevel = sensitivityLevel
+          this.initialSensitivityLevelState = cloneDeep(sensitivityLevel)
         })
         .catch(this.toastErrorHandler(this.$t('notification:sensitivityLevel.fetch.error')))
         .finally(() => {
@@ -128,7 +136,9 @@ export default {
         this.$SystemAPI.dalSensitivityLevelUpdate(sensitivityLevel)
           .then(sensitivityLevel => {
             this.sensitivityLevel = sensitivityLevel
+            this.initialSensitivityLevelState = cloneDeep(sensitivityLevel)
 
+            this.animateSuccess('info')
             this.toastSuccess(this.$t('notification:sensitivityLevel.update.success'))
           })
           .catch(this.toastErrorHandler(this.$t('notification:sensitivityLevel.update.error')))
@@ -139,6 +149,8 @@ export default {
         this.$SystemAPI.dalSensitivityLevelCreate(sensitivityLevel)
           .then(sensitivityLevel => {
             this.sensitivityLevel = sensitivityLevel
+            this.initialSensitivityLevelState = cloneDeep(sensitivityLevel)
+
             const { sensitivityLevelID } = sensitivityLevel
             this.animateSuccess('info')
             this.toastSuccess(this.$t('notification:sensitivityLevel.create.success'))
@@ -171,11 +183,23 @@ export default {
           .then(() => {
             this.fetchSensitivityLevel()
 
+            this.sensitivityLevel.deletedAt = new Date()
             this.toastSuccess(this.$t('notification:sensitivityLevel.delete.success'))
             this.$router.push({ name: 'system.sensitivityLevel' })
           })
           .catch(this.toastErrorHandler(this.$t('notification:sensitivityLevel.delete.error')))
           .finally(() => this.decLoader())
+      }
+    },
+
+    checkUnsavedChanges (next, to) {
+      const isNewPage = this.$route.path.includes('/new') && to.name.includes('edit')
+      const { deletedAt } = this.sensitivityLevel || {}
+
+      if (isNewPage || deletedAt) {
+        next(true)
+      } else if (!to.name.includes('edit')) {
+        next(!isEqual(this.sensitivityLevel, this.initialSensitivityLevelState) ? window.confirm(this.$t('general:editor.unsavedChanges')) : true)
       }
     },
   },

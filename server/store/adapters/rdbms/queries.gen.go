@@ -9,9 +9,9 @@ package rdbms
 import (
 	automationType "github.com/cortezaproject/corteza/server/automation/types"
 	composeType "github.com/cortezaproject/corteza/server/compose/types"
+	discoveryType "github.com/cortezaproject/corteza/server/discovery/types"
 	federationType "github.com/cortezaproject/corteza/server/federation/types"
 	actionlogType "github.com/cortezaproject/corteza/server/pkg/actionlog"
-	discoveryType "github.com/cortezaproject/corteza/server/pkg/discovery/types"
 	flagType "github.com/cortezaproject/corteza/server/pkg/flag/types"
 	labelsType "github.com/cortezaproject/corteza/server/pkg/label/types"
 	rbacType "github.com/cortezaproject/corteza/server/pkg/rbac"
@@ -1971,6 +1971,7 @@ var (
 			"self_id",
 			"rel_module",
 			"rel_namespace",
+			"meta",
 			"config",
 			"blocks",
 			"visible",
@@ -1994,6 +1995,7 @@ var (
 				"self_id":       res.SelfID,
 				"rel_module":    res.ModuleID,
 				"rel_namespace": res.NamespaceID,
+				"meta":          res.Meta,
 				"config":        res.Config,
 				"blocks":        res.Blocks,
 				"visible":       res.Visible,
@@ -2020,6 +2022,7 @@ var (
 						"self_id":       res.SelfID,
 						"rel_module":    res.ModuleID,
 						"rel_namespace": res.NamespaceID,
+						"meta":          res.Meta,
 						"config":        res.Config,
 						"blocks":        res.Blocks,
 						"visible":       res.Visible,
@@ -2044,6 +2047,7 @@ var (
 				"self_id":       res.SelfID,
 				"rel_module":    res.ModuleID,
 				"rel_namespace": res.NamespaceID,
+				"meta":          res.Meta,
 				"config":        res.Config,
 				"blocks":        res.Blocks,
 				"visible":       res.Visible,
@@ -2074,6 +2078,126 @@ var (
 	//
 	// This function is auto-generated
 	composePagePrimaryKeys = func(res *composeType.Page) goqu.Ex {
+		return goqu.Ex{
+			"id": res.ID,
+		}
+	}
+
+	// composePageLayoutTable represents composePageLayouts store table
+	//
+	// This value is auto-generated
+	composePageLayoutTable = goqu.T("compose_page_layout")
+
+	// composePageLayoutSelectQuery assembles select query for fetching composePageLayouts
+	//
+	// This function is auto-generated
+	composePageLayoutSelectQuery = func(d goqu.DialectWrapper) *goqu.SelectDataset {
+		return d.Select(
+			"id",
+			"handle",
+			"page_id",
+			"parent_id",
+			"rel_namespace",
+			"weight",
+			"meta",
+			"config",
+			"blocks",
+			"owned_by",
+			"created_at",
+			"updated_at",
+			"deleted_at",
+		).From(composePageLayoutTable)
+	}
+
+	// composePageLayoutInsertQuery assembles query inserting composePageLayouts
+	//
+	// This function is auto-generated
+	composePageLayoutInsertQuery = func(d goqu.DialectWrapper, res *composeType.PageLayout) *goqu.InsertDataset {
+		return d.Insert(composePageLayoutTable).
+			Rows(goqu.Record{
+				"id":            res.ID,
+				"handle":        res.Handle,
+				"page_id":       res.PageID,
+				"parent_id":     res.ParentID,
+				"rel_namespace": res.NamespaceID,
+				"weight":        res.Weight,
+				"meta":          res.Meta,
+				"config":        res.Config,
+				"blocks":        res.Blocks,
+				"owned_by":      res.OwnedBy,
+				"created_at":    res.CreatedAt,
+				"updated_at":    res.UpdatedAt,
+				"deleted_at":    res.DeletedAt,
+			})
+	}
+
+	// composePageLayoutUpsertQuery assembles (insert+on-conflict) query for replacing composePageLayouts
+	//
+	// This function is auto-generated
+	composePageLayoutUpsertQuery = func(d goqu.DialectWrapper, res *composeType.PageLayout) *goqu.InsertDataset {
+		var target = `,id`
+
+		return composePageLayoutInsertQuery(d, res).
+			OnConflict(
+				goqu.DoUpdate(target[1:],
+					goqu.Record{
+						"handle":        res.Handle,
+						"page_id":       res.PageID,
+						"parent_id":     res.ParentID,
+						"rel_namespace": res.NamespaceID,
+						"weight":        res.Weight,
+						"meta":          res.Meta,
+						"config":        res.Config,
+						"blocks":        res.Blocks,
+						"owned_by":      res.OwnedBy,
+						"created_at":    res.CreatedAt,
+						"updated_at":    res.UpdatedAt,
+						"deleted_at":    res.DeletedAt,
+					},
+				),
+			)
+	}
+
+	// composePageLayoutUpdateQuery assembles query for updating composePageLayouts
+	//
+	// This function is auto-generated
+	composePageLayoutUpdateQuery = func(d goqu.DialectWrapper, res *composeType.PageLayout) *goqu.UpdateDataset {
+		return d.Update(composePageLayoutTable).
+			Set(goqu.Record{
+				"handle":        res.Handle,
+				"page_id":       res.PageID,
+				"parent_id":     res.ParentID,
+				"rel_namespace": res.NamespaceID,
+				"weight":        res.Weight,
+				"meta":          res.Meta,
+				"config":        res.Config,
+				"blocks":        res.Blocks,
+				"owned_by":      res.OwnedBy,
+				"created_at":    res.CreatedAt,
+				"updated_at":    res.UpdatedAt,
+				"deleted_at":    res.DeletedAt,
+			}).
+			Where(composePageLayoutPrimaryKeys(res))
+	}
+
+	// composePageLayoutDeleteQuery assembles delete query for removing composePageLayouts
+	//
+	// This function is auto-generated
+	composePageLayoutDeleteQuery = func(d goqu.DialectWrapper, ee ...goqu.Expression) *goqu.DeleteDataset {
+		return d.Delete(composePageLayoutTable).Where(ee...)
+	}
+
+	// composePageLayoutDeleteQuery assembles delete query for removing composePageLayouts
+	//
+	// This function is auto-generated
+	composePageLayoutTruncateQuery = func(d goqu.DialectWrapper) *goqu.TruncateDataset {
+		return d.Truncate(composePageLayoutTable)
+	}
+
+	// composePageLayoutPrimaryKeys assembles set of conditions for all primary keys
+	//
+	// This function is auto-generated
+	composePageLayoutPrimaryKeys = func(res *composeType.PageLayout) goqu.Ex {
 		return goqu.Ex{
 			"id": res.ID,
 		}
@@ -2298,6 +2422,150 @@ var (
 	//
 	// This function is auto-generated
 	dalConnectionPrimaryKeys = func(res *systemType.DalConnection) goqu.Ex {
+		return goqu.Ex{
+			"id": res.ID,
+		}
+	}
+
+	// dalSchemaAlterationTable represents dalSchemaAlterations store table
+	//
+	// This value is auto-generated
+	dalSchemaAlterationTable = goqu.T("dal_schema_alterations")
+
+	// dalSchemaAlterationSelectQuery assembles select query for fetching dalSchemaAlterations
+	//
+	// This function is auto-generated
+	dalSchemaAlterationSelectQuery = func(d goqu.DialectWrapper) *goqu.SelectDataset {
+		return d.Select(
+			"id",
+			"batch_id",
+			"depends_on",
+			"resource",
+			"resource_type",
+			"connection_id",
+			"kind",
+			"params",
+			"error",
+			"created_at",
+			"updated_at",
+			"deleted_at",
+			"completed_at",
+			"dismissed_at",
+			"created_by",
+			"updated_by",
+			"deleted_by",
+			"completed_by",
+			"dismissed_by",
+		).From(dalSchemaAlterationTable)
+	}
+
+	// dalSchemaAlterationInsertQuery assembles query inserting dalSchemaAlterations
+	//
+	// This function is auto-generated
+	dalSchemaAlterationInsertQuery = func(d goqu.DialectWrapper, res *systemType.DalSchemaAlteration) *goqu.InsertDataset {
+		return d.Insert(dalSchemaAlterationTable).
+			Rows(goqu.Record{
+				"id":            res.ID,
+				"batch_id":      res.BatchID,
+				"depends_on":    res.DependsOn,
+				"resource":      res.Resource,
+				"resource_type": res.ResourceType,
+				"connection_id": res.ConnectionID,
+				"kind":          res.Kind,
+				"params":        res.Params,
+				"error":         res.Error,
+				"created_at":    res.CreatedAt,
+				"updated_at":    res.UpdatedAt,
+				"deleted_at":    res.DeletedAt,
+				"completed_at":  res.CompletedAt,
+				"dismissed_at":  res.DismissedAt,
+				"created_by":    res.CreatedBy,
+				"updated_by":    res.UpdatedBy,
+				"deleted_by":    res.DeletedBy,
+				"completed_by":  res.CompletedBy,
+				"dismissed_by":  res.DismissedBy,
+			})
+	}
+
+	// dalSchemaAlterationUpsertQuery assembles (insert+on-conflict) query for replacing dalSchemaAlterations
+	//
+	// This function is auto-generated
+	dalSchemaAlterationUpsertQuery = func(d goqu.DialectWrapper, res *systemType.DalSchemaAlteration) *goqu.InsertDataset {
+		var target = `,id`
+
+		return dalSchemaAlterationInsertQuery(d, res).
+			OnConflict(
+				goqu.DoUpdate(target[1:],
+					goqu.Record{
+						"batch_id":      res.BatchID,
+						"depends_on":    res.DependsOn,
+						"resource":      res.Resource,
+						"resource_type": res.ResourceType,
+						"connection_id": res.ConnectionID,
+						"kind":          res.Kind,
+						"params":        res.Params,
+						"error":         res.Error,
+						"created_at":    res.CreatedAt,
+						"updated_at":    res.UpdatedAt,
+						"deleted_at":    res.DeletedAt,
+						"completed_at":  res.CompletedAt,
+						"dismissed_at":  res.DismissedAt,
+						"created_by":    res.CreatedBy,
+						"updated_by":    res.UpdatedBy,
+						"deleted_by":    res.DeletedBy,
+						"completed_by":  res.CompletedBy,
+						"dismissed_by":  res.DismissedBy,
+					},
+				),
+			)
+	}
+
+	// dalSchemaAlterationUpdateQuery assembles query for updating dalSchemaAlterations
+	//
+	// This function is auto-generated
+	dalSchemaAlterationUpdateQuery = func(d goqu.DialectWrapper, res *systemType.DalSchemaAlteration) *goqu.UpdateDataset {
+		return d.Update(dalSchemaAlterationTable).
+			Set(goqu.Record{
+				"batch_id":      res.BatchID,
+				"depends_on":    res.DependsOn,
+				"resource":      res.Resource,
+				"resource_type": res.ResourceType,
+				"connection_id": res.ConnectionID,
+				"kind":          res.Kind,
+				"params":        res.Params,
+				"error":         res.Error,
+				"created_at":    res.CreatedAt,
+				"updated_at":    res.UpdatedAt,
+				"deleted_at":    res.DeletedAt,
+				"completed_at":  res.CompletedAt,
+				"dismissed_at":  res.DismissedAt,
+				"created_by":    res.CreatedBy,
+				"updated_by":    res.UpdatedBy,
+				"deleted_by":    res.DeletedBy,
+				"completed_by":  res.CompletedBy,
+				"dismissed_by":  res.DismissedBy,
+			}).
+			Where(dalSchemaAlterationPrimaryKeys(res))
+	}
+
+	// dalSchemaAlterationDeleteQuery assembles delete query for removing dalSchemaAlterations
+	//
+	// This function is auto-generated
+	dalSchemaAlterationDeleteQuery = func(d goqu.DialectWrapper, ee ...goqu.Expression) *goqu.DeleteDataset {
+		return d.Delete(dalSchemaAlterationTable).Where(ee...)
+	}
+
+	// dalSchemaAlterationDeleteQuery assembles delete query for removing dalSchemaAlterations
+	//
+	// This function is auto-generated
+	dalSchemaAlterationTruncateQuery = func(d goqu.DialectWrapper) *goqu.TruncateDataset {
+		return d.Truncate(dalSchemaAlterationTable)
+	}
+
+	// dalSchemaAlterationPrimaryKeys assembles set of conditions for all primary keys
+	//
+	// This function is auto-generated
+	dalSchemaAlterationPrimaryKeys = func(res *systemType.DalSchemaAlteration) goqu.Ex {
 		return goqu.Ex{
 			"id": res.ID,
 		}

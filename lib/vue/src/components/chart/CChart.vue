@@ -1,9 +1,11 @@
 <template>
   <e-charts
+    ref="chart"
     :option="chart"
     :theme="theme"
     autoresize
     class="position-absolute w-100 h-100 overflow-hidden"
+    v-on="$listeners"
   />
 </template>
 
@@ -24,5 +26,11 @@ export default {
       return darkMode ? 'dark' : 'light'
     }
   },
+
+  beforeDestroy () {
+    if (this.$refs.chart) {
+      this.$refs.chart.dispose()
+    }
+  }
 }
 </script>

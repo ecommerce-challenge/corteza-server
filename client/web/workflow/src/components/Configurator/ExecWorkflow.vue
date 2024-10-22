@@ -43,7 +43,7 @@ export default {
               types: [
                 'Vars',
               ],
-              required: true,
+              required: false,
             },
           ],
           results: [],
@@ -65,6 +65,10 @@ export default {
 
     getWorkflowLabel ({ workflowID, handle, meta = {} }) {
       return meta.name || handle || workflowID
+    },
+
+    getWorkflowKey ({ workflowID, handle }) {
+      return handle || workflowID
     },
   },
 }

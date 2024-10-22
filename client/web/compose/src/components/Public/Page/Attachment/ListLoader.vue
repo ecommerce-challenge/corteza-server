@@ -6,129 +6,118 @@
     >
       <b-spinner />
     </div>
+
     <div
       v-else-if="mode === 'list'"
-      class="list"
     >
       <draggable
         :list.sync="attachments"
         :disabled="!enableOrder"
       >
-        <div
+        <b-row
           v-for="(a, index) in attachments"
           :key="a.attachmentID"
-          class="item"
+          no-gutters
+          class="flex-nowrap item mb-2"
         >
-          <b-row no-gutters>
-            <b-col>
-              <div
-                v-if="enableOrder"
-                class="mr-2 d-inline"
-              >
-                <font-awesome-icon
-                  v-b-tooltip.hover
-                  :icon="['fas', 'bars']"
-                  :title="$t('general.tooltip.dragAndDrop')"
-                  class="handle text-light"
-                />
-              </div>
-              <attachment-link :attachment="a" />
-              &nbsp;
-              <i18next
-                path="general.label.attachmentFileInfo"
-                tag="label"
-              >
-                <span>{{ size(a) }}</span>
-                <span>{{ uploadedAt(a) }}</span>
-              </i18next>
-            </b-col>
-            <div class="col-sm-2 text-right my-auto">
-              <a
-                :href="a.download"
-                class="px-0 btn text-primary mr-2"
-              >
-                <font-awesome-icon :icon="['fas', 'download']" />
-              </a>
-              <b-button
-                v-if="enableDelete"
-                variant="link"
-                class="px-0"
-                @click="deleteAttachment(index)"
-              >
-                <font-awesome-icon
-                  :icon="['far', 'trash-alt']"
-                  class="action text-danger"
-                />
-              </b-button>
+          <b-col cols="auto">
+            <div
+              v-if="enableOrder"
+              class="d-inline p-1 mr-2"
+            >
+              <font-awesome-icon
+                :icon="['fas', 'bars']"
+                class="handle text-secondary"
+              />
             </div>
-          </b-row>
-        </div>
+          </b-col>
+
+          <b-col style="word-break:break-all;">
+            <attachment-link :attachment="a" />
+
+            <i18next
+              path="general.label.attachmentFileInfo"
+              tag="small"
+              class="d-block text-muted"
+            >
+              <span>{{ size(a) }}</span>
+
+              <span>{{ uploadedAt(a) }}</span>
+            </i18next>
+          </b-col>
+
+          <b-col
+            cols="auto"
+            class="d-flex align-items-start"
+          >
+            <b-button
+              v-if="a.download"
+              :href="a.download"
+              variant="outline-light"
+              class="border-0 text-primary px-2 ml-2"
+            >
+              <font-awesome-icon :icon="['fas', 'download']" />
+            </b-button>
+
+            <c-input-confirm
+              v-if="enableDelete"
+              show-icon
+              class="ml-2"
+              @confirmed="deleteAttachment(index)"
+            />
+          </b-col>
+        </b-row>
       </draggable>
     </div>
 
     <div
-      v-else-if="mode === 'grid'"
-      class="grid"
+      v-else
+      class="d-flex align-items-center justify-content-around flex-wrap h-100"
     >
       <div
         v-for="a in attachments"
         :key="a.attachmentID"
-        class="p-2"
-      >
-        <attachment-link
-          :attachment="a"
-          class="d-block"
-        >
-          <font-awesome-icon
-            :icon="['far', 'file-'+ext(a)]"
-            class="text-dark float-left mr-2"
-          />
-        </attachment-link>
-        <i18next
-          path="general.label.attachmentFileInfo"
-          tag="label"
-        >
-          <span>{{ size(a) }}</span>
-          <span>{{ uploadedAt(a) }}</span>
-        </i18next>
-      </div>
-    </div>
-
-    <div
-      v-else
-      class="single gallery"
-    >
-      <div
-        v-for="(a) in files"
-        :key="a.attachmentID"
-        class="my-2"
+        :class="{ 'h-100': attachments.length === 1, 'w-100': !canPreview(a) }"
+        class="item mb-2"
       >
         <c-preview-inline
           v-if="canPreview(a)"
-          class="ml-0"
           :src="inlineUrl(a)"
           :meta="a.meta"
           :name="a.name"
           :alt="a.name"
           :preview-style="{ width: 'unset', ...inlineCustomStyles(a) }"
+          :preview-class="[
+            !previewOptions.clickToView ? 'disable-zoom-cursor' : '',
+
+          ]"
           :labels="previewLabels"
+          class="mb-1"
           @openPreview="openLightbox({ ...a, ...$event })"
         />
 
-        <div v-else>
-          <font-awesome-icon
-            :icon="['far', 'file-'+ext(a)]"
-            title="Open bookmarks"
-          />
-        </div>
-
         <div
           v-if="!hideFileName"
-          class="m-1"
+          class="d-flex align-items-start justify-content-between"
+          :class="{ 'w-100': canPreview(a) }"
         >
-          <attachment-link
-            :attachment="a"
-          />
+          <div
+            :class="{ 'text-center': canPreview(a) }"
+            class="text-wrap"
+          >
+            <attachment-link
+              :attachment="a"
+            />
+          </div>
+
+          <b-button
+            v-if="a.download"
+            :href="a.download"
+            variant="outline-light"
+            class="border-0 text-primary px-2"
+          >
+            <font-awesome-icon :icon="['fas', 'download']" />
+          </b-button>
         </div>
       </div>
     </div>
@@ -205,7 +194,7 @@ export default {
 
   computed: {
     inlineUrl () {
-      return (a) => (this.ext(a) === 'pdf' ? a.download : a.previewUrl)
+      return (a) => (this.ext(a) === 'pdf' ? a.download : a.url)
     },
 
     previewLabels () {
@@ -228,14 +217,6 @@ export default {
 
     baseURL () {
       return url.Make({ url: window.CortezaAPI + '/compose' })
-    },
-
-    files () {
-      if (this.mode === 'single') {
-        return this.attachments.slice(this.attachments.length - 1)
-      } else {
-        return this.attachments
-      }
     },
   },
 
@@ -266,15 +247,28 @@ export default {
         }))
           .then(() => {
           // Filter out invalid/missing attachments
+            const { clickToView = true, enableDownload = true } = this.previewOptions
+
             this.attachments = att
               .filter(a => !!a)
               .filter(a => typeof a === 'object')
+              .map(a => {
+                return {
+                  ...a,
+                  download: enableDownload ? a.download : undefined,
+                  clickToView,
+                }
+              })
           })
           .finally(() => {
             this.processing = false
           })
       },
     },
+  },
+
+  beforeDestroy () {
+    this.setDefaultValues()
   },
 
   methods: {
@@ -287,6 +281,8 @@ export default {
     },
 
     openLightbox (e) {
+      if (!this.previewOptions.clickToView) return
+
       this.$root.$emit('showAttachmentsModal', e)
     },
 
@@ -328,53 +324,46 @@ export default {
 
     inlineCustomStyles (a) {
       const {
-        height,
         width,
-        maxHeight,
-        maxWidth,
+        height,
         borderRadius,
         backgroundColor,
-        margin,
       } = this.previewOptions
+      let { maxWidth, maxHeight, margin } = this.previewOptions
+
+      maxWidth = maxWidth || '100%'
+      maxHeight = maxHeight || '100%'
+      margin = margin || 'auto'
 
       if (this.ext(a) === 'image') {
         return {
-          ...(height && { height: `${height}px` }),
-          ...(width && { width: `${width}px` }),
-          ...(maxHeight && { maxHeight: `${maxHeight}px` }),
-          ...(maxWidth && { maxWidth: `${maxWidth}px` }),
-          ...(borderRadius && { borderRadius: `${borderRadius}px` }),
-          ...(backgroundColor && { backgroundColor: backgroundColor }),
-          ...(margin && { margin: `${margin}px` }),
-          objectFit: 'cover',
-          objectPosition: 'center',
+          height,
+          width,
+          maxHeight,
+          maxWidth,
+          borderRadius,
+          backgroundColor,
+          margin,
         }
       }
 
       return {}
     },
+
+    setDefaultValues () {
+      this.processing = false
+      this.attachments = []
+    },
   },
 }
 </script>
+
 <style lang="scss" scoped>
-
-.grid {
-  .svg-inline--fa {
-    font-size: 40px;
-  }
-}
-
-.single {
-  .svg-inline--fa {
-    font-size: 40px;
-  }
-
-  img {
-    cursor: pointer;
-  }
-}
-
 .handle {
   cursor: grab;
+}
+
+.item:hover {
+  background-color: var(--gray-200);
 }
 </style>

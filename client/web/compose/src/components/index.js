@@ -3,23 +3,21 @@ import { FontAwesomeIcon, FontAwesomeLayers } from '@fortawesome/vue-fontawesome
 import PortalVue from 'portal-vue'
 import './faIcons'
 import { components } from '@cortezaproject/corteza-vue'
-import { LMap, LTileLayer, LMarker } from 'vue2-leaflet'
-import 'leaflet/dist/leaflet.css'
-import { Icon } from 'leaflet'
 
 // import ECharts modules manually to reduce bundle size
 import ECharts from 'vue-echarts'
 import { use } from 'echarts/core'
 import {
-  SVGRenderer,
+  CanvasRenderer,
 } from 'echarts/renderers'
 import {
   LineChart,
   BarChart,
   PieChart,
   GaugeChart,
-  HeatmapChart,
+  RadarChart,
   FunnelChart,
+  ScatterChart,
 } from 'echarts/charts'
 import {
   TitleComponent,
@@ -28,6 +26,7 @@ import {
   TooltipComponent,
   VisualMapComponent,
   ToolboxComponent,
+  DataZoomComponent,
 } from 'echarts/components'
 
 use([
@@ -35,15 +34,17 @@ use([
   LineChart,
   PieChart,
   GaugeChart,
-  HeatmapChart,
+  RadarChart,
   FunnelChart,
-  SVGRenderer,
+  ScatterChart,
+  CanvasRenderer,
   TitleComponent,
   GridComponent,
   TooltipComponent,
   LegendComponent,
   VisualMapComponent,
   ToolboxComponent,
+  DataZoomComponent,
 ])
 
 Vue.component('e-charts', ECharts)
@@ -55,15 +56,8 @@ Vue.component('c-permissions-button', components.CPermissionsButton)
 Vue.component('c-input-confirm', components.CInputConfirm)
 Vue.component('c-input-processing', components.CInputProcessing)
 Vue.component('c-resource-list', components.CResourceList)
-
-// Map things
-Vue.component('l-map', LMap)
-Vue.component('l-tile-layer', LTileLayer)
-Vue.component('l-marker', LMarker)
-
-delete Icon.Default.prototype._getIconUrl
-Icon.Default.mergeOptions({
-  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
-  iconUrl: require('leaflet/dist/images/marker-icon.png'),
-  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
-})
+Vue.component('c-input-checkbox', components.CInputCheckbox)
+Vue.component('c-button-submit', components.CButtonSubmit)
+Vue.component('c-hint', components.CHint)
+Vue.component('c-input-select', components.CInputSelect)
+Vue.component('c-form-table-wrapper', components.CFormTableWrapper)

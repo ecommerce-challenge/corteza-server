@@ -61,6 +61,11 @@ import {
   faQuestion,
   faSync,
   faExclamationTriangle,
+  faExclamationCircle,
+  faEllipsisV,
+  faLocationArrow,
+  faTools,
+  faTable,
 } from '@fortawesome/free-solid-svg-icons'
 
 import {
@@ -170,4 +175,9 @@ library.add(
   faQuestion,
   faExclamationTriangle,
   faSync,
+  faEllipsisV,
+  faLocationArrow,
+  faTools,
+  faExclamationCircle,
+  faTable,
 )

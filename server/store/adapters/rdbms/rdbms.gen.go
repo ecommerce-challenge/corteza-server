@@ -14,9 +14,9 @@ import (
 
 	automationType "github.com/cortezaproject/corteza/server/automation/types"
 	composeType "github.com/cortezaproject/corteza/server/compose/types"
+	discoveryType "github.com/cortezaproject/corteza/server/discovery/types"
 	federationType "github.com/cortezaproject/corteza/server/federation/types"
 	actionlogType "github.com/cortezaproject/corteza/server/pkg/actionlog"
-	discoveryType "github.com/cortezaproject/corteza/server/pkg/discovery/types"
 	"github.com/cortezaproject/corteza/server/pkg/errors"
 	"github.com/cortezaproject/corteza/server/pkg/filter"
 	flagType "github.com/cortezaproject/corteza/server/pkg/flag/types"
@@ -48,8 +48,10 @@ var (
 	_ store.ComposeModuleFields        = &Store{}
 	_ store.ComposeNamespaces          = &Store{}
 	_ store.ComposePages               = &Store{}
+	_ store.ComposePageLayouts         = &Store{}
 	_ store.Credentials                = &Store{}
 	_ store.DalConnections             = &Store{}
+	_ store.DalSchemaAlterations       = &Store{}
 	_ store.DalSensitivityLevels       = &Store{}
 	_ store.DataPrivacyRequests        = &Store{}
 	_ store.DataPrivacyRequestComments = &Store{}
@@ -578,13 +580,13 @@ func (s *Store) SearchApigwFilters(ctx context.Context, f systemType.ApigwFilter
 // fetchFullPageOfApigwFilters collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfApigwFilters(
@@ -1176,13 +1178,13 @@ func (s *Store) SearchApigwRoutes(ctx context.Context, f systemType.ApigwRouteFi
 // fetchFullPageOfApigwRoutes collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfApigwRoutes(
@@ -1778,13 +1780,13 @@ func (s *Store) SearchApplications(ctx context.Context, f systemType.Application
 // fetchFullPageOfApplications collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfApplications(
@@ -2335,13 +2337,13 @@ func (s *Store) SearchAttachments(ctx context.Context, f systemType.AttachmentFi
 // fetchFullPageOfAttachments collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfAttachments(
@@ -2887,13 +2889,13 @@ func (s *Store) SearchAuthClients(ctx context.Context, f systemType.AuthClientFi
 // fetchFullPageOfAuthClients collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfAuthClients(
@@ -4626,13 +4628,13 @@ func (s *Store) SearchAutomationSessions(ctx context.Context, f automationType.S
 // fetchFullPageOfAutomationSessions collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfAutomationSessions(
@@ -5193,13 +5195,13 @@ func (s *Store) SearchAutomationTriggers(ctx context.Context, f automationType.T
 // fetchFullPageOfAutomationTriggers collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfAutomationTriggers(
@@ -5756,13 +5758,13 @@ func (s *Store) SearchAutomationWorkflows(ctx context.Context, f automationType.
 // fetchFullPageOfAutomationWorkflows collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfAutomationWorkflows(
@@ -6381,13 +6383,13 @@ func (s *Store) SearchComposeAttachments(ctx context.Context, f composeType.Atta
 // fetchFullPageOfComposeAttachments collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfComposeAttachments(
@@ -6937,13 +6939,13 @@ func (s *Store) SearchComposeCharts(ctx context.Context, f composeType.ChartFilt
 // fetchFullPageOfComposeCharts collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfComposeCharts(
@@ -7534,13 +7536,13 @@ func (s *Store) SearchComposeModules(ctx context.Context, f composeType.ModuleFi
 // fetchFullPageOfComposeModules collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfComposeModules(
@@ -8620,13 +8622,13 @@ func (s *Store) SearchComposeNamespaces(ctx context.Context, f composeType.Names
 // fetchFullPageOfComposeNamespaces collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfComposeNamespaces(
@@ -9242,13 +9244,13 @@ func (s *Store) SearchComposePages(ctx context.Context, f composeType.PageFilter
 // fetchFullPageOfComposePages collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfComposePages(
@@ -9713,6 +9715,654 @@ func (s *Store) collectComposePageCursorValues(res *composeType.Page, cc ...*fil
 //
 // This function is auto-generated
 func (s *Store) checkComposePageConstraints(ctx context.Context, res *composeType.Page) (err error) {
+	return nil
+}
+
+// CreateComposePageLayout creates one or more rows in composePageLayout collection
+//
+// This function is auto-generated
+func (s *Store) CreateComposePageLayout(ctx context.Context, rr ...*composeType.PageLayout) (err error) {
+	for i := range rr {
+		if err = s.checkComposePageLayoutConstraints(ctx, rr[i]); err != nil {
+			return
+		}
+
+		if err = s.Exec(ctx, composePageLayoutInsertQuery(s.Dialect.GOQU(), rr[i])); err != nil {
+			return
+		}
+	}
+
+	return
+}
+
+// UpdateComposePageLayout updates one or more existing entries in composePageLayout collection
+//
+// This function is auto-generated
+func (s *Store) UpdateComposePageLayout(ctx context.Context, rr ...*composeType.PageLayout) (err error) {
+	for i := range rr {
+		if err = s.checkComposePageLayoutConstraints(ctx, rr[i]); err != nil {
+			return
+		}
+
+		if err = s.Exec(ctx, composePageLayoutUpdateQuery(s.Dialect.GOQU(), rr[i])); err != nil {
+			return
+		}
+	}
+
+	return
+}
+
+// UpsertComposePageLayout updates one or more existing entries in composePageLayout collection
+//
+// This function is auto-generated
+func (s *Store) UpsertComposePageLayout(ctx context.Context, rr ...*composeType.PageLayout) (err error) {
+	for i := range rr {
+		if err = s.checkComposePageLayoutConstraints(ctx, rr[i]); err != nil {
+			return
+		}
+
+		// @todo this solution is ok for now but could be problematic when we start
+		// batching together DB operations.
+		if s.Dialect.Nuances().TwoStepUpsert {
+			var rsp sql.Result
+			rsp, err = s.ExecR(ctx, composePageLayoutUpdateQuery(s.Dialect.GOQU(), rr[i]))
+			if err != nil {
+				return
+			}
+			if c, err := rsp.RowsAffected(); err != nil {
+				return err
+			} else if c > 0 {
+				continue
+			}
+
+			err = s.Exec(ctx, composePageLayoutInsertQuery(s.Dialect.GOQU(), rr[i]))
+			if err != nil {
+				return
+			}
+		} else {
+			err = s.Exec(ctx, composePageLayoutUpsertQuery(s.Dialect.GOQU(), rr[i]))
+			if err != nil {
+				return
+			}
+		}
+	}
+
+	return
+}
+
+// DeleteComposePageLayout Deletes one or more entries from composePageLayout collection
+//
+// This function is auto-generated
+func (s *Store) DeleteComposePageLayout(ctx context.Context, rr ...*composeType.PageLayout) (err error) {
+	for i := range rr {
+		if err = s.Exec(ctx, composePageLayoutDeleteQuery(s.Dialect.GOQU(), composePageLayoutPrimaryKeys(rr[i]))); err != nil {
+			return
+		}
+	}
+
+	return nil
+}
+
+// DeleteComposePageLayoutByID deletes single entry from composePageLayout collection
+//
+// This function is auto-generated
+func (s *Store) DeleteComposePageLayoutByID(ctx context.Context, id uint64) error {
+	return s.Exec(ctx, composePageLayoutDeleteQuery(s.Dialect.GOQU(), goqu.Ex{
+		"id": id,
+	}))
+}
+
+// TruncateComposePageLayouts Deletes all rows from the composePageLayout collection
+func (s *Store) TruncateComposePageLayouts(ctx context.Context) error {
+	return s.Exec(ctx, composePageLayoutTruncateQuery(s.Dialect.GOQU()))
+}
+
+// SearchComposePageLayouts returns (filtered) set of ComposePageLayouts
+//
+// This function is auto-generated
+func (s *Store) SearchComposePageLayouts(ctx context.Context, f composeType.PageLayoutFilter) (set composeType.PageLayoutSet, _ composeType.PageLayoutFilter, err error) {
+
+	// Cleanup unwanted cursor values (only relevant is f.PageCursor, next&prev are reset and returned)
+	f.PrevPage, f.NextPage = nil, nil
+
+	if f.PageCursor != nil {
+		if f.IncPageNavigation || f.IncTotal {
+			return nil, f, fmt.Errorf("not allowed to fetch page navigation or total item count with page cursor")
+		}
+
+		// Page cursor exists; we need to validate it against used sort
+		// To cover the case when paging cursor is set but sorting is empty, we collect the sorting instructions
+		// from the cursor.
+		// This (extracted sorting info) is then returned as part of response
+		if f.Sort, err = f.PageCursor.Sort(f.Sort); err != nil {
+			return
+		}
+	}
+
+	// Make sure results are always sorted at least by primary keys
+	if f.Sort.Get("id") == nil {
+		f.Sort = append(f.Sort, &filter.SortExpr{
+			Column:     "id",
+			Descending: f.Sort.LastDescending(),
+		})
+	}
+
+	// Cloned sorting instructions for the actual sorting
+	// Original are passed to the etchFullPageOfComposePageLayouts fn used for cursor creation;
+	// direction information it MUST keep the initial
+	sort := f.Sort.Clone()
+
+	// When cursor for a previous page is used it's marked as reversed
+	// This tells us to flip the descending flag on all used sort keys
+	if f.PageCursor != nil && f.PageCursor.ROrder {
+		sort.Reverse()
+	}
+
+	set, f.PrevPage, f.NextPage, err = s.fetchFullPageOfComposePageLayouts(ctx, f, sort)
+
+	f.PageCursor = nil
+	if err != nil {
+		return nil, f, err
+	}
+
+	if f.IncTotal {
+		// Calc total from the number of items fetched
+		// even if we do build the page navigation
+		f.Total = uint(len(set))
+
+		if f.Limit > 0 && uint(len(set)) == f.Limit {
+			// there are fewer items fetched then requested limit
+			limit := f.Limit
+			f.Limit = 0
+			var navSet composeType.PageLayoutSet
+			if navSet, _, _, err = s.fetchFullPageOfComposePageLayouts(ctx, f, sort); err != nil {
+				return
+			} else {
+				f.Total = uint(len(navSet))
+				f.Limit = limit
+			}
+		}
+	}
+
+	return set, f, nil
+}
+
+// fetchFullPageOfComposePageLayouts collects all requested results.
+//
+// Function applies:
+//   - cursor conditions (where ...)
+//   - limit
+//
+// Main responsibility of this function is to perform additional sequential queries in case when not enough results
+// are collected due to failed check on a specific row (by check fn).
+//
+// # Function then moves cursor to the last item fetched
+//
+// This function is auto-generated
+func (s *Store) fetchFullPageOfComposePageLayouts(
+	ctx context.Context,
+	filter composeType.PageLayoutFilter,
+	sort filter.SortExprSet,
+) (set []*composeType.PageLayout, prev, next *filter.PagingCursor, err error) {
+	var (
+		aux []*composeType.PageLayout
+
+		// When cursor for a previous page is used it's marked as reversed
+		// This tells us to flip the descending flag on all used sort keys
+		reversedOrder = filter.PageCursor != nil && filter.PageCursor.ROrder
+
+		// Copy no. of required items to limit
+		// Limit will change when doing subsequent queries to fill
+		// the set with all required items
+		limit = filter.Limit
+
+		reqItems = filter.Limit
+
+		// cursor to prev. page is only calculated when cursor is used
+		hasPrev = filter.PageCursor != nil
+
+		// next cursor is calculated when there are more pages to come
+		hasNext bool
+
+		tryFilter composeType.PageLayoutFilter
+	)
+
+	set = make([]*composeType.PageLayout, 0, DefaultSliceCapacity)
+
+	for try := 0; try < MaxRefetches; try++ {
+		// Copy filter & apply custom sorting that might be affected by cursor
+		tryFilter = filter
+		tryFilter.Sort = sort
+
+		if limit > 0 {
+			// fetching + 1 to peak ahead if there are more items
+			// we can fetch (next-page cursor)
+			tryFilter.Limit = limit + 1
+		}
+
+		if aux, hasNext, err = s.QueryComposePageLayouts(ctx, tryFilter); err != nil {
+			return nil, nil, nil, err
+		}
+
+		if len(aux) == 0 {
+			// nothing fetched
+			break
+		}
+
+		// append fetched items
+		set = append(set, aux...)
+
+		if reqItems == 0 || !hasNext {
+			// no max requested items specified, break out
+			break
+		}
+
+		collected := uint(len(set))
+
+		if reqItems > collected {
+			// not enough items fetched, try again with adjusted limit
+			limit = reqItems - collected
+
+			if limit < MinEnsureFetchLimit {
+				// In case limit is set very low and we've missed records in the first fetch,
+				// make sure next fetch limit is a bit higher
+				limit = MinEnsureFetchLimit
+			}
+
+			// Update cursor so that it points to the last item fetched
+			tryFilter.PageCursor = s.collectComposePageLayoutCursorValues(set[collected-1], filter.Sort...)
+
+			// Copy reverse flag from sorting
+			tryFilter.PageCursor.LThen = filter.Sort.Reversed()
+			continue
+		}
+
+		if reqItems < collected {
+			set = set[:reqItems]
+		}
+
+		break
+	}
+
+	collected := len(set)
+
+	if collected == 0 {
+		return nil, nil, nil, nil
+	}
+
+	if reversedOrder {
+		// Fetched set needs to be reversed because we've forced a descending order to get the previous page
+		for i, j := 0, collected-1; i < j; i, j = i+1, j-1 {
+			set[i], set[j] = set[j], set[i]
+		}
+
+		// when in reverse-order rules on what cursor to return change
+		hasPrev, hasNext = hasNext, hasPrev
+	}
+
+	if hasPrev {
+		prev = s.collectComposePageLayoutCursorValues(set[0], filter.Sort...)
+		prev.ROrder = true
+		prev.LThen = !filter.Sort.Reversed()
+	}
+
+	if hasNext {
+		next = s.collectComposePageLayoutCursorValues(set[collected-1], filter.Sort...)
+		next.LThen = filter.Sort.Reversed()
+	}
+
+	return set, prev, next, nil
+}
+
+// QueryComposePageLayouts queries the database, converts and checks each row and returns collected set
+//
+// With generics, we can remove this per-resource-generated function
+// and replace it with a single utility fetcher
+//
+// This function is auto-generated
+func (s *Store) QueryComposePageLayouts(
+	ctx context.Context,
+	f composeType.PageLayoutFilter,
+) (_ []*composeType.PageLayout, more bool, err error) {
+	var (
+		ok bool
+
+		set         = make([]*composeType.PageLayout, 0, DefaultSliceCapacity)
+		res         *composeType.PageLayout
+		aux         *auxComposePageLayout
+		rows        *sql.Rows
+		count       uint
+		expr, tExpr []goqu.Expression
+
+		sortExpr []exp.OrderedExpression
+	)
+
+	if s.Filters.ComposePageLayout != nil {
+		// extended filter set
+		tExpr, f, err = s.Filters.ComposePageLayout(s, f)
+	} else {
+		// using generated filter
+		tExpr, f, err = ComposePageLayoutFilter(s.Dialect, f)
+	}
+
+	if err != nil {
+		err = fmt.Errorf("could generate filter expression for ComposePageLayout: %w", err)
+		return
+	}
+
+	expr = append(expr, tExpr...)
+
+	// paging feature is enabled
+	if f.PageCursor != nil {
+		if tExpr, err = cursorWithSorting(f.PageCursor, s.sortableComposePageLayoutFields()); err != nil {
+			return
+		} else {
+			expr = append(expr, tExpr...)
+		}
+	}
+
+	query := composePageLayoutSelectQuery(s.Dialect.GOQU()).Where(expr...)
+
+	// sorting feature is enabled
+	if sortExpr, err = order(f.Sort, s.sortableComposePageLayoutFields()); err != nil {
+		err = fmt.Errorf("could generate order expression for ComposePageLayout: %w", err)
+		return
+	}
+
+	if len(sortExpr) > 0 {
+		query = query.Order(sortExpr...)
+	}
+
+	if f.Limit > 0 {
+		query = query.Limit(f.Limit)
+	}
+
+	rows, err = s.Query(ctx, query)
+	if err != nil {
+		err = fmt.Errorf("could not query ComposePageLayout: %w", err)
+		return
+	}
+
+	if err = rows.Err(); err != nil {
+		err = fmt.Errorf("could not query ComposePageLayout: %w", err)
+		return
+	}
+
+	defer func() {
+		closeError := rows.Close()
+		if err == nil {
+			// return error from close
+			err = closeError
+		}
+	}()
+
+	for rows.Next() {
+		if err = rows.Err(); err != nil {
+			err = fmt.Errorf("could not query ComposePageLayout: %w", err)
+			return
+		}
+
+		aux = new(auxComposePageLayout)
+		if err = aux.scan(rows); err != nil {
+			err = fmt.Errorf("could not scan rows for ComposePageLayout: %w", err)
+			return
+		}
+
+		count++
+		if res, err = aux.decode(); err != nil {
+			err = fmt.Errorf("could not decode ComposePageLayout: %w", err)
+			return
+		}
+
+		// check fn set, call it and see if it passed the test
+		// if not, skip the item
+		if f.Check != nil {
+			if ok, err = f.Check(res); err != nil {
+				return
+			} else if !ok {
+				continue
+			}
+		}
+
+		set = append(set, res)
+	}
+
+	return set, f.Limit > 0 && count >= f.Limit, err
+
+}
+
+// LookupComposePageLayoutByNamespaceIDHandle searches for page layour by handle (case-insensitive)
+//
+// This function is auto-generated
+func (s *Store) LookupComposePageLayoutByNamespaceIDHandle(ctx context.Context, namespaceID uint64, handle string) (_ *composeType.PageLayout, err error) {
+	var (
+		rows   *sql.Rows
+		aux    = new(auxComposePageLayout)
+		lookup = composePageLayoutSelectQuery(s.Dialect.GOQU()).Where(
+			goqu.I("rel_namespace").Eq(namespaceID),
+			s.Functions.LOWER(goqu.I("handle")).Eq(strings.ToLower(handle)),
+			stateNilComparison(s.Dialect, "deleted_at", filter.StateExcluded),
+		).Limit(1)
+	)
+
+	rows, err = s.Query(ctx, lookup)
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		closeError := rows.Close()
+		if err == nil {
+			// return error from close
+			err = closeError
+		}
+	}()
+
+	if err = rows.Err(); err != nil {
+		return
+	}
+
+	if !rows.Next() {
+		return nil, store.ErrNotFound.Stack(1)
+	}
+
+	if err = aux.scan(rows); err != nil {
+		return
+	}
+
+	return aux.decode()
+}
+
+// LookupComposePageLayoutByNamespaceIDPageIDHandle searches for page layour by handle (case-insensitive)
+//
+// This function is auto-generated
+func (s *Store) LookupComposePageLayoutByNamespaceIDPageIDHandle(ctx context.Context, namespaceID uint64, pageID uint64, handle string) (_ *composeType.PageLayout, err error) {
+	var (
+		rows   *sql.Rows
+		aux    = new(auxComposePageLayout)
+		lookup = composePageLayoutSelectQuery(s.Dialect.GOQU()).Where(
+			goqu.I("rel_namespace").Eq(namespaceID),
+			goqu.I("page_id").Eq(pageID),
+			s.Functions.LOWER(goqu.I("handle")).Eq(strings.ToLower(handle)),
+			stateNilComparison(s.Dialect, "deleted_at", filter.StateExcluded),
+		).Limit(1)
+	)
+
+	rows, err = s.Query(ctx, lookup)
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		closeError := rows.Close()
+		if err == nil {
+			// return error from close
+			err = closeError
+		}
+	}()
+
+	if err = rows.Err(); err != nil {
+		return
+	}
+
+	if !rows.Next() {
+		return nil, store.ErrNotFound.Stack(1)
+	}
+
+	if err = aux.scan(rows); err != nil {
+		return
+	}
+
+	return aux.decode()
+}
+
+// LookupComposePageLayoutByID searches for compose page layour by ID
+//
+// It returns compose page layour even if deleted
+//
+// This function is auto-generated
+func (s *Store) LookupComposePageLayoutByID(ctx context.Context, id uint64) (_ *composeType.PageLayout, err error) {
+	var (
+		rows   *sql.Rows
+		aux    = new(auxComposePageLayout)
+		lookup = composePageLayoutSelectQuery(s.Dialect.GOQU()).Where(
+			goqu.I("id").Eq(id),
+		).Limit(1)
+	)
+
+	rows, err = s.Query(ctx, lookup)
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		closeError := rows.Close()
+		if err == nil {
+			// return error from close
+			err = closeError
+		}
+	}()
+
+	if err = rows.Err(); err != nil {
+		return
+	}
+
+	if !rows.Next() {
+		return nil, store.ErrNotFound.Stack(1)
+	}
+
+	if err = aux.scan(rows); err != nil {
+		return
+	}
+
+	return aux.decode()
+}
+
+// sortableComposePageLayoutFields returns all <no value> columns flagged as sortable
+//
+// # Notes
+// With optional string arg, all columns are returned aliased
+//
+// This function is auto-generated
+func (Store) sortableComposePageLayoutFields() map[string]string {
+	return map[string]string{
+		"created_at": "created_at",
+		"createdat":  "created_at",
+		"deleted_at": "deleted_at",
+		"deletedat":  "deleted_at",
+		"handle":     "handle",
+		"id":         "id",
+		"page_id":    "page_id",
+		"pageid":     "page_id",
+		"parent_id":  "parent_id",
+		"parentid":   "parent_id",
+		"updated_at": "updated_at",
+		"updatedat":  "updated_at",
+		"weight":     "weight",
+	}
+}
+
+// collectComposePageLayoutCursorValues collects values from the given resource that and sets them to the cursor
+// to be used for pagination
+//
+// Values that are collected must come from sortable, unique or primary columns/fields
+// At least one of the collected columns must be flagged as unique, otherwise fn appends primary keys at the end
+//
+// # Known issues:
+//
+// When collecting cursor values for query that sorts by unique column with partial index (ie: unique handle on
+// undeleted items)
+//
+// This function is auto-generated
+func (s *Store) collectComposePageLayoutCursorValues(res *composeType.PageLayout, cc ...*filter.SortExpr) *filter.PagingCursor {
+	var (
+		cur = &filter.PagingCursor{LThen: filter.SortExprSet(cc).Reversed()}
+
+		hasUnique bool
+
+		pkID bool
+
+		collect = func(cc ...*filter.SortExpr) {
+			getVal := func(col string) interface{} {
+				switch col {
+				case "id":
+					pkID = true
+					return res.ID
+				case "handle":
+					hasUnique = true
+					return res.Handle
+				case "pageID":
+					return res.PageID
+				case "parentID":
+					return res.ParentID
+				case "weight":
+					return res.Weight
+				case "createdAt":
+					return res.CreatedAt
+				case "updatedAt":
+					return res.UpdatedAt
+				case "deletedAt":
+					return res.DeletedAt
+				}
+				return nil
+			}
+
+			for _, c := range cc {
+				switch c.Modifier() {
+				case filter.COALESCE:
+					var val interface{}
+					for _, col := range c.Columns() {
+						if reflect2.IsNil(val) {
+							val = getVal(col)
+						}
+					}
+					cur.SetModifier(c.Column, val, c.Descending, c.Modifier(), c.Columns()...)
+				default:
+					cur.Set(c.Column, getVal(c.Column), c.Descending)
+				}
+			}
+		}
+	)
+
+	_ = hasUnique
+
+	collect(cc...)
+	if !hasUnique || !pkID {
+		collect(&filter.SortExpr{Column: "id", Descending: false})
+	}
+
+	return cur
+
+}
+
+// checkComposePageLayoutConstraints performs lookups (on valid) resource to check if any of the values on unique fields
+// already exists in the store
+//
+// Using built-in constraint checking would be more performant, but unfortunately we cannot rely
+// on the full support (MySQL does not support conditional indexes)
+//
+// This function is auto-generated
+func (s *Store) checkComposePageLayoutConstraints(ctx context.Context, res *composeType.PageLayout) (err error) {
 	return nil
 }
 
@@ -10227,13 +10877,13 @@ func (s *Store) SearchDalConnections(ctx context.Context, f systemType.DalConnec
 // fetchFullPageOfDalConnections collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfDalConnections(
@@ -10680,6 +11330,549 @@ func (s *Store) checkDalConnectionConstraints(ctx context.Context, res *systemTy
 	return nil
 }
 
+// CreateDalSchemaAlteration creates one or more rows in dalSchemaAlteration collection
+//
+// This function is auto-generated
+func (s *Store) CreateDalSchemaAlteration(ctx context.Context, rr ...*systemType.DalSchemaAlteration) (err error) {
+	for i := range rr {
+		if err = s.checkDalSchemaAlterationConstraints(ctx, rr[i]); err != nil {
+			return
+		}
+
+		if err = s.Exec(ctx, dalSchemaAlterationInsertQuery(s.Dialect.GOQU(), rr[i])); err != nil {
+			return
+		}
+	}
+
+	return
+}
+
+// UpdateDalSchemaAlteration updates one or more existing entries in dalSchemaAlteration collection
+//
+// This function is auto-generated
+func (s *Store) UpdateDalSchemaAlteration(ctx context.Context, rr ...*systemType.DalSchemaAlteration) (err error) {
+	for i := range rr {
+		if err = s.checkDalSchemaAlterationConstraints(ctx, rr[i]); err != nil {
+			return
+		}
+
+		if err = s.Exec(ctx, dalSchemaAlterationUpdateQuery(s.Dialect.GOQU(), rr[i])); err != nil {
+			return
+		}
+	}
+
+	return
+}
+
+// UpsertDalSchemaAlteration updates one or more existing entries in dalSchemaAlteration collection
+//
+// This function is auto-generated
+func (s *Store) UpsertDalSchemaAlteration(ctx context.Context, rr ...*systemType.DalSchemaAlteration) (err error) {
+	for i := range rr {
+		if err = s.checkDalSchemaAlterationConstraints(ctx, rr[i]); err != nil {
+			return
+		}
+
+		// @todo this solution is ok for now but could be problematic when we start
+		// batching together DB operations.
+		if s.Dialect.Nuances().TwoStepUpsert {
+			var rsp sql.Result
+			rsp, err = s.ExecR(ctx, dalSchemaAlterationUpdateQuery(s.Dialect.GOQU(), rr[i]))
+			if err != nil {
+				return
+			}
+			if c, err := rsp.RowsAffected(); err != nil {
+				return err
+			} else if c > 0 {
+				continue
+			}
+
+			err = s.Exec(ctx, dalSchemaAlterationInsertQuery(s.Dialect.GOQU(), rr[i]))
+			if err != nil {
+				return
+			}
+		} else {
+			err = s.Exec(ctx, dalSchemaAlterationUpsertQuery(s.Dialect.GOQU(), rr[i]))
+			if err != nil {
+				return
+			}
+		}
+	}
+
+	return
+}
+
+// DeleteDalSchemaAlteration Deletes one or more entries from dalSchemaAlteration collection
+//
+// This function is auto-generated
+func (s *Store) DeleteDalSchemaAlteration(ctx context.Context, rr ...*systemType.DalSchemaAlteration) (err error) {
+	for i := range rr {
+		if err = s.Exec(ctx, dalSchemaAlterationDeleteQuery(s.Dialect.GOQU(), dalSchemaAlterationPrimaryKeys(rr[i]))); err != nil {
+			return
+		}
+	}
+
+	return nil
+}
+
+// DeleteDalSchemaAlterationByID deletes single entry from dalSchemaAlteration collection
+//
+// This function is auto-generated
+func (s *Store) DeleteDalSchemaAlterationByID(ctx context.Context, id uint64) error {
+	return s.Exec(ctx, dalSchemaAlterationDeleteQuery(s.Dialect.GOQU(), goqu.Ex{
+		"id": id,
+	}))
+}
+
+// TruncateDalSchemaAlterations Deletes all rows from the dalSchemaAlteration collection
+func (s *Store) TruncateDalSchemaAlterations(ctx context.Context) error {
+	return s.Exec(ctx, dalSchemaAlterationTruncateQuery(s.Dialect.GOQU()))
+}
+
+// SearchDalSchemaAlterations returns (filtered) set of DalSchemaAlterations
+//
+// This function is auto-generated
+func (s *Store) SearchDalSchemaAlterations(ctx context.Context, f systemType.DalSchemaAlterationFilter) (set systemType.DalSchemaAlterationSet, _ systemType.DalSchemaAlterationFilter, err error) {
+
+	// Cleanup unwanted cursor values (only relevant is f.PageCursor, next&prev are reset and returned)
+	f.PrevPage, f.NextPage = nil, nil
+
+	if f.PageCursor != nil {
+		if f.IncPageNavigation || f.IncTotal {
+			return nil, f, fmt.Errorf("not allowed to fetch page navigation or total item count with page cursor")
+		}
+
+		// Page cursor exists; we need to validate it against used sort
+		// To cover the case when paging cursor is set but sorting is empty, we collect the sorting instructions
+		// from the cursor.
+		// This (extracted sorting info) is then returned as part of response
+		if f.Sort, err = f.PageCursor.Sort(f.Sort); err != nil {
+			return
+		}
+	}
+
+	// Make sure results are always sorted at least by primary keys
+	if f.Sort.Get("id") == nil {
+		f.Sort = append(f.Sort, &filter.SortExpr{
+			Column:     "id",
+			Descending: f.Sort.LastDescending(),
+		})
+	}
+
+	// Cloned sorting instructions for the actual sorting
+	// Original are passed to the etchFullPageOfDalSchemaAlterations fn used for cursor creation;
+	// direction information it MUST keep the initial
+	sort := f.Sort.Clone()
+
+	// When cursor for a previous page is used it's marked as reversed
+	// This tells us to flip the descending flag on all used sort keys
+	if f.PageCursor != nil && f.PageCursor.ROrder {
+		sort.Reverse()
+	}
+
+	set, f.PrevPage, f.NextPage, err = s.fetchFullPageOfDalSchemaAlterations(ctx, f, sort)
+
+	f.PageCursor = nil
+	if err != nil {
+		return nil, f, err
+	}
+
+	if f.IncTotal {
+		// Calc total from the number of items fetched
+		// even if we do build the page navigation
+		f.Total = uint(len(set))
+
+		if f.Limit > 0 && uint(len(set)) == f.Limit {
+			// there are fewer items fetched then requested limit
+			limit := f.Limit
+			f.Limit = 0
+			var navSet systemType.DalSchemaAlterationSet
+			if navSet, _, _, err = s.fetchFullPageOfDalSchemaAlterations(ctx, f, sort); err != nil {
+				return
+			} else {
+				f.Total = uint(len(navSet))
+				f.Limit = limit
+			}
+		}
+	}
+
+	return set, f, nil
+}
+
+// fetchFullPageOfDalSchemaAlterations collects all requested results.
+//
+// Function applies:
+//   - cursor conditions (where ...)
+//   - limit
+//
+// Main responsibility of this function is to perform additional sequential queries in case when not enough results
+// are collected due to failed check on a specific row (by check fn).
+//
+// # Function then moves cursor to the last item fetched
+//
+// This function is auto-generated
+func (s *Store) fetchFullPageOfDalSchemaAlterations(
+	ctx context.Context,
+	filter systemType.DalSchemaAlterationFilter,
+	sort filter.SortExprSet,
+) (set []*systemType.DalSchemaAlteration, prev, next *filter.PagingCursor, err error) {
+	var (
+		aux []*systemType.DalSchemaAlteration
+
+		// When cursor for a previous page is used it's marked as reversed
+		// This tells us to flip the descending flag on all used sort keys
+		reversedOrder = filter.PageCursor != nil && filter.PageCursor.ROrder
+
+		// Copy no. of required items to limit
+		// Limit will change when doing subsequent queries to fill
+		// the set with all required items
+		limit = filter.Limit
+
+		reqItems = filter.Limit
+
+		// cursor to prev. page is only calculated when cursor is used
+		hasPrev = filter.PageCursor != nil
+
+		// next cursor is calculated when there are more pages to come
+		hasNext bool
+
+		tryFilter systemType.DalSchemaAlterationFilter
+	)
+
+	set = make([]*systemType.DalSchemaAlteration, 0, DefaultSliceCapacity)
+
+	for try := 0; try < MaxRefetches; try++ {
+		// Copy filter & apply custom sorting that might be affected by cursor
+		tryFilter = filter
+		tryFilter.Sort = sort
+
+		if limit > 0 {
+			// fetching + 1 to peak ahead if there are more items
+			// we can fetch (next-page cursor)
+			tryFilter.Limit = limit + 1
+		}
+
+		if aux, hasNext, err = s.QueryDalSchemaAlterations(ctx, tryFilter); err != nil {
+			return nil, nil, nil, err
+		}
+
+		if len(aux) == 0 {
+			// nothing fetched
+			break
+		}
+
+		// append fetched items
+		set = append(set, aux...)
+
+		if reqItems == 0 || !hasNext {
+			// no max requested items specified, break out
+			break
+		}
+
+		collected := uint(len(set))
+
+		if reqItems > collected {
+			// not enough items fetched, try again with adjusted limit
+			limit = reqItems - collected
+
+			if limit < MinEnsureFetchLimit {
+				// In case limit is set very low and we've missed records in the first fetch,
+				// make sure next fetch limit is a bit higher
+				limit = MinEnsureFetchLimit
+			}
+
+			// Update cursor so that it points to the last item fetched
+			tryFilter.PageCursor = s.collectDalSchemaAlterationCursorValues(set[collected-1], filter.Sort...)
+
+			// Copy reverse flag from sorting
+			tryFilter.PageCursor.LThen = filter.Sort.Reversed()
+			continue
+		}
+
+		if reqItems < collected {
+			set = set[:reqItems]
+		}
+
+		break
+	}
+
+	collected := len(set)
+
+	if collected == 0 {
+		return nil, nil, nil, nil
+	}
+
+	if reversedOrder {
+		// Fetched set needs to be reversed because we've forced a descending order to get the previous page
+		for i, j := 0, collected-1; i < j; i, j = i+1, j-1 {
+			set[i], set[j] = set[j], set[i]
+		}
+
+		// when in reverse-order rules on what cursor to return change
+		hasPrev, hasNext = hasNext, hasPrev
+	}
+
+	if hasPrev {
+		prev = s.collectDalSchemaAlterationCursorValues(set[0], filter.Sort...)
+		prev.ROrder = true
+		prev.LThen = !filter.Sort.Reversed()
+	}
+
+	if hasNext {
+		next = s.collectDalSchemaAlterationCursorValues(set[collected-1], filter.Sort...)
+		next.LThen = filter.Sort.Reversed()
+	}
+
+	return set, prev, next, nil
+}
+
+// QueryDalSchemaAlterations queries the database, converts and checks each row and returns collected set
+//
+// With generics, we can remove this per-resource-generated function
+// and replace it with a single utility fetcher
+//
+// This function is auto-generated
+func (s *Store) QueryDalSchemaAlterations(
+	ctx context.Context,
+	f systemType.DalSchemaAlterationFilter,
+) (_ []*systemType.DalSchemaAlteration, more bool, err error) {
+	var (
+		set         = make([]*systemType.DalSchemaAlteration, 0, DefaultSliceCapacity)
+		res         *systemType.DalSchemaAlteration
+		aux         *auxDalSchemaAlteration
+		rows        *sql.Rows
+		count       uint
+		expr, tExpr []goqu.Expression
+
+		sortExpr []exp.OrderedExpression
+	)
+
+	if s.Filters.DalSchemaAlteration != nil {
+		// extended filter set
+		tExpr, f, err = s.Filters.DalSchemaAlteration(s, f)
+	} else {
+		// using generated filter
+		tExpr, f, err = DalSchemaAlterationFilter(s.Dialect, f)
+	}
+
+	if err != nil {
+		err = fmt.Errorf("could generate filter expression for DalSchemaAlteration: %w", err)
+		return
+	}
+
+	expr = append(expr, tExpr...)
+
+	// paging feature is enabled
+	if f.PageCursor != nil {
+		if tExpr, err = cursorWithSorting(f.PageCursor, s.sortableDalSchemaAlterationFields()); err != nil {
+			return
+		} else {
+			expr = append(expr, tExpr...)
+		}
+	}
+
+	query := dalSchemaAlterationSelectQuery(s.Dialect.GOQU()).Where(expr...)
+
+	// sorting feature is enabled
+	if sortExpr, err = order(f.Sort, s.sortableDalSchemaAlterationFields()); err != nil {
+		err = fmt.Errorf("could generate order expression for DalSchemaAlteration: %w", err)
+		return
+	}
+
+	if len(sortExpr) > 0 {
+		query = query.Order(sortExpr...)
+	}
+
+	if f.Limit > 0 {
+		query = query.Limit(f.Limit)
+	}
+
+	rows, err = s.Query(ctx, query)
+	if err != nil {
+		err = fmt.Errorf("could not query DalSchemaAlteration: %w", err)
+		return
+	}
+
+	if err = rows.Err(); err != nil {
+		err = fmt.Errorf("could not query DalSchemaAlteration: %w", err)
+		return
+	}
+
+	defer func() {
+		closeError := rows.Close()
+		if err == nil {
+			// return error from close
+			err = closeError
+		}
+	}()
+
+	for rows.Next() {
+		if err = rows.Err(); err != nil {
+			err = fmt.Errorf("could not query DalSchemaAlteration: %w", err)
+			return
+		}
+
+		aux = new(auxDalSchemaAlteration)
+		if err = aux.scan(rows); err != nil {
+			err = fmt.Errorf("could not scan rows for DalSchemaAlteration: %w", err)
+			return
+		}
+
+		count++
+		if res, err = aux.decode(); err != nil {
+			err = fmt.Errorf("could not decode DalSchemaAlteration: %w", err)
+			return
+		}
+
+		set = append(set, res)
+	}
+
+	return set, f.Limit > 0 && count >= f.Limit, err
+
+}
+
+// LookupDalSchemaAlterationByID searches for resource translation by ID
+// It also returns deleted resource translations.
+//
+// This function is auto-generated
+func (s *Store) LookupDalSchemaAlterationByID(ctx context.Context, id uint64) (_ *systemType.DalSchemaAlteration, err error) {
+	var (
+		rows   *sql.Rows
+		aux    = new(auxDalSchemaAlteration)
+		lookup = dalSchemaAlterationSelectQuery(s.Dialect.GOQU()).Where(
+			goqu.I("id").Eq(id),
+		).Limit(1)
+	)
+
+	rows, err = s.Query(ctx, lookup)
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		closeError := rows.Close()
+		if err == nil {
+			// return error from close
+			err = closeError
+		}
+	}()
+
+	if err = rows.Err(); err != nil {
+		return
+	}
+
+	if !rows.Next() {
+		return nil, store.ErrNotFound.Stack(1)
+	}
+
+	if err = aux.scan(rows); err != nil {
+		return
+	}
+
+	return aux.decode()
+}
+
+// sortableDalSchemaAlterationFields returns all <no value> columns flagged as sortable
+//
+// # Notes
+// With optional string arg, all columns are returned aliased
+//
+// This function is auto-generated
+func (Store) sortableDalSchemaAlterationFields() map[string]string {
+	return map[string]string{
+		"completed_at": "completed_at",
+		"completedat":  "completed_at",
+		"created_at":   "created_at",
+		"createdat":    "created_at",
+		"deleted_at":   "deleted_at",
+		"deletedat":    "deleted_at",
+		"dismissed_at": "dismissed_at",
+		"dismissedat":  "dismissed_at",
+		"id":           "id",
+		"updated_at":   "updated_at",
+		"updatedat":    "updated_at",
+	}
+}
+
+// collectDalSchemaAlterationCursorValues collects values from the given resource that and sets them to the cursor
+// to be used for pagination
+//
+// Values that are collected must come from sortable, unique or primary columns/fields
+// At least one of the collected columns must be flagged as unique, otherwise fn appends primary keys at the end
+//
+// # Known issues:
+//
+// When collecting cursor values for query that sorts by unique column with partial index (ie: unique handle on
+// undeleted items)
+//
+// This function is auto-generated
+func (s *Store) collectDalSchemaAlterationCursorValues(res *systemType.DalSchemaAlteration, cc ...*filter.SortExpr) *filter.PagingCursor {
+	var (
+		cur = &filter.PagingCursor{LThen: filter.SortExprSet(cc).Reversed()}
+
+		hasUnique bool
+
+		pkID bool
+
+		collect = func(cc ...*filter.SortExpr) {
+			getVal := func(col string) interface{} {
+				switch col {
+				case "id":
+					pkID = true
+					return res.ID
+				case "createdAt":
+					return res.CreatedAt
+				case "updatedAt":
+					return res.UpdatedAt
+				case "deletedAt":
+					return res.DeletedAt
+				case "completedAt":
+					return res.CompletedAt
+				case "dismissedAt":
+					return res.DismissedAt
+				}
+				return nil
+			}
+
+			for _, c := range cc {
+				switch c.Modifier() {
+				case filter.COALESCE:
+					var val interface{}
+					for _, col := range c.Columns() {
+						if reflect2.IsNil(val) {
+							val = getVal(col)
+						}
+					}
+					cur.SetModifier(c.Column, val, c.Descending, c.Modifier(), c.Columns()...)
+				default:
+					cur.Set(c.Column, getVal(c.Column), c.Descending)
+				}
+			}
+		}
+	)
+
+	_ = hasUnique
+
+	collect(cc...)
+	if !hasUnique || !pkID {
+		collect(&filter.SortExpr{Column: "id", Descending: false})
+	}
+
+	return cur
+
+}
+
+// checkDalSchemaAlterationConstraints performs lookups (on valid) resource to check if any of the values on unique fields
+// already exists in the store
+//
+// Using built-in constraint checking would be more performant, but unfortunately we cannot rely
+// on the full support (MySQL does not support conditional indexes)
+//
+// This function is auto-generated
+func (s *Store) checkDalSchemaAlterationConstraints(ctx context.Context, res *systemType.DalSchemaAlteration) (err error) {
+	return nil
+}
+
 // CreateDalSensitivityLevel creates one or more rows in dalSensitivityLevel collection
 //
 // This function is auto-generated
@@ -10852,13 +12045,13 @@ func (s *Store) SearchDalSensitivityLevels(ctx context.Context, f systemType.Dal
 // fetchFullPageOfDalSensitivityLevels collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfDalSensitivityLevels(
@@ -11407,13 +12600,13 @@ func (s *Store) SearchDataPrivacyRequests(ctx context.Context, f systemType.Data
 // fetchFullPageOfDataPrivacyRequests collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfDataPrivacyRequests(
@@ -11969,13 +13162,13 @@ func (s *Store) SearchDataPrivacyRequestComments(ctx context.Context, f systemTy
 // fetchFullPageOfDataPrivacyRequestComments collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfDataPrivacyRequestComments(
@@ -12475,13 +13668,13 @@ func (s *Store) SearchFederationExposedModules(ctx context.Context, f federation
 // fetchFullPageOfFederationExposedModules collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfFederationExposedModules(
@@ -13025,13 +14218,13 @@ func (s *Store) SearchFederationModuleMappings(ctx context.Context, f federation
 // fetchFullPageOfFederationModuleMappings collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfFederationModuleMappings(
@@ -13613,13 +14806,13 @@ func (s *Store) SearchFederationNodes(ctx context.Context, f federationType.Node
 // fetchFullPageOfFederationNodes collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfFederationNodes(
@@ -14259,13 +15452,13 @@ func (s *Store) SearchFederationNodeSyncs(ctx context.Context, f federationType.
 // fetchFullPageOfFederationNodeSyncs collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfFederationNodeSyncs(
@@ -14857,13 +16050,13 @@ func (s *Store) SearchFederationSharedModules(ctx context.Context, f federationT
 // fetchFullPageOfFederationSharedModules collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfFederationSharedModules(
@@ -16107,13 +17300,13 @@ func (s *Store) SearchQueues(ctx context.Context, f systemType.QueueFilter) (set
 // fetchFullPageOfQueues collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfQueues(
@@ -16699,13 +17892,13 @@ func (s *Store) SearchQueueMessages(ctx context.Context, f systemType.QueueMessa
 // fetchFullPageOfQueueMessages collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfQueueMessages(
@@ -17486,13 +18679,13 @@ func (s *Store) SearchReminders(ctx context.Context, f systemType.ReminderFilter
 // fetchFullPageOfReminders collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfReminders(
@@ -18047,13 +19240,13 @@ func (s *Store) SearchReports(ctx context.Context, f systemType.ReportFilter) (s
 // fetchFullPageOfReports collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfReports(
@@ -18949,13 +20142,13 @@ func (s *Store) SearchResourceTranslations(ctx context.Context, f systemType.Res
 // fetchFullPageOfResourceTranslations collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfResourceTranslations(
@@ -19484,13 +20677,13 @@ func (s *Store) SearchRoles(ctx context.Context, f systemType.RoleFilter) (set s
 // fetchFullPageOfRoles collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfRoles(
@@ -20803,13 +21996,13 @@ func (s *Store) SearchTemplates(ctx context.Context, f systemType.TemplateFilter
 // fetchFullPageOfTemplates collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfTemplates(
@@ -21438,13 +22631,13 @@ func (s *Store) SearchUsers(ctx context.Context, f systemType.UserFilter) (set s
 // fetchFullPageOfUsers collects all requested results.
 //
 // Function applies:
-//  - cursor conditions (where ...)
-//  - limit
+//   - cursor conditions (where ...)
+//   - limit
 //
 // Main responsibility of this function is to perform additional sequential queries in case when not enough results
 // are collected due to failed check on a specific row (by check fn).
 //
-// Function then moves cursor to the last item fetched
+// # Function then moves cursor to the last item fetched
 //
 // This function is auto-generated
 func (s *Store) fetchFullPageOfUsers(

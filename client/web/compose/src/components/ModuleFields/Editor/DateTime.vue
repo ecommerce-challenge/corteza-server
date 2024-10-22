@@ -1,31 +1,36 @@
 <template>
   <b-form-group
-    label-class="text-primary"
+    :label-cols-md="horizontal && '5'"
+    :label-cols-xl="horizontal && '4'"
+    :content-cols-md="horizontal && '7'"
+    :content-cols-xl="horizontal && '8'"
     :class="formGroupStyleClasses"
+    class="date-time-field-editor"
   >
     <template
-      v-if="!valueOnly"
       #label
     >
       <div
-        class="d-flex align-items-top"
+        v-if="!valueOnly"
+        class="d-flex align-items-center text-primary p-0"
       >
-        <label
-          class="mb-0"
+        <span
+          :title="label"
+          class="d-inline-block mw-100"
         >
           {{ label }}
-        </label>
+        </span>
 
-        <hint
-          :id="field.fieldID"
-          :text="hint"
-        />
+        <c-hint :tooltip="hint" />
+
+        <slot name="tools" />
       </div>
-      <small
-        class="form-text font-weight-light text-muted"
+      <div
+        class="small text-muted"
+        :class="{ 'mb-1': description }"
       >
         {{ description }}
-      </small>
+      </div>
     </template>
 
     <multi
@@ -86,3 +91,10 @@ export default {
   extends: base,
 }
 </script>
+
+<style>
+/* Fix for datepicker not overflowing block when in horizontal mode */
+.date-time-field-editor .form-row div {
+  position: initial;
+}
+</style>

@@ -10,6 +10,7 @@ import (
 	"github.com/cortezaproject/corteza/server/pkg/auth"
 	"github.com/cortezaproject/corteza/server/pkg/errors"
 	"github.com/cortezaproject/corteza/server/pkg/expr"
+	"github.com/cortezaproject/corteza/server/pkg/logger"
 	"github.com/cortezaproject/corteza/server/pkg/options"
 	"github.com/cortezaproject/corteza/server/pkg/sentry"
 	"github.com/cortezaproject/corteza/server/pkg/wfexec"
@@ -169,7 +170,7 @@ func (svc *session) PendingPrompts(ctx context.Context) (pp []*wfexec.PendingPro
 
 // Start new workflow session on a specific step with a given identity and scope
 //
-// Start is an asynchronous operation
+// # Start is an asynchronous operation
 //
 // Please note that context passed to the function is NOT the the one that is
 // used for the execution of the workflow. See watch function!
@@ -324,6 +325,10 @@ func (svc *session) spawn(g *wfexec.Graph, workflowID uint64, trace bool, callSt
 		ses.DisableStacktrace()
 	}
 
+	if svc.opt.StackTraceFull {
+		ses.FullStacktrace()
+	}
+
 	svc.mux.Lock()
 	svc.pool[ses.ID] = ses
 	svc.mux.Unlock()
@@ -356,9 +361,9 @@ func (svc *session) Watch(ctx context.Context) {
 				if svc.opt.ExecDebug {
 					log := svc.log.
 						Named("exec").
-						With(zap.Uint64("workflowID", s.workflowID)).
-						With(zap.Uint64("runnerID", s.runner.Identity())).
-						With(zap.Uint64s("runnerRoles", s.runner.Roles()))
+						With(logger.Uint64("workflowID", s.workflowID)).
+						With(logger.Uint64("runnerID", s.runner.Identity())).
+						With(logger.Uint64s("runnerRoles", s.runner.Roles()))
 
 					opts = append(
 						opts,
@@ -443,24 +448,22 @@ func (svc *session) logPending() {
 
 // stateChangeHandler keeps track of session status changes and frequently stores session into db
 func (svc *session) stateChangeHandler(ctx context.Context) wfexec.StateChangeHandler {
-	return func(i wfexec.SessionStatus, state *wfexec.State, s *wfexec.Session) {
+	return func(status wfexec.SessionStatus, state *wfexec.State, s *wfexec.Session) {
 		svc.mux.Lock()
 		defer svc.mux.Unlock()
 
-		log := svc.log.With(
-			zap.Uint64("sessionID", s.ID()),
-			zap.Stringer("status", i),
-		)
-
 		ses := svc.pool[s.ID()]
 		if ses == nil {
+			log := svc.log.With(
+				logger.Uint64("sessionID", s.ID()),
+				zap.Stringer("status", status),
+			)
+
 			log.Warn("could not find session to update")
 			return
 		}
 
-		log = log.With(zap.Uint64("workflowID", ses.WorkflowID))
-
-		log.Debug("state change handler")
+		ses.FlushCounter++
 
 		var (
 			// By default, we want to update session when new status is prompted, delayed, completed, canceled or failed
@@ -481,7 +484,7 @@ func (svc *session) stateChangeHandler(ctx context.Context) wfexec.StateChangeHa
 
 		ses.AppendRuntimeStacktrace(frame)
 
-		switch i {
+		switch status {
 		case wfexec.SessionPrompted:
 			ses.SuspendedAt = now()
 			ses.Status = types.SessionPrompted
@@ -528,17 +531,22 @@ func (svc *session) stateChangeHandler(ctx context.Context) wfexec.StateChangeHa
 			ses.Status = types.SessionCanceled
 
 		default:
-			// force update on every F new frames (F=sessionStateFlushFrequency) but only when stacktrace is not nil
-			update = ses.RuntimeStacktrace != nil && len(ses.RuntimeStacktrace)%sessionStateFlushFrequency == 0
+			// force update every X iterations
+			update = ses.FlushCounter >= sessionStateFlushFrequency
+			if !update {
+				return
+			}
 		}
 
-		if !update {
-			return
-		}
-
+		// Reset the counter whenever we flush due to whatever scenario
+		ses.FlushCounter = 0
 		ses.CopyRuntimeStacktrace()
-
 		if err := store.UpsertAutomationSession(ctx, svc.store, ses); err != nil {
+			log := svc.log.With(
+				logger.Uint64("sessionID", s.ID()),
+				zap.Stringer("status", status),
+			)
+
 			log.Error("failed to update session", zap.Error(err))
 		}
 	}

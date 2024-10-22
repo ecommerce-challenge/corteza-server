@@ -1,34 +1,30 @@
 <template>
   <b-container
     v-if="template"
-    class="py-3"
+    class="pt-2 pb-3"
   >
     <c-content-header
       :title="title"
     >
-      <span
-        class="text-nowrap"
+      <b-button
+        v-if="templateID && canCreate"
+        data-test-id="button-new-template"
+        variant="primary"
+        :to="{ name: 'system.template.new' }"
       >
-        <b-button
-          v-if="templateID && canCreate"
-          data-test-id="button-new-template"
-          variant="primary"
-          class="mr-2"
-          :to="{ name: 'system.template.new' }"
-        >
-          {{ $t('new') }}
-        </b-button>
-        <c-permissions-button
-          v-if="templateID && canGrant"
-          :title="template.meta.short || template.handle || template.templateID"
-          :target="template.meta.short || template.handle || template.templateID"
-          :resource="`corteza::system:template/${templateID}`"
-          button-variant="light"
-        >
-          <font-awesome-icon :icon="['fas', 'lock']" />
-          {{ $t('permissions') }}
-        </c-permissions-button>
-      </span>
+        {{ $t('new') }}
+      </b-button>
+
+      <c-permissions-button
+        v-if="templateID && canGrant"
+        :title="template.meta.short || template.handle || template.templateID"
+        :target="template.meta.short || template.handle || template.templateID"
+        :resource="`corteza::system:template/${templateID}`"
+      >
+        <font-awesome-icon :icon="['fas', 'lock']" />
+        {{ $t('permissions') }}
+      </c-permissions-button>
+
       <c-corredor-manual-buttons
         ui-page="template/editor"
         ui-slot="toolbar"
@@ -62,6 +58,7 @@
 </template>
 
 <script>
+import { isEqual } from 'lodash'
 import editorHelpers from 'corteza-webapp-admin/src/mixins/editorHelpers'
 import CTemplateEditorInfo from 'corteza-webapp-admin/src/components/Template/CTemplateEditorInfo'
 import CTemplateEditorContent from 'corteza-webapp-admin/src/components/Template/CTemplateEditorContent/Index'
@@ -83,6 +80,14 @@ export default {
     editorHelpers,
   ],
 
+  beforeRouteUpdate (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
+
+  beforeRouteLeave (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
+
   props: {
     templateID: {
       type: String,
@@ -94,6 +99,7 @@ export default {
   data () {
     return {
       template: undefined,
+      initialTemplateState: undefined,
 
       info: {
         processing: false,
@@ -131,6 +137,7 @@ export default {
           this.fetchTemplate()
         } else {
           this.template = new system.Template()
+          this.initialTemplateState = this.template.clone()
         }
       },
     },
@@ -143,6 +150,7 @@ export default {
       this.$SystemAPI.templateRead({ templateID: this.templateID })
         .then(t => {
           this.template = new system.Template(t)
+          this.initialTemplateState = this.template.clone()
         })
         .catch(this.toastErrorHandler(this.$t('notification:template.fetch.error')))
         .finally(() => {
@@ -181,6 +189,7 @@ export default {
           .then(() => {
             this.fetchTemplate()
 
+            this.template.deletedAt = new Date()
             this.toastSuccess(this.$t('notification:template.delete.success'))
             this.$router.push({ name: 'system.template' })
           })
@@ -198,8 +207,10 @@ export default {
       if (this.templateID) {
         this.$SystemAPI.templateUpdate(template)
           .then(template => {
-            this.template = template
+            this.template = new system.Template(template)
+            this.initialTemplateState = this.template.clone()
 
+            this.animateSuccess('info')
             this.toastSuccess(this.$t('notification:template.update.success'))
           })
           .catch(this.toastErrorHandler(this.$t('notification:template.update.error')))
@@ -220,6 +231,17 @@ export default {
             this.decLoader()
             this.info.processing = false
           })
+      }
+    },
+
+    checkUnsavedChanges (next, to) {
+      const isNewPage = this.$route.path.includes('/new') && to.name.includes('edit')
+      const { deletedAt } = this.template || {}
+
+      if (isNewPage || deletedAt) {
+        next(true)
+      } else if (!to.name.includes('edit')) {
+        next(!isEqual(this.template, this.initialTemplateState) ? window.confirm(this.$t('general:editor.unsavedChanges')) : true)
       }
     },
   },

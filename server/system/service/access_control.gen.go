@@ -503,6 +503,11 @@ func (svc accessControl) List() (out []map[string]string) {
 		{
 			"type": types.ComponentResourceType,
 			"any":  types.ComponentRbacResource(),
+			"op":   "dal-schema-alterations.manage",
+		},
+		{
+			"type": types.ComponentResourceType,
+			"any":  types.ComponentRbacResource(),
 			"op":   "data-privacy-request.create",
 		},
 		{
@@ -1112,6 +1117,14 @@ func (svc accessControl) CanManageResourceTranslations(ctx context.Context) bool
 	return svc.can(ctx, "resource-translations.manage", r)
 }
 
+// CanManageDalSchemaAlterations checks if current user can list, search, apply, or dismiss dal alterations
+//
+// This function is auto-generated
+func (svc accessControl) CanManageDalSchemaAlterations(ctx context.Context) bool {
+	r := &types.Component{}
+	return svc.can(ctx, "dal-schema-alterations.manage", r)
+}
+
 // CanCreateDataPrivacyRequest checks if current user can create data privacy requests
 //
 // This function is auto-generated
@@ -1182,61 +1195,61 @@ func (svc accessControl) resourceLoader(ctx context.Context, resource string) (r
 	switch rbac.ResourceType(resourceType) {
 	case types.ApplicationResourceType:
 		if hasWildcard {
-			return rbac.NewResource(types.ApplicationRbacResource(0)), nil
+			return rbac.NewResource(types.ApplicationRbacResource(ids[0])), nil
 		}
 
 		return loadApplication(ctx, svc.store, ids[0])
 	case types.ApigwRouteResourceType:
 		if hasWildcard {
-			return rbac.NewResource(types.ApigwRouteRbacResource(0)), nil
+			return rbac.NewResource(types.ApigwRouteRbacResource(ids[0])), nil
 		}
 
 		return loadApigwRoute(ctx, svc.store, ids[0])
 	case types.AuthClientResourceType:
 		if hasWildcard {
-			return rbac.NewResource(types.AuthClientRbacResource(0)), nil
+			return rbac.NewResource(types.AuthClientRbacResource(ids[0])), nil
 		}
 
 		return loadAuthClient(ctx, svc.store, ids[0])
 	case types.DataPrivacyRequestResourceType:
 		if hasWildcard {
-			return rbac.NewResource(types.DataPrivacyRequestRbacResource(0)), nil
+			return rbac.NewResource(types.DataPrivacyRequestRbacResource(ids[0])), nil
 		}
 
 		return loadDataPrivacyRequest(ctx, svc.store, ids[0])
 	case types.QueueResourceType:
 		if hasWildcard {
-			return rbac.NewResource(types.QueueRbacResource(0)), nil
+			return rbac.NewResource(types.QueueRbacResource(ids[0])), nil
 		}
 
 		return loadQueue(ctx, svc.store, ids[0])
 	case types.ReportResourceType:
 		if hasWildcard {
-			return rbac.NewResource(types.ReportRbacResource(0)), nil
+			return rbac.NewResource(types.ReportRbacResource(ids[0])), nil
 		}
 
 		return loadReport(ctx, svc.store, ids[0])
 	case types.RoleResourceType:
 		if hasWildcard {
-			return rbac.NewResource(types.RoleRbacResource(0)), nil
+			return rbac.NewResource(types.RoleRbacResource(ids[0])), nil
 		}
 
 		return loadRole(ctx, svc.store, ids[0])
 	case types.TemplateResourceType:
 		if hasWildcard {
-			return rbac.NewResource(types.TemplateRbacResource(0)), nil
+			return rbac.NewResource(types.TemplateRbacResource(ids[0])), nil
 		}
 
 		return loadTemplate(ctx, svc.store, ids[0])
 	case types.UserResourceType:
 		if hasWildcard {
-			return rbac.NewResource(types.UserRbacResource(0)), nil
+			return rbac.NewResource(types.UserRbacResource(ids[0])), nil
 		}
 
 		return loadUser(ctx, svc.store, ids[0])
 	case types.DalConnectionResourceType:
 		if hasWildcard {
-			return rbac.NewResource(types.DalConnectionRbacResource(0)), nil
+			return rbac.NewResource(types.DalConnectionRbacResource(ids[0])), nil
 		}
 
 		return loadDalConnection(ctx, svc.store, ids[0])
@@ -1327,35 +1340,36 @@ func rbacResourceOperations(r string) map[string]bool {
 		}
 	case types.ComponentResourceType:
 		return map[string]bool{
-			"grant":                        true,
-			"action-log.read":              true,
-			"settings.read":                true,
-			"settings.manage":              true,
-			"auth-client.create":           true,
-			"auth-clients.search":          true,
-			"role.create":                  true,
-			"roles.search":                 true,
-			"user.create":                  true,
-			"users.search":                 true,
-			"dal-connection.create":        true,
-			"dal-connections.search":       true,
-			"dal-sensitivity-level.manage": true,
-			"application.create":           true,
-			"applications.search":          true,
-			"application.flag.self":        true,
-			"application.flag.global":      true,
-			"template.create":              true,
-			"templates.search":             true,
-			"report.create":                true,
-			"reports.search":               true,
-			"reminder.assign":              true,
-			"queue.create":                 true,
-			"queues.search":                true,
-			"apigw-route.create":           true,
-			"apigw-routes.search":          true,
-			"resource-translations.manage": true,
-			"data-privacy-request.create":  true,
-			"data-privacy-requests.search": true,
+			"grant":                         true,
+			"action-log.read":               true,
+			"settings.read":                 true,
+			"settings.manage":               true,
+			"auth-client.create":            true,
+			"auth-clients.search":           true,
+			"role.create":                   true,
+			"roles.search":                  true,
+			"user.create":                   true,
+			"users.search":                  true,
+			"dal-connection.create":         true,
+			"dal-connections.search":        true,
+			"dal-sensitivity-level.manage":  true,
+			"application.create":            true,
+			"applications.search":           true,
+			"application.flag.self":         true,
+			"application.flag.global":       true,
+			"template.create":               true,
+			"templates.search":              true,
+			"report.create":                 true,
+			"reports.search":                true,
+			"reminder.assign":               true,
+			"queue.create":                  true,
+			"queues.search":                 true,
+			"apigw-route.create":            true,
+			"apigw-routes.search":           true,
+			"resource-translations.manage":  true,
+			"dal-schema-alterations.manage": true,
+			"data-privacy-request.create":   true,
+			"data-privacy-requests.search":  true,
 		}
 	}
 

@@ -26,6 +26,7 @@
 
 <script>
 import base from './base.vue'
+import numeral from 'numeral'
 
 export default {
   extends: base,
@@ -43,8 +44,8 @@ export default {
 
     style () {
       return {
-        fill: this.options.color || '#000000',
-        backgroundColor: this.options.backgroundColor || '#ffffff',
+        fill: this.options.color || '#162425',
+        backgroundColor: this.options.backgroundColor || '#FFFFFF00',
       }
     },
 
@@ -64,10 +65,11 @@ export default {
     },
 
     displayedMetric () {
-      const { prefix = '', suffix = '' } = this.options
+      const { prefix = '', suffix = '', format = '' } = this.options
 
       if (this.value) {
-        return `${prefix}${this.value}${suffix}`
+        const value = format ? numeral(this.value).format(format) : this.value
+        return `${prefix}${value}${suffix}`
       }
 
       return ''

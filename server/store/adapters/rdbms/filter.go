@@ -10,9 +10,9 @@ import (
 
 	automationType "github.com/cortezaproject/corteza/server/automation/types"
 	composeType "github.com/cortezaproject/corteza/server/compose/types"
+	discoveryType "github.com/cortezaproject/corteza/server/discovery/types"
 	"github.com/cortezaproject/corteza/server/federation/types"
 	"github.com/cortezaproject/corteza/server/pkg/actionlog"
-	discoveryType "github.com/cortezaproject/corteza/server/pkg/discovery/types"
 	"github.com/cortezaproject/corteza/server/pkg/filter"
 	labelsType "github.com/cortezaproject/corteza/server/pkg/label/types"
 	systemType "github.com/cortezaproject/corteza/server/system/types"
@@ -89,6 +89,8 @@ func DefaultFilters() (f *extendedFilters) {
 				return
 			}
 
+		case composeType.IconAttachment:
+
 		case composeType.RecordAttachment:
 			panic("@todo pending implementation")
 			// query = query.
@@ -116,6 +118,13 @@ func DefaultFilters() (f *extendedFilters) {
 		if f.Filter != "" {
 			err = fmt.Errorf("filtering by filter not implemented")
 			return
+		}
+
+		// Add a filter expression for deleted attachments
+		if f.Deleted == filter.StateExcluded {
+			ee = append(ee, goqu.C("deleted_at").IsNull())
+		} else if f.Deleted == filter.StateExclusive {
+			ee = append(ee, goqu.C("deleted_at").IsNotNull())
 		}
 
 		return ee, f, nil

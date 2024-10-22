@@ -1,8 +1,8 @@
 <template>
   <c-translator-button
     v-if="canManageResourceTranslations && resourceTranslationsEnabled"
-    v-bind="$props"
-    :title="$t('tooltip')"
+    v-bind="{ ...$attrs, ...$props }"
+    :tooltip="$t('tooltip')"
     :resource="resource"
     :titles="titles"
     :fetcher="fetcher"
@@ -35,11 +35,6 @@ export default {
     highlightKey: {
       type: String,
       default: '',
-    },
-
-    buttonVariant: {
-      type: String,
-      default: () => 'primary',
     },
 
     disabled: {

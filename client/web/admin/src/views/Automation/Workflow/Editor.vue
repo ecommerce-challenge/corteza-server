@@ -1,33 +1,28 @@
 <template>
   <b-container
     v-if="workflow"
-    class="py-3"
+    class="pt-2 pb-3"
   >
     <c-content-header
       :title="title"
     >
-      <span
-        class="text-nowrap"
+      <b-button
+        v-if="workflowID && canCreate"
+        variant="primary"
+        :to="{ name: 'automation.workflow.new' }"
       >
-        <b-button
-          v-if="workflowID && canCreate"
-          variant="primary"
-          :to="{ name: 'automation.workflow.new' }"
-        >
-          {{ $t('new') }}
-        </b-button>
-        <c-permissions-button
-          v-if="workflowID && canGrant"
-          :title="workflow.meta.name || workflow.handle || workflowID"
-          :target="workflow.meta.name || workflow.handle || workflowID"
-          :resource="`corteza::automation:workflow/${workflowID}`"
-          button-variant="light"
-          class="ml-2"
-        >
-          <font-awesome-icon :icon="['fas', 'lock']" />
-          {{ $t('permissions') }}
-        </c-permissions-button>
-      </span>
+        {{ $t('new') }}
+      </b-button>
+
+      <c-permissions-button
+        v-if="workflowID && canGrant"
+        :title="workflow.meta.name || workflow.handle || workflowID"
+        :target="workflow.meta.name || workflow.handle || workflowID"
+        :resource="`corteza::automation:workflow/${workflowID}`"
+      >
+        <font-awesome-icon :icon="['fas', 'lock']" />
+        {{ $t('permissions') }}
+      </c-permissions-button>
     </c-content-header>
 
     <c-workflow-editor-info
@@ -48,6 +43,7 @@
   </b-container>
 </template>
 <script>
+import { isEqual, cloneDeep } from 'lodash'
 import editorHelpers from 'corteza-webapp-admin/src/mixins/editorHelpers'
 import CWorkflowEditorInfo from 'corteza-webapp-admin/src/components/Workflow/CWorkflowEditorInfo'
 import CWorkflowEditorTriggers from 'corteza-webapp-admin/src/components/Workflow/CWorkflowEditorTriggers'
@@ -68,6 +64,14 @@ export default {
     editorHelpers,
   ],
 
+  beforeRouteUpdate (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
+
+  beforeRouteLeave (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
+
   props: {
     workflowID: {
       type: String,
@@ -79,6 +83,7 @@ export default {
   data () {
     return {
       workflow: undefined,
+      initialWorkflowState: undefined,
       triggers: [],
 
       info: {
@@ -129,6 +134,8 @@ export default {
               name: '',
             },
           }
+
+          this.initialWorkflowState = cloneDeep(this.workflow)
         }
       },
     },
@@ -194,7 +201,6 @@ export default {
         this.$AutomationAPI.workflowUndelete({ workflowID: this.workflowID })
           .then(() => {
             this.fetchWorkflow()
-
             this.toastSuccess(this.$t('notification:workflow.undelete.success'))
           })
           .catch(this.toastErrorHandler(this.$t('notification:workflow.undelete.error')))
@@ -205,6 +211,7 @@ export default {
         this.$AutomationAPI.workflowDelete({ workflowID: this.workflowID })
           .then(() => {
             this.fetchWorkflow()
+            this.workflow.deletedAt = new Date()
 
             this.toastSuccess(this.$t('notification:workflow.delete.success'))
             this.$router.push({ name: 'automation.workflow' })
@@ -218,6 +225,18 @@ export default {
 
     prepare (workflow = {}) {
       this.workflow = workflow
+      this.initialWorkflowState = cloneDeep(this.workflow)
+    },
+
+    checkUnsavedChanges (next, to) {
+      const isNewPage = this.$route.path.includes('/new') && to.name.includes('edit')
+      const { deletedAt } = this.workflow || {}
+
+      if (isNewPage || deletedAt) {
+        next(true)
+      } else if (!to.name.includes('edit')) {
+        next(!isEqual(this.workflow, this.initialWorkflowState) ? window.confirm(this.$t('general:editor.unsavedChanges')) : true)
+      }
     },
   },
 }

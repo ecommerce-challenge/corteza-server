@@ -12,7 +12,6 @@
       <b-button-group
         v-if="report && !isNew"
         size="sm"
-        class="mr-1"
       >
         <b-button
           variant="primary"
@@ -24,13 +23,14 @@
           {{ $t('report.builder') }}
           <font-awesome-icon
             class="ml-2"
-            :icon="['fas', 'cogs']"
+            :icon="['fas', 'tools']"
           />
         </b-button>
+
         <b-button
+          v-b-tooltip.noninteractive.hover="{ title: $t('tooltip.view-report'), container: '#body' }"
           variant="primary"
           style="margin-left:2px;"
-          :title="$t('tooltip.view-report')"
           :disabled="!canRead"
           :to="reportViewer"
         >
@@ -52,7 +52,6 @@
             <b-card-header
               v-if="!isNew"
               header-bg-variant="white border-bottom"
-              class="py-3"
             >
               <b-row
                 no-gutters
@@ -76,7 +75,6 @@
                     :target="report.meta.name || report.handle || report.reportID"
                     :resource="`corteza::system:report/${report.reportID}`"
                     :button-label="$t('permissions')"
-                    button-variant="light"
                     class="btn-lg ml-1"
                   />
                 </div>
@@ -85,17 +83,17 @@
 
             <b-container
               fluid
-              class="px-4 pt-3"
+              class="py-3"
             >
               <b-row>
                 <b-col
                   cols="12"
-                  md="6"
+                  lg="6"
                   xl="4"
                 >
                   <b-form-group
                     :label="$t('name-with-star')"
-                    class="text-primary"
+                    label-class="text-primary"
                   >
                     <b-form-input
                       v-model="report.meta.name"
@@ -103,17 +101,18 @@
                       :placeholder="$t('name')"
                       required
                       :state="nameState"
+                      @input="handleDetectStateChange"
                     />
                   </b-form-group>
                 </b-col>
                 <b-col
                   cols="12"
-                  md="6"
+                  lg="6"
                   xl="4"
                 >
                   <b-form-group
                     :label="$t('handle-with-star')"
-                    class="text-primary"
+                    label-class="text-primary"
                   >
                     <b-form-input
                       v-model="report.handle"
@@ -121,6 +120,7 @@
                       :placeholder="$t('placeholder-handle')"
                       required
                       :state="handleState"
+                      @input="handleDetectStateChange"
                     />
                     <b-form-invalid-feedback
                       data-test-id="input-handle-invalid-state"
@@ -134,13 +134,15 @@
 
               <b-form-group
                 :label="$t('description')"
-                class="text-primary"
+                label-class="text-primary"
+                class="mb-0"
               >
                 <b-form-textarea
                   v-model="report.meta.description"
                   data-test-id="input-description"
                   :placeholder="$t('report.description')"
                   rows="5"
+                  @input="handleDetectStateChange"
                 />
               </b-form-group>
 
@@ -158,13 +160,25 @@
       </b-row>
     </b-container>
 
+    <div
+      v-else
+      class="d-flex align-items-center justify-content-center w-100 h-100"
+    >
+      <b-spinner />
+    </div>
+
     <portal to="report-toolbar">
       <editor-toolbar
         :back-link="{ name: 'report.list' }"
         :hide-delete="isNew"
         :delete-disabled="!canDelete"
         :save-disabled="!canSave"
+        :clone-disabled="!canSave"
         :processing="processing"
+        :processing-save="processingSave"
+        :processing-delete="processingDelete"
+        :processing-clone="processingClone"
+        @clone="handleReportCloning"
         @delete="handleDelete"
         @save="handleSave"
       />
@@ -178,12 +192,15 @@ import { handle } from '@cortezaproject/corteza-vue'
 import report from 'corteza-webapp-reporter/src/mixins/report'
 import EditorToolbar from 'corteza-webapp-reporter/src/components/EditorToolbar'
 import { mapGetters } from 'vuex'
+import { isEqual } from 'lodash'
 
 export default {
   name: 'EditReport',
+
   i18nOptions: {
     namespaces: 'edit',
   },
+
   components: {
     EditorToolbar,
   },
@@ -192,11 +209,22 @@ export default {
     report,
   ],
 
+  beforeRouteUpdate (to, from, next) {
+    this.checkUnsavedChart(next)
+  },
+
+  beforeRouteLeave (to, from, next) {
+    this.checkUnsavedChart(next)
+  },
+
   data () {
     return {
       processing: false,
 
       report: undefined,
+      initialReportState: undefined,
+
+      detectStateChange: false,
     }
   },
 
@@ -268,8 +296,45 @@ export default {
           this.fetchReport(reportID)
         } else {
           this.report = new system.Report()
+          this.initialReportState = new system.Report()
         }
       },
+    },
+  },
+
+  methods: {
+    handleDetectStateChange () {
+      this.detectStateChange = true
+    },
+
+    checkUnsavedChart (next) {
+      if (this.report.deletedAt) {
+        return next(true)
+      }
+
+      const reportState = {
+        handle: this.report.handle,
+        meta: {
+          name: this.report.meta.name,
+          description: this.report.meta.description,
+        },
+      }
+
+      const initialReportState = {
+        handle: this.initialReportState.handle,
+        meta: {
+          name: this.initialReportState.meta.name,
+          description: this.initialReportState.meta.description,
+        },
+      }
+
+      next(!isEqual(reportState, initialReportState) ? window.confirm(this.$t('unsavedChanges')) : true)
+    },
+
+    handleReportCloning () {
+      this.handleClone(this.report).then(({ reportID }) => {
+        this.$router.push({ name: 'report.builder', params: { reportID } })
+      })
     },
   },
 }

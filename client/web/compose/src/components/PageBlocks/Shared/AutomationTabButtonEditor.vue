@@ -1,20 +1,36 @@
 <template>
   <b-card
-    :header="workflow ? $t('editTitle.workflow') : $t('editTitle.script')"
-    footer-class="text-right"
+    :title="workflow ? $t('editTitle.workflow') : $t('editTitle.script')"
+    footer-class="text-right pt-0"
+    class="border"
   >
     <b-form-group
       :label="$t('buttonLabel')"
+      label-class="text-primary"
     >
-      <b-input-group>
-        <b-form-input
-          v-model="button.label"
-        />
-      </b-input-group>
+      <c-input-expression
+        v-model="button.label"
+        auto-complete
+        lang="javascript"
+        :suggestion-params="recordAutoCompleteParams"
+        :page="page"
+        height="2.375rem"
+      />
+      <i18next
+        path="block:interpolationFootnote"
+        tag="small"
+        class="text-muted"
+      >
+        <code>${record.values.fieldName}</code>
+        <code>${recordID}</code>
+        <code>${ownerID}</code>
+        <span><code>${userID}</code>, <code>${user.name}</code></span>
+      </i18next>
     </b-form-group>
 
     <b-form-group
       :label="$t('buttonVariant')"
+      label-class="text-primary"
     >
       <b-select
         v-model="button.variant"
@@ -75,7 +91,7 @@
 
     <template #footer>
       <c-input-confirm
-        variant="link-light"
+        show-icon
         @confirmed="$emit('delete', button)"
       />
     </template>
@@ -83,12 +99,22 @@
 </template>
 <script>
 import { compose, NoID } from '@cortezaproject/corteza-js'
+import { components } from '@cortezaproject/corteza-vue'
+import autocomplete from 'corteza-webapp-compose/src/mixins/autocomplete.js'
+
+const { CInputExpression } = components
 
 export default {
   i18nOptions: {
     namespaces: 'block',
     keyPrefix: 'automation',
   },
+
+  components: {
+    CInputExpression,
+  },
+
+  extends: autocomplete,
 
   props: {
     button: {
@@ -116,6 +142,12 @@ export default {
     block: {
       type: compose.PageBlock,
       required: true,
+    },
+
+    module: {
+      type: compose.Module,
+      required: false,
+      default: undefined,
     },
   },
 

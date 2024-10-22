@@ -11,7 +11,7 @@
     @vdropzone-error="onError"
     @vdropzone-upload-progress="onUploadProgress"
   >
-    <div class="w-100 h-100 position-relative bg-light">
+    <div class="w-100 h-100 position-relative bg-light rounded">
       <template v-if="active">
         <div
           class="bg-primary h-100 progress-bar position-absolute"
@@ -158,6 +158,7 @@ export default {
 
     onError (e, message) {
       this.error = message
+      this.active = null
     },
 
     onUploadProgress (file, progress, bytesSent) {

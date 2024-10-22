@@ -1,9 +1,9 @@
 <template>
-  <div>
+  <div class="d-flex">
     <b-btn
       variant="light"
       size="lg"
-      class="float-left"
+      class="flex-fill"
       @click="showModal=true"
     >
       {{ $t('label.import') }}
@@ -20,7 +20,6 @@
           <b-form-file
             :placeholder="$t('label.importPlaceholder')"
             :browse-text="$t('label.browse')"
-            class="font-wight-normal pointer"
             @change="loadFile"
           />
 
@@ -58,7 +57,7 @@
                 v-for="(o, index) in importObj.list"
                 :key="index"
                 cols="12"
-                sm="6"
+                md="6"
                 lg="4"
               >
                 <b-form-checkbox v-model="o.import">
@@ -74,7 +73,6 @@
         <b-button
           :disabled="!importObj || !importObj.list.filter(i => i.import).length > 0"
           variant="primary"
-          size="lg"
           @click="jsonImport(importObj)"
         >
           {{ $t('label.import') }}
@@ -200,26 +198,3 @@ export default {
   },
 }
 </script>
-<style lang="scss">
-$input-height: 42px;
-$line-height: 30px;
-
-.custom-file-input {
-  height: $input-height;
-}
-
-.custom-file-label {
-  height: $input-height;
-  font-family: $font-regular;
-
-  &::after {
-    height: 100%;
-    font-family: $btn-font-family;
-    line-height: $line-height;
-    background-color: $light;
-    color: $dark;
-    font-weight: 400;
-    padding: $btn-padding-y $btn-padding-x;
-  }
-}
-</style>

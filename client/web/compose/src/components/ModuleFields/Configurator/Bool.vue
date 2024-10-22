@@ -2,12 +2,14 @@
   <div>
     <b-form-group
       :label="$t('kind.bool.checkedValueLabel')"
+      label-class="text-primary"
     >
       <b-input-group>
         <b-form-input
           v-model="f.options.trueLabel"
           :placeholder="$t('kind.bool.checkedValuePlaceholder')"
         />
+
         <b-input-group-append>
           <field-bool-translator
             v-if="field"
@@ -16,7 +18,6 @@
             :highlight-key="`meta.bool.true.label`"
             size="sm"
             :disabled="isNew"
-            button-variant="light"
           />
         </b-input-group-append>
       </b-input-group>
@@ -24,12 +25,14 @@
 
     <b-form-group
       :label="$t('kind.bool.uncheckedValueLabel')"
+      label-class="text-primary"
     >
       <b-input-group>
         <b-form-input
           v-model="f.options.falseLabel"
           :placeholder="$t('kind.bool.uncheckedValuePlaceholder')"
         />
+
         <b-input-group-append>
           <field-bool-translator
             v-if="field"
@@ -38,10 +41,18 @@
             :highlight-key="`meta.bool.fals.label`"
             size="sm"
             :disabled="isNew"
-            button-variant="light"
           />
         </b-input-group-append>
       </b-input-group>
+    </b-form-group>
+
+    <b-form-group
+      :label="$t('kind.bool.toggleTypeLabel')"
+      label-class="text-primary"
+    >
+      <b-form-checkbox v-model="f.options.switch">
+        {{ $t('kind.bool.toggleType') }}
+      </b-form-checkbox>
     </b-form-group>
   </div>
 </template>

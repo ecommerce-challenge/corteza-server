@@ -1,25 +1,25 @@
 <template>
-  <vue-select
-    key="type"
+  <c-input-select
+    data-test-id="select-sens-lvl"
     :value="_value"
     :disabled="_disabled"
     :options="sensitivityLevels"
     :get-option-label="getLabel"
+    :get-option-key="getOptionKey"
     :placeholder="placeholder"
     :reduce="l => l.sensitivityLevelID"
     append-to-body
-    class="bg-white"
     @input="onInput"
   />
 </template>
 
 <script>
 import { NoID } from '@cortezaproject/corteza-js'
-import { VueSelect } from 'vue-select'
+import CInputSelect from '../input/CInputSelect.vue'
 
 export default {
   components: {
-    VueSelect,
+    CInputSelect,
   },
 
   props: {
@@ -95,7 +95,11 @@ export default {
 
     onInput (sensitivityLevelID) {
       this.$emit('input', sensitivityLevelID ? sensitivityLevelID : NoID)
-    }
+    },
+
+    getOptionKey ({ sensitivityLevelID }) {
+      return sensitivityLevelID
+    },
   }
 }
 </script>

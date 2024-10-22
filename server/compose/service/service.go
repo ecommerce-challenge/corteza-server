@@ -6,14 +6,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cortezaproject/corteza/server/pkg/dal"
-	"github.com/cortezaproject/corteza/server/pkg/discovery"
-
 	automationService "github.com/cortezaproject/corteza/server/automation/service"
 	"github.com/cortezaproject/corteza/server/compose/automation"
 	"github.com/cortezaproject/corteza/server/compose/types"
+	discoveryService "github.com/cortezaproject/corteza/server/discovery/service"
 	"github.com/cortezaproject/corteza/server/pkg/actionlog"
 	"github.com/cortezaproject/corteza/server/pkg/corredor"
+	"github.com/cortezaproject/corteza/server/pkg/dal"
 	"github.com/cortezaproject/corteza/server/pkg/eventbus"
 	"github.com/cortezaproject/corteza/server/pkg/filter"
 	"github.com/cortezaproject/corteza/server/pkg/healthcheck"
@@ -34,11 +33,17 @@ type (
 		FindByID(context.Context, uint64) (*systemTypes.User, error)
 	}
 
+	schemaAltManager interface {
+		ModelAlterations(context.Context, *dal.Model) (out []*dal.Alteration, err error)
+		SetAlterations(ctx context.Context, s store.Storer, m *dal.Model, stale []*dal.Alteration, set ...*dal.Alteration) (err error)
+	}
+
 	Config struct {
-		ActionLog  options.ActionLogOpt
-		Discovery  options.DiscoveryOpt
-		Storage    options.ObjectStoreOpt
-		UserFinder userFinder
+		ActionLog        options.ActionLogOpt
+		Discovery        options.DiscoveryOpt
+		Storage          options.ObjectStoreOpt
+		UserFinder       userFinder
+		SchemaAltManager schemaAltManager
 	}
 
 	eventDispatcher interface {
@@ -68,6 +73,7 @@ var (
 	DefaultModule              ModuleService
 	DefaultChart               *chart
 	DefaultPage                *page
+	DefaultPageLayout          *pageLayout
 	DefaultAttachment          AttachmentService
 	DefaultNotification        *notification
 	DefaultResourceTranslation ResourceTranslationsManagerService
@@ -122,8 +128,8 @@ func Initialize(ctx context.Context, log *zap.Logger, s store.Storer, c Config) 
 			l = zap.NewNop()
 		}
 
-		DefaultResourceActivityLog := discovery.Service(l, c.Discovery, DefaultStore, eventbus.Service())
-		err = DefaultResourceActivityLog.InitResourceActivityLog(ctx, []string{
+		DefaultResourceActivity := discoveryService.ResourceActivity(l, c.Discovery, DefaultStore, eventbus.Service())
+		err = DefaultResourceActivity.InitResourceActivityLog(ctx, []string{
 			(types.Namespace{}).LabelResourceKind(),
 			(types.Module{}).LabelResourceKind(),
 			"compose:record",
@@ -176,11 +182,12 @@ func Initialize(ctx context.Context, log *zap.Logger, s store.Storer, c Config) 
 	}
 
 	DefaultNamespace = Namespace()
-	DefaultModule = Module()
+	DefaultModule = Module(c.SchemaAltManager)
 
 	DefaultImportSession = ImportSession()
 	DefaultRecord = Record()
 	DefaultPage = Page()
+	DefaultPageLayout = PageLayout()
 	DefaultChart = Chart()
 	DefaultNotification = Notification(c.UserFinder)
 	DefaultAttachment = Attachment(DefaultObjectStore, dal.Service())

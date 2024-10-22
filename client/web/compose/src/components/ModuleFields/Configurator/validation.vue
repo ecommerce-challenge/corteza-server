@@ -5,30 +5,27 @@
     <b-form-group
       :label="$t('sanitizers.label')"
       label-size="lg"
+      label-class="d-flex align-items-center text-primary"
     >
       <template #label>
-        <div
-          class="d-flex"
+        {{ $t('sanitizers.label') }}
+
+        <b-button
+          variant="link"
+          class="p-0 ml-1 mr-auto"
+          @click="field.expressions.sanitizers.push('')"
         >
-          {{ $t('sanitizers.label') }}
+          {{ $t('sanitizers.add') }}
+        </b-button>
 
-          <b-button
-            variant="link"
-            class="p-0 ml-1 mr-auto"
-            @click="field.expressions.sanitizers.push('')"
-          >
-            {{ $t('sanitizers.add') }}
-          </b-button>
-
-          <b-button
-            variant="link"
-            :href="`${documentationURL}#value-sanitizers`"
-            target="_blank"
-            class="p-0 ml-1"
-          >
-            {{ $t('sanitizers.examples') }}
-          </b-button>
-        </div>
+        <b-button
+          variant="link"
+          :href="`${documentationURL}#value-sanitizers`"
+          target="_blank"
+          class="p-0 ml-1"
+        >
+          {{ $t('sanitizers.examples') }}
+        </b-button>
       </template>
 
       <field-expressions
@@ -44,37 +41,34 @@
     <hr>
 
     <b-form-group
-      class="mt-3"
       label-size="lg"
+      label-class="d-flex text-primary"
+      class="mt-3"
     >
       <template #label>
-        <div
-          class="d-flex"
+        {{ $t('validators.label') }}
+
+        <b-button
+          variant="link"
+          class="p-0 ml-1 mr-auto"
+          @click="field.expressions.validators.push({ test: '', error: '' })"
         >
-          {{ $t('validators.label') }}
+          {{ $t('sanitizers.add') }}
+        </b-button>
 
-          <b-button
-            variant="link"
-            class="p-0 ml-1 mr-auto"
-            @click="field.expressions.validators.push({ test: '', error: '' })"
-          >
-            {{ $t('sanitizers.add') }}
-          </b-button>
-
-          <b-button
-            variant="link"
-            :href="`${documentationURL}#value-validators`"
-            target="_blank"
-            class="p-0 ml-1"
-          >
-            {{ $t('sanitizers.examples') }}
-          </b-button>
-        </div>
+        <b-button
+          variant="link"
+          :href="`${documentationURL}#value-validators`"
+          target="_blank"
+          class="p-0 ml-1"
+        >
+          {{ $t('sanitizers.examples') }}
+        </b-button>
       </template>
 
       <field-expressions
-        v-slot:default="{ value }"
         v-model="field.expressions.validators"
+        v-slot="{ value }"
         @remove="field.expressions.validators.splice($event,1)"
       >
         <b-form-input
@@ -82,7 +76,10 @@
           :placeholder="$t('validators.expression.placeholder')"
         />
         <b-input-group-prepend>
-          <b-button variant="warning">
+          <b-button
+            v-b-tooltip.noninteractive.hover="{ title: $t('validators.error.tooltip'), container: '#body' }"
+            variant="warning"
+          >
             !
           </b-button>
         </b-input-group-prepend>
@@ -97,7 +94,6 @@
             :module="module"
             :highlight-key="`expression.validator.${value.validatorID}.error`"
             :disabled="isNew(value)"
-            button-variant="light"
           />
         </b-input-group-append>
       </field-expressions>
@@ -117,59 +113,72 @@
       </b-form-text>
     </b-form-group>
 
-    <div>
-      <div>
-        <h5>{{ $t('constraints.label') }}</h5>
-        <b-form-checkbox
-          v-model="fieldConstraint.exists"
-          class="mt-3"
-          @change="toggleFieldConstraint"
+    <hr>
+
+    <b-form-group
+      label-size="lg"
+      label-class="d-flex align-items-center text-primary"
+      class="mt-3"
+    >
+      <template #label>
+        {{ $t('constraints.label') }}
+        <c-hint
+          :tooltip="$t('constraints.tooltip.performance')"
+          icon-class="text-warning"
+        />
+      </template>
+
+      <b-form-checkbox
+        v-model="fieldConstraint.exists"
+        class="mt-3"
+        @change="toggleFieldConstraint"
+      >
+        {{ $t('constraints.description') }}
+      </b-form-checkbox>
+
+      <b-row
+        v-if="fieldConstraint.exists"
+        class="mt-4"
+      >
+        <b-col
+          cols="12"
+          lg="6"
         >
-          {{ $t('constraints.description') }}
-        </b-form-checkbox>
-      </div>
-
-      <div class="mt-4">
-        <b-row>
-          <b-col
-            cols="12"
-            sm="6"
+          <b-form-group
+            :label="$t('constraints.valueModifiers')"
+            label-class="text-primary"
           >
-            <b-form-group
-              :label="$t('constraints.valueModifiers')"
-            >
-              <b-form-select
-                v-model="constraint.modifier"
-                :options="modifierOptions"
-              />
-            </b-form-group>
-          </b-col>
-          <b-col
-            cols="12"
-            sm="6"
+            <b-form-select
+              v-model="constraint.modifier"
+              :options="modifierOptions"
+            />
+          </b-form-group>
+        </b-col>
+        <b-col
+          v-if="field.isMulti"
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('constraints.multiValues')"
+            label-class="text-primary"
           >
-            <b-form-group
-              :label="$t('constraints.multiValues')"
-            >
-              <b-form-select
-                v-model="constraint.multiValue"
-                :options="multiValueOptions"
-                :disabled="!field.isMulti"
-              />
-            </b-form-group>
-          </b-col>
-        </b-row>
-
-        <div
+            <b-form-select
+              v-model="constraint.multiValue"
+              :options="multiValueOptions"
+            />
+          </b-form-group>
+        </b-col>
+        <b-col
           v-if="fieldConstraint.total"
-          class="mt-3"
+          cols="12"
         >
           <i>
             {{ $t('constraints.totalFieldConstraintCount', { total: fieldConstraint.total }) }}
           </i>
-        </div>
-      </div>
-    </div>
+        </b-col>
+      </b-row>
+    </b-form-group>
   </div>
 </template>
 

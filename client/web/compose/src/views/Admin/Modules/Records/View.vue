@@ -1,6 +1,6 @@
 <template>
   <div
-    class="overflow-auto px-2"
+    class="overflow-auto p-2"
   >
     <portal to="topbar-title">
       {{ title }}
@@ -10,7 +10,6 @@
       <b-button-group
         v-if="modulePage || allRecords"
         size="sm"
-        class="mr-1"
       >
         <b-button
           variant="primary"
@@ -44,26 +43,27 @@
     <b-alert
       v-if="isDeleted"
       show
-      variant="info"
-      class="mb-0"
+      variant="warning"
+      class="mb-2 mx-2"
     >
       {{ $t('block.record.recordDeleted') }}
     </b-alert>
 
     <b-row
-      v-if="module && record"
+      v-if="module"
       no-gutters
     >
       <b-col
         v-for="(block, index) in blocks"
         :key="index"
-        md="3"
         cols="12"
+        lg="3"
+        style="max-height: 650px; height: 650px;"
       >
         <component
           :is="getRecordComponent"
           :errors="errors"
-          v-bind="{ ...bindParams, module, block, record }"
+          v-bind="{ namespace, page, module, block, record }"
           class="p-2"
         />
       </b-col>
@@ -76,24 +76,36 @@
         :processing="processing"
         :processing-submit="processingSubmit"
         :processing-delete="processingDelete"
-        :is-deleted="isDeleted"
+        :processing-undelete="processingUndelete"
         :in-editing="inEditing"
+        :record-navigation="recordNavigation"
+        :hide-back="false"
+        :hide-delete="false"
+        :hide-new="false"
+        :hide-clone="false"
+        :hide-edit="false"
+        :hide-submit="false"
         @add="handleAdd()"
         @clone="handleClone()"
         @edit="handleEdit()"
+        @view="handleView()"
         @delete="handleDelete()"
+        @undelete="handleUndelete()"
         @back="handleBack()"
         @submit="handleFormSubmitSimple('admin.modules.record.view')"
+        @update-navigation="handleRedirectToPrevOrNext"
       />
     </portal>
   </div>
 </template>
 
 <script>
+import axios from 'axios'
+import { isEqual } from 'lodash'
+import { mapGetters } from 'vuex'
 import RecordToolbar from 'corteza-webapp-compose/src/components/Common/RecordToolbar'
-import users from 'corteza-webapp-compose/src/mixins/users'
 import record from 'corteza-webapp-compose/src/mixins/record'
-import { compose } from '@cortezaproject/corteza-js'
+import { compose, NoID } from '@cortezaproject/corteza-js'
 import RecordBase from 'corteza-webapp-compose/src/components/PageBlocks/RecordBase'
 import RecordEditor from 'corteza-webapp-compose/src/components/PageBlocks/RecordEditor'
 
@@ -113,32 +125,82 @@ export default {
   mixins: [
     // The record mixin contains all of the logic for creating/editing/deleting the record
     record,
-    users,
   ],
+
+  beforeRouteLeave (to, from, next) {
+    next(this.checkUnsavedChanges())
+  },
+
+  beforeRouteUpdate (to, from, next) {
+    next(this.checkUnsavedChanges())
+  },
+
+  props: {
+    namespace: {
+      type: Object,
+      required: false,
+      default: undefined,
+    },
+
+    moduleID: {
+      type: String,
+      required: false,
+      default: '',
+    },
+
+    recordID: {
+      type: String,
+      required: false,
+      default: '',
+    },
+
+    edit: {
+      type: Boolean,
+      default: false,
+    },
+
+    // If component was called (via router) with some pre-seed values
+    values: {
+      type: Object,
+      required: false,
+      default: () => ({}),
+    },
+  },
 
   data () {
     return {
-      inEditing: false,
-
       blocks: [],
 
-      bindParams: {
-        page: new compose.Page(),
-        boundingRect: {},
-        namespace: this.$attrs.namespace,
+      page: new compose.Page(),
+
+      recordNavigation: {
+        prev: undefined,
+        next: undefined,
       },
+
+      abortableRequests: [],
     }
   },
 
   computed: {
+    ...mapGetters({
+      getNextAndPrevRecord: 'ui/getNextAndPrevRecord',
+    }),
+
+    isNew () {
+      return !this.recordID || this.recordID === NoID
+    },
+
     title () {
       const { name, handle } = this.module
-      return this.$t('allRecords.view.title', { name: name || handle, interpolation: { escapeValue: false } })
+      const titlePrefix = this.isNew ? 'create' : this.inEditing ? 'edit' : 'view'
+
+      return this.$t(`allRecords.${titlePrefix}.title`, { name: name || handle, interpolation: { escapeValue: false } })
     },
 
     module () {
-      if (this.$attrs.moduleID) {
-        return this.getModuleByID(this.$attrs.moduleID)
+      if (this.moduleID) {
+        return this.getModuleByID(this.moduleID)
       } else {
         return undefined
       }
@@ -152,11 +214,10 @@ export default {
 
       const fields = []
       const fieldSetSize = 8
-      const moduleFields = this.module.fields.slice().sort((a, b) => a.label.localeCompare(b.label))
 
       let i, j
-      for (i = 0, j = moduleFields.length; i < j; i += fieldSetSize) {
-        fields.push(moduleFields.slice(i, i + fieldSetSize))
+      for (i = 0, j = this.module.fields.length; i < j; i += fieldSetSize) {
+        fields.push(this.module.fields.slice(i, i + fieldSetSize))
       }
 
       fields.push(this.module.systemFields())
@@ -187,13 +248,45 @@ export default {
 
       return undefined
     },
+
+    currentRecordNavigation () {
+      const { recordID } = this.record || {}
+      return this.getNextAndPrevRecord(recordID)
+    },
   },
 
   watch: {
-    '$attrs.recordID': {
+    recordID: {
       immediate: true,
       handler () {
-        this.loadRecord()
+        this.record = undefined
+        this.initialRecordState = undefined
+
+        this.refresh()
+      },
+    },
+
+    edit: {
+      immediate: true,
+      handler (edit) {
+        this.inEditing = edit
+      },
+    },
+
+    currentRecordNavigation: {
+      handler (rn, oldRn) {
+        // To prevent hiding and then showing the record navigation
+        // We use the old value if its valid and the current one isn't
+        if (rn.prev || rn.next) {
+          this.recordNavigation = rn
+        } else if (this.recordID !== NoID && (oldRn.prev || oldRn.next)) {
+          this.recordNavigation = oldRn
+        } else {
+          this.recordNavigation = {
+            prev: undefined,
+            next: undefined,
+          }
+        }
       },
     },
   },
@@ -202,31 +295,53 @@ export default {
     this.createBlocks()
   },
 
+  beforeDestroy () {
+    this.abortRequests()
+    this.setDefaultValues()
+  },
+
   methods: {
     createBlocks () {
       this.fields.forEach(f => {
-        const block = new compose.PageBlockRecord()
         const options = {
-          moduleID: this.$attrs.moduleID,
+          moduleID: this.moduleID,
           fields: f,
         }
-        block.options = options
-        this.blocks.push(block)
+        this.blocks.push(new compose.PageBlockRecord({ options }))
       })
     },
 
+    refresh () {
+      return this.loadRecord()
+    },
+
     loadRecord () {
-      if (this.$attrs.recordID && this.$attrs.moduleID) {
-        const { namespaceID } = this.$attrs.namespace
-        const { moduleID, recordID } = this.$attrs
-        const module = Object.freeze(this.getModuleByID(moduleID).clone())
-        this.$ComposeAPI
-          .recordRead({ namespaceID, moduleID, recordID })
+      const { moduleID = NoID, recordID = NoID } = this
+
+      if (!moduleID || moduleID === NoID) return
+      const module = Object.freeze(this.getModuleByID(moduleID).clone())
+
+      if (recordID && recordID !== NoID) {
+        const { namespaceID } = this.namespace
+
+        const { response, cancel } = this.$ComposeAPI
+          .recordReadCancellable({ namespaceID, moduleID, recordID })
+
+        this.abortableRequests.push(cancel)
+
+        response()
           .then(record => {
             this.record = new compose.Record(module, record)
-            this.fetchUsers(this.module.fields, [this.record])
+            this.initialRecordState = this.record.clone()
           })
-          .catch(this.toastErrorHandler(this.$t('notification:record.loadFailed')))
+          .catch((e) => {
+            if (!axios.isCancel(e)) {
+              this.toastErrorHandler(this.$t('notification:record.loadFailed'))(e)
+            }
+          })
+      } else {
+        this.record = new compose.Record(module, { values: this.values })
+        this.initialRecordState = undefined
       }
     },
 
@@ -235,15 +350,60 @@ export default {
     },
 
     handleAdd () {
-      this.$router.push({ name: 'admin.modules.record.create', params: { moduleID: this.module.moduleID } })
+      this.$router.push({ name: 'admin.modules.record.create', params: { moduleID: this.module.moduleID, edit: true } })
     },
 
     handleClone () {
-      this.$router.push({ name: 'admin.modules.record.create', params: { moduleID: this.module.moduleID, values: this.record.values } })
+      this.$router.push({ name: 'admin.modules.record.create', params: { moduleID: this.module.moduleID, values: this.record.values, edit: true } })
     },
 
     handleEdit () {
-      this.$router.push({ name: 'admin.modules.record.edit', params: this.$route.params })
+      this.$router.push({ name: 'admin.modules.record.edit', params: { moduleID: this.module.moduleID, edit: true } })
+    },
+
+    handleView () {
+      this.$router.push({ name: 'admin.modules.record.view', params: { moduleID: this.module.moduleID, edit: false } })
+    },
+
+    handleRedirectToPrevOrNext (recordID) {
+      if (!recordID) return
+
+      this.$router.push({
+        params: { ...this.$route.params, recordID },
+      })
+    },
+
+    setDefaultValues () {
+      this.blocks = []
+      this.bindParams = {}
+      this.abortableRequests = []
+    },
+
+    abortRequests () {
+      this.abortableRequests.forEach((cancel) => {
+        cancel()
+      })
+    },
+
+    compareRecordValues () {
+      const recordValues = JSON.parse(JSON.stringify(this.record ? this.record.values : {}))
+      const initialRecordState = JSON.parse(JSON.stringify(this.initialRecordState ? this.initialRecordState.values : {}))
+
+      return !isEqual(recordValues, initialRecordState)
+    },
+
+    checkUnsavedChanges () {
+      if (!this.edit) return true
+
+      const recordStateChange = this.compareRecordValues() ? window.confirm(this.$t('general:record.unsavedChanges')) : true
+
+      if (!recordStateChange) {
+        this.processing = false
+      } else {
+        this.record = this.initialRecordState ? this.initialRecordState.clone() : undefined
+      }
+
+      return recordStateChange
     },
   },
 }

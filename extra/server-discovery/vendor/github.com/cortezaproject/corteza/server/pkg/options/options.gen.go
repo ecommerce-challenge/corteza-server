@@ -14,8 +14,7 @@ import (
 
 type (
 	DBOpt struct {
-		DSN                           string `env:"DB_DSN"`
-		AllowDestructiveSchemaChanges bool   `env:"DB_ALLOW_DESTRUCTIVE_SCHEMA_CHANGES"`
+		DSN string `env:"DB_DSN"`
 	}
 
 	HTTPClientOpt struct {
@@ -253,6 +252,7 @@ type (
 		ExecDebug         bool `env:"WORKFLOW_EXEC_DEBUG"`
 		CallStackSize     int  `env:"WORKFLOW_CALL_STACK_SIZE"`
 		StackTraceEnabled bool `env:"WORKFLOW_STACK_TRACE_ENABLED"`
+		StackTraceFull    bool `env:"WORKFLOW_STACK_TRACE_FULL"`
 	}
 
 	DiscoveryOpt struct {
@@ -261,6 +261,17 @@ type (
 		CortezaDomain string `env:"DISCOVERY_CORTEZA_DOMAIN"`
 		BaseUrl       string `env:"DISCOVERY_BASE_URL"`
 	}
+
+	AttachmentOpt struct {
+		AvatarMaxFileSize             int64  `env:"ATTACHMENT_AVATAR_MAX_FILE_SIZE"`
+		AvatarInitialsFontPath        string `env:"AVATAR_INITIALS_FONT_PATH"`
+		AvatarInitialsBackgroundColor string `env:"AVATAR_INITIALS_BACKGROUND_COLOR"`
+		AvatarInitialsColor           string `env:"AVATAR_INITIALS_COLOR"`
+	}
+
+	WebappOpt struct {
+		ScssDirPath string `env:"WEBAPP_SCSS_DIR_PATH"`
+	}
 )
 
 // DB initializes and returns a DBOpt with default values
@@ -268,8 +279,7 @@ type (
 // This function is auto-generated
 func DB() (o *DBOpt) {
 	o = &DBOpt{
-		DSN:                           "sqlite3://file::memory:?cache=shared&mode=memory",
-		AllowDestructiveSchemaChanges: false,
+		DSN: "sqlite3://file::memory:?cache=shared&mode=memory",
 	}
 
 	// Custom defaults
@@ -1015,6 +1025,7 @@ func Workflow() (o *WorkflowOpt) {
 		Register:          true,
 		CallStackSize:     16,
 		StackTraceEnabled: true,
+		StackTraceFull:    true,
 	}
 
 	// Custom defaults
@@ -1044,6 +1055,61 @@ func Discovery() (o *DiscoveryOpt) {
 		Enabled: false,
 		Debug:   false,
 	}
+
+	// Custom defaults
+	func(o interface{}) {
+		if def, ok := o.(interface{ Defaults() }); ok {
+			def.Defaults()
+		}
+	}(o)
+
+	fill(o)
+
+	// Custom cleanup
+	func(o interface{}) {
+		if def, ok := o.(interface{ Cleanup() }); ok {
+			def.Cleanup()
+		}
+	}(o)
+
+	return
+}
+
+// Attachment initializes and returns a AttachmentOpt with default values
+//
+// This function is auto-generated
+func Attachment() (o *AttachmentOpt) {
+	o = &AttachmentOpt{
+		AvatarMaxFileSize:             1000000,
+		AvatarInitialsFontPath:        "fonts/Poppins-Regular.ttf",
+		AvatarInitialsBackgroundColor: "#F3F3F3",
+		AvatarInitialsColor:           "#162425",
+	}
+
+	// Custom defaults
+	func(o interface{}) {
+		if def, ok := o.(interface{ Defaults() }); ok {
+			def.Defaults()
+		}
+	}(o)
+
+	fill(o)
+
+	// Custom cleanup
+	func(o interface{}) {
+		if def, ok := o.(interface{ Cleanup() }); ok {
+			def.Cleanup()
+		}
+	}(o)
+
+	return
+}
+
+// Webapp initializes and returns a WebappOpt with default values
+//
+// This function is auto-generated
+func Webapp() (o *WebappOpt) {
+	o = &WebappOpt{}
 
 	// Custom defaults
 	func(o interface{}) {

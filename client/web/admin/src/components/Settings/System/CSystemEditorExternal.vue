@@ -1,31 +1,47 @@
 <template>
   <b-card
+    body-class="p-0"
+    header-class="border-bottom"
+    footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
     class="shadow-sm"
-    header-bg-variant="white"
-    footer-bg-variant="white"
   >
-    <b-form-group>
-      <b-form-checkbox
-        v-model="external.enabled"
-        :value="true"
-        :unchecked-value="false"
-      >
-        {{ $t('enabled') }}
-      </b-form-checkbox>
-    </b-form-group>
+    <template #header>
+      <h4 class="m-0">
+        {{ $t('title') }}
+      </h4>
+    </template>
 
-    <b-button
-      class="my-3"
-      variant="primary"
-      @click="newOIDC()"
-    >
-      {{ $t('oidc.add') }}
-    </b-button>
+    <div class="d-flex align-items-center flex-grow-1 flex-wrap flex-fill-child gap-1 p-3">
+      <b-button
+        variant="primary"
+        size="lg"
+        @click="newOIDC()"
+      >
+        {{ $t('oidc.add') }}
+      </b-button>
+
+      <b-form-group
+        :label="$t('enabled')"
+        label-class="text-primary"
+        class="mb-0 ml-auto"
+      >
+        <c-input-checkbox
+          v-model="external.enabled"
+          :value="true"
+          :unchecked-value="false"
+          :labels="checkboxLabel"
+          switch
+        />
+      </b-form-group>
+    </div>
 
     <b-table
-      :items="providers.items"
-      :fields="providers.fields"
+      :items="providerItems"
+      :fields="providerFields"
       :tbody-tr-class="(i) => i.rowBackground"
+      head-variant="light"
+      hover
+      class="mb-0"
     >
       <template #cell(enabled)="{ item }">
         <b-checkbox
@@ -35,23 +51,18 @@
       </template>
 
       <template #cell(provider)="{ item }">
-        {{ item.provider }}
-        <b-badge
-          v-if="item.tag"
-          class="ml-1"
-        >
-          {{ item.tag }}
-        </b-badge>
+        {{ item.provider || item.tag }}
       </template>
 
       <template #cell(editor)="{ item }">
-        <confirmation-toggle
+        <c-input-confirm
           v-if="item.delete"
-          cta-class="link"
+          :icon="item.deleted ? ['fas', 'trash-restore'] : undefined"
+          :variant="item.deleted ? 'outline-warning' : 'outline-danger'"
+          :variant-ok="item.deleted ? 'warning' : 'danger'"
           @confirmed="item.delete()"
-        >
-          <font-awesome-icon :icon="['far', 'trash-alt']" />
-        </confirmation-toggle>
+        />
+
         <b-button
           variant="link"
           @click="openEditor(item.editor)"
@@ -66,6 +77,7 @@
     <b-modal
       v-model="modal.open"
       :title="modal.title"
+      scrollable
       size="lg"
       title-class="text-capitalize"
       @ok="modal.updater(modal.data)"
@@ -76,18 +88,13 @@
       />
     </b-modal>
 
-    <template #header>
-      <h3 class="m-0">
-        {{ $t('title') }}
-      </h3>
-    </template>
-
     <template #footer>
-      <c-submit-button
-        class="float-right"
+      <c-button-submit
         :disabled="!dirty || !canManage"
         :processing="processing"
         :success="success"
+        :text="$t('admin:general.label.submit')"
+        class="ml-auto"
         @submit="$emit('submit', changes)"
       />
     </template>
@@ -96,11 +103,9 @@
 
 <script>
 import _ from 'lodash'
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
 import OidcExternal from 'corteza-webapp-admin/src/components/Settings/System/Auth/ExternalOIDC'
 import StandardExternal from 'corteza-webapp-admin/src/components/Settings/System/Auth/ExternalStd'
 import SamlExternal from 'corteza-webapp-admin/src/components/Settings/System/Auth/ExternalSAML'
-import ConfirmationToggle from 'corteza-webapp-admin/src/components/ConfirmationToggle'
 
 const idpStandard = [
   'google',
@@ -224,11 +229,9 @@ export default {
   },
 
   components: {
-    CSubmitButton,
     OidcExternal,
     StandardExternal,
     SamlExternal,
-    ConfirmationToggle,
   },
 
   props: {
@@ -267,6 +270,10 @@ export default {
       external: prepareExternal(this.value),
 
       roles: [],
+      checkboxLabel: {
+        on: this.$t('general:label.general.yes'),
+        off: this.$t('general:label.general.no'),
+      },
     }
   },
 
@@ -285,76 +292,80 @@ export default {
      *
      * @returns object
      */
-    providers () {
-      return {
-        fields: [
-          { key: 'enabled', label: '', thStyle: { width: '50px' } },
-          { key: 'provider', label: this.$t('table.header.provider'), thStyle: { width: '200px' }, tdClass: 'text-capitalize' },
-          { key: 'info', label: this.$t('table.header.info') },
-          { key: 'editor', label: '', thStyle: { width: '200px' }, tdClass: 'text-right' },
-        ],
-        items: [
-          {
-            rowBackground: _.isEqual(this.original.saml, this.external.saml) ? '' : 'bg-warning',
-            provider: this.external.saml.name,
-            info: this.external.saml.idp.url,
-            tag: 'SAML',
+    providerFields () {
+      return [
+        { key: 'enabled', label: this.$t('table.header.enabled'), thStyle: { width: '50px' } },
+        { key: 'provider', label: this.$t('table.header.provider'), thStyle: { width: '200px' }, tdClass: 'text-capitalize' },
+        { key: 'info', label: this.$t('table.header.info') },
+        { key: 'editor', label: '', thStyle: { width: '200px' }, tdClass: 'text-right' },
+      ]
+    },
 
-            enabled: this.external.saml.enabled,
-            enable: (val) => this.$set(this.external.saml, 'enabled', val),
+    providerItems () {
+      return [
+        {
+          rowBackground: _.isEqual(this.original.saml, this.external.saml) ? '' : 'bg-extra-light',
+          provider: this.external.saml.name,
+          info: this.external.saml.idp.url,
+          tag: 'SAML',
 
-            editor: {
-              component: 'saml-external',
-              data: this.external.saml,
-              title: this.$t('saml.title'),
-              updater: (changed) => this.updater('saml', changed),
-            },
+          enabled: this.external.saml.enabled,
+          enable: (val) => this.$set(this.external.saml, 'enabled', val),
+
+          editor: {
+            component: 'saml-external',
+            data: this.external.saml,
+            title: this.$t('saml.title'),
+            updater: (changed) => this.updater('saml', changed),
           },
-          ...this.external.oidc
-            .map((p, i) => ({
-              rowBackground: (() => {
-                if (_.isEqual(this.original.oidc[i], p)) {
-                  return ''
-                }
+        },
+        ...this.external.oidc
+          .map((p, i) => ({
+            rowBackground: (() => {
+              if (_.isEqual(this.original.oidc[i], p)) {
+                return ''
+              }
 
-                if (p.deleted) {
-                  return 'text-light deleted'
-                }
+              if (p.deleted) {
+                return 'text-extra-light deleted'
+              }
 
-                return 'bg-warning'
-              })(),
-              provider: p.handle,
-              tag: 'OIDC',
-              info: p.issuer,
-
-              enabled: p.enabled,
-              enable: (val) => this.$set(this.external.oidc[i], 'enabled', val),
-              delete: () => this.$set(this.external.oidc[i], 'deleted', !p.deleted),
-
-              editor: {
-                component: 'oidc-external',
-                data: p,
-                title: p.handle,
-                updater: (changed) => this.updater('oidc', changed, i),
-              },
-            })),
-          ...this.external.standard.map((p, i) => ({
-            rowBackground: _.isEqual(this.original.standard[i], p) ? '' : 'bg-warning',
+              return 'bg-extra-light'
+            })(),
             provider: p.handle,
-            info: p.key,
+            tag: 'OIDC',
+            info: p.issuer,
 
             enabled: p.enabled,
-            enable: (val) => this.$set(this.external.standard[i], 'enabled', val),
+            deleted: p.deleted,
+            enable: (val) => this.$set(this.external.oidc[i], 'enabled', val),
+            delete: () => {
+              this.$set(this.external.oidc[i], 'deleted', !p.deleted)
+            },
 
             editor: {
-              component: 'standard-external',
+              component: 'oidc-external',
               data: p,
               title: p.handle,
-              updater: (changed) => this.updater('standard', changed, i),
+              updater: (changed) => this.updater('oidc', changed, i),
             },
           })),
-        ],
-      }
+        ...this.external.standard.map((p, i) => ({
+          rowBackground: _.isEqual(this.original.standard[i], p) ? '' : 'bg-extra-light',
+          provider: p.handle,
+          info: p.key,
+
+          enabled: p.enabled,
+          enable: (val) => this.$set(this.external.standard[i], 'enabled', val),
+
+          editor: {
+            component: 'standard-external',
+            data: p,
+            title: p.handle,
+            updater: (changed) => this.updater('standard', changed, i),
+          },
+        })),
+      ]
     },
 
     /**
@@ -501,6 +512,6 @@ export default {
 </script>
 <style lang="scss">
 .deleted {
-  text-decoration: line-through
+  text-decoration: line-through;
 }
 </style>

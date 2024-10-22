@@ -2,7 +2,10 @@
   <tr>
     <td />
     <td>
-      <b-form-group :label="$t('navigation.fieldLabel')">
+      <b-form-group
+        :label="$t('navigation.fieldLabel')"
+        label-class="text-primary"
+      >
         <b-form-input
           v-model="options.item.label"
           type="text"
@@ -19,3 +22,11 @@ export default {
   extends: base,
 }
 </script>
+
+<style lang="scss" scoped>
+th,
+td {
+  padding-left: 15px;
+  padding-right: 15px;
+}
+</style>

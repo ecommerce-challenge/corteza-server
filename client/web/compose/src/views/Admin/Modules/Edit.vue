@@ -3,10 +3,10 @@
     <portal to="topbar-title">
       {{ title }}
     </portal>
-
     <portal to="topbar-tools">
       <b-button-group
         v-if="isEdit"
+        data-test-id="button-all-records"
         size="sm"
         class="mr-1"
       >
@@ -25,6 +25,7 @@
         <module-translator
           v-if="module"
           :module.sync="trModule"
+          button-variant="primary"
           style="margin-left:2px;"
         />
       </b-button-group>
@@ -51,115 +52,112 @@
           >
             <b-card-header
               v-if="isEdit"
-              header-bg-variant="white"
               class="py-3"
             >
               <b-row
                 no-gutters
-                class="wrap-with-vertical-gutters align-items-center"
+                class="d-flex align-items-center flex-fill-child gap-1"
               >
-                <div class="flex-grow-1 wrap-with-vertical-gutters">
-                  <b-button
-                    v-if="federationEnabled"
-                    data-test-id="button-federation-settings"
-                    variant="light"
-                    size="lg"
-                    class="mr-1"
-                    @click="federationSettings.modal = true"
-                  >
-                    <font-awesome-icon
-                      :icon="['fas', 'share-alt']"
-                    />
-
-                    {{ $t('edit.federationSettings.title') }}
-                  </b-button>
-
-                  <b-button
-                    v-if="discoveryEnabled"
-                    data-test-id="button-discovery-settings"
-                    variant="light"
-                    size="lg"
-                    class="mr-1"
-                    @click="discoverySettings.modal = true"
-                  >
-                    <font-awesome-icon
-                      :icon="['fas', 'search-location']"
-                    />
-                    {{ $t('edit.discoverySettings.title') }}
-                  </b-button>
-
-                  <export
-                    :list="[module]"
-                    type="module"
-                    class="mr-1"
-                  />
-
-                  <b-dropdown
-                    v-if="module.canGrant"
-                    data-test-id="dropdown-permissions"
-                    size="lg"
-                    variant="light"
-                    class="permissions-dropdown mr-1"
-                  >
-                    <template #button-content>
-                      <font-awesome-icon :icon="['fas', 'lock']" />
-                      <span>
-                        {{ $t('general.label.permissions') }}
-                      </span>
-                    </template>
-
-                    <b-dropdown-item>
-                      <c-permissions-button
-                        :title="module.name || module.handle || module.moduleID"
-                        :target="module.name || module.handle || module.moduleID"
-                        :resource="`corteza::compose:module/${namespace.namespaceID}/${module.moduleID}`"
-                        :button-label="$t('general:label.module')"
-                        :show-button-icon="false"
-                        button-variant="white text-left w-100"
-                      />
-                    </b-dropdown-item>
-
-                    <b-dropdown-item>
-                      <c-permissions-button
-                        :title="module.name || module.handle || module.moduleID"
-                        :target="module.name || module.handle || module.moduleID"
-                        :resource="`corteza::compose:module-field/${namespace.namespaceID}/${module.moduleID}/*`"
-                        :button-label="$t('general:label.field')"
-                        :show-button-icon="false"
-                        all-specific
-                        button-variant="white text-left w-100"
-                      />
-                    </b-dropdown-item>
-
-                    <b-dropdown-item>
-                      <c-permissions-button
-                        :title="module.name || module.handle || module.moduleID"
-                        :target="module.name || module.handle || module.moduleID"
-                        :resource="`corteza::compose:record/${namespace.namespaceID}/${module.moduleID}/*`"
-                        :button-label="$t('general:label.record')"
-                        :show-button-icon="false"
-                        all-specific
-                        button-variant="white text-left w-100"
-                      />
-                    </b-dropdown-item>
-                  </b-dropdown>
-                </div>
-
-                <div
-                  class="flex-grow-1 d-flex justify-content-md-end"
+                <b-button
+                  v-if="federationEnabled"
+                  data-test-id="button-federation-settings"
+                  variant="light"
+                  size="lg"
+                  class="mr-1"
+                  @click="federationSettings.modal = true"
                 >
-                  <related-pages
-                    :namespace="namespace"
-                    :module="module"
-                    size="lg"
+                  <font-awesome-icon
+                    :icon="['fas', 'share-alt']"
                   />
-                </div>
+
+                  {{ $t('edit.federationSettings.title') }}
+                </b-button>
+
+                <b-button
+                  v-if="discoveryEnabled"
+                  data-test-id="button-discovery-settings"
+                  variant="light"
+                  size="lg"
+                  class="mr-1"
+                  @click="discoverySettings.modal = true"
+                >
+                  <font-awesome-icon
+                    :icon="['fas', 'search-location']"
+                  />
+                  {{ $t('edit.discoverySettings.title') }}
+                </b-button>
+
+                <export
+                  v-if="namespace.canExportModules"
+                  :list="[module]"
+                  type="module"
+                  class="mr-1"
+                />
+
+                <b-dropdown
+                  v-if="module.canGrant"
+                  data-test-id="dropdown-permissions"
+                  size="lg"
+                  variant="light"
+                  class="permissions-dropdown mr-1"
+                >
+                  <template #button-content>
+                    <font-awesome-icon :icon="['fas', 'lock']" />
+                    <span>
+                      {{ $t('general.label.permissions') }}
+                    </span>
+                  </template>
+
+                  <b-dropdown-item>
+                    <c-permissions-button
+                      :title="module.name || module.handle || module.moduleID"
+                      :target="module.name || module.handle || module.moduleID"
+                      :resource="`corteza::compose:module/${namespace.namespaceID}/${module.moduleID}`"
+                      :button-label="$t('general:label.module.single')"
+                      :show-button-icon="false"
+                      button-variant="outline-light"
+                      class="border-0 text-dark text-left w-100"
+                    />
+                  </b-dropdown-item>
+
+                  <b-dropdown-item>
+                    <c-permissions-button
+                      :title="module.name || module.handle || module.moduleID"
+                      :target="module.name || module.handle || module.moduleID"
+                      :resource="`corteza::compose:module-field/${namespace.namespaceID}/${module.moduleID}/*`"
+                      :button-label="$t('general:label.field')"
+                      :show-button-icon="false"
+                      all-specific
+                      button-variant="outline-light"
+                      class="border-0 text-dark text-left w-100"
+                    />
+                  </b-dropdown-item>
+
+                  <b-dropdown-item>
+                    <c-permissions-button
+                      :title="module.name || module.handle || module.moduleID"
+                      :target="module.name || module.handle || module.moduleID"
+                      :resource="`corteza::compose:record/${namespace.namespaceID}/${module.moduleID}/*`"
+                      :button-label="$t('general:label.record')"
+                      :show-button-icon="false"
+                      all-specific
+                      button-variant="outline-light"
+                      class="border-0 text-dark text-left w-100"
+                    />
+                  </b-dropdown-item>
+                </b-dropdown>
+
+                <related-pages
+                  :namespace="namespace"
+                  :module="module"
+                  size="lg"
+                  class="d-flex ml-auto"
+                />
               </b-row>
             </b-card-header>
 
             <b-tabs
               v-model="activeTab"
-              nav-wrapper-class="bg-white white border-bottom"
               card
             >
               <b-tab
@@ -173,8 +171,7 @@
                 <b-row>
                   <b-col
                     cols="12"
-                    md="6"
-                    xl="4"
+                    lg="6"
                   >
                     <b-form-group
                       :label="$t('newLabel')"
@@ -192,8 +189,7 @@
 
                   <b-col
                     cols="12"
-                    md="6"
-                    xl="4"
+                    lg="6"
                   >
                     <b-form-group
                       :label="$t('general.label.handle')"
@@ -220,15 +216,20 @@
                 </h5>
 
                 <b-row no-gutters>
-                  <b-form-group class="w-100">
-                    <table
+                  <c-form-table-wrapper
+                    :labels="{ addButton: $t('edit.newField') }"
+                    class="mb-2"
+                    @add-item="handleNewField"
+                  >
+                    <b-table-simple
                       data-test-id="table-module-fields"
-                      class="table table-sm table-borderless table-responsive-lg"
+                      borderless
+                      responsive
+                      small
                     >
                       <thead>
                         <tr>
                           <th />
-
                           <th
                             class="text-primary"
                           >
@@ -236,18 +237,11 @@
                               class="d-flex align-items-center"
                             >
                               {{ $t('general.label.name') }}
-                              <div
-                                v-b-tooltip.hover.topright
-                                :title="$t('edit.tooltip.name')"
-                                class="ml-1"
-                              >
-                                <font-awesome-icon
-                                  :icon="['far', 'question-circle']"
-                                />
-                              </div>
+                              <c-hint
+                                :tooltip="$t('edit.tooltip.name')"
+                              />
                             </div>
                           </th>
-
                           <th
                             class="text-primary"
                           >
@@ -255,15 +249,9 @@
                               class="d-flex align-items-center"
                             >
                               {{ $t('general.label.title') }}
-                              <div
-                                v-b-tooltip.hover.topright
-                                :title="$t('edit.tooltip.title')"
-                                class="ml-1"
-                              >
-                                <font-awesome-icon
-                                  :icon="['far', 'question-circle']"
-                                />
-                              </div>
+                              <c-hint
+                                :tooltip="$t('edit.tooltip.title')"
+                              />
                             </div>
                           </th>
 
@@ -301,39 +289,65 @@
                           :is-duplicate="!!duplicateFields[index]"
                           @edit="handleFieldEdit(module.fields[index])"
                           @delete="module.fields.splice(index, 1)"
+                          @updateKind="handleFieldKindUpdate(index)"
                         />
                       </draggable>
+                    </b-table-simple>
+                  </c-form-table-wrapper>
+                </b-row>
 
-                      <tr>
-                        <td colspan="1" />
-                        <td colspan="7">
-                          <b-button
-                            data-test-id="button-field-add"
-                            class="mb-5"
-                            variant="primary"
-                            @click="handleNewField"
+                <hr>
+
+                <h5 class="mb-3">
+                  {{ $t('edit.systemFields') }}
+                </h5>
+
+                <b-row
+                  no-gutters
+                >
+                  <c-form-table-wrapper hide-add-button>
+                    <b-table-simple
+                      borderless
+                      responsive
+                      small
+                    >
+                      <thead>
+                        <tr>
+                          <th />
+
+                          <th
+                            class="text-primary"
+                            style="min-width: 250px;"
                           >
-                            + {{ $t('edit.newField') }}
-                          </b-button>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td
-                          colspan="7"
-                          class="font-weight-bold"
-                        >
-                          {{ $t('edit.systemFields') }}
-                        </td>
-                      </tr>
+                            {{ $t('general:label.name') }}
+                          </th>
 
-                      <field-row-view
-                        v-for="(field, index) in systemFields"
-                        :key="index"
-                        :field="field"
-                        class="mt-4"
-                      />
-                    </table>
-                  </b-form-group>
+                          <th
+                            class="text-primary"
+                            style="min-width: 250px;"
+                          >
+                            {{ $t('general.label.title') }}
+                          </th>
+
+                          <th
+                            colspan="5"
+                            class="text-primary"
+                            style="min-width: 250px;"
+                          >
+                            {{ $t('general:label.type') }}
+                          </th>
+                        </tr>
+                      </thead>
+
+                      <b-tbody>
+                        <field-row-view
+                          v-for="(field, index) in systemFields"
+                          :key="index"
+                          :field="field"
+                        />
+                      </b-tbody>
+                    </b-table-simple>
+                  </c-form-table-wrapper>
                 </b-row>
               </b-tab>
 
@@ -381,6 +395,7 @@
                 v-if="module.issues.length > 0"
                 :title="$t('edit.issues.label', { count: module.issues.length })"
                 title-link-class="text-danger"
+                @click="checkAlterations"
               >
                 <b-alert
                   v-for="(issue, index) in module.issues"
@@ -388,7 +403,7 @@
                   show
                   variant="danger"
                 >
-                  {{ issue }}
+                  {{ issue.issue }}
                 </b-alert>
               </b-tab>
             </b-tabs>
@@ -406,6 +421,7 @@
         :visible="!!updateField"
         body-class="p-0 border-top-0"
         header-class="p-3 pb-0 border-bottom-0"
+        no-fade
         @ok="handleFieldSave(updateField)"
         @hide="updateField=null"
       >
@@ -415,8 +431,15 @@
           :module="module"
           :connection="connection"
           :sensitivity-levels="sensitivityLevels"
+          :has-records="hasRecords"
         />
       </b-modal>
+
+      <dal-schema-alterations
+        :batch="dalSchemaAlterations.batchID"
+        :module="module"
+        @hide="onDalAlterationsHide"
+      />
 
       <federation-settings
         v-if="federationEnabled"
@@ -436,26 +459,33 @@
     <portal to="admin-toolbar">
       <editor-toolbar
         :processing="processing"
-        :back-link="{ name: 'admin.modules' }"
+        :processing-save="processingSave"
+        :processing-clone="processingClone"
+        :processing-save-and-close="processingSaveAndClose"
+        :processing-delete="processingDelete"
         :hide-delete="hideDelete"
-        hide-clone
+        :hide-clone="!isEdit"
         :hide-save="hideSave"
         :disable-save="disableSave"
         @delete="handleDelete"
         @save="handleSave()"
+        @clone="handleClone"
         @saveAndClose="handleSave({ closeOnSuccess: true })"
+        @back="$router.push(previousPage || { name: 'admin.modules' })"
       />
     </portal>
   </div>
 </template>
 
 <script>
+import { isEqual } from 'lodash'
 import { mapGetters, mapActions } from 'vuex'
 import draggable from 'vuedraggable'
 import FieldConfigurator from 'corteza-webapp-compose/src/components/ModuleFields/Configurator'
 import FieldRowEdit from 'corteza-webapp-compose/src/components/Admin/Module/FieldRowEdit'
 import FieldRowView from 'corteza-webapp-compose/src/components/Admin/Module/FieldRowView'
 import FederationSettings from 'corteza-webapp-compose/src/components/Admin/Module/FederationSettings'
+import DalSchemaAlterations from 'corteza-webapp-compose/src/components/Admin/Module/DalSchemaAlterations'
 import DiscoverySettings from 'corteza-webapp-compose/src/components/Admin/Module/DiscoverySettings'
 import DalSettings from 'corteza-webapp-compose/src/components/Admin/Module/DalSettings'
 import RecordRevisionsSettings from 'corteza-webapp-compose/src/components/Admin/Module/RecordRevisionsSettings'
@@ -481,6 +511,7 @@ export default {
     FieldRowEdit,
     FieldRowView,
     FederationSettings,
+    DalSchemaAlterations,
     DiscoverySettings,
     DalSettings,
     RecordRevisionsSettings,
@@ -490,6 +521,14 @@ export default {
     EditorToolbar,
     Export,
     UniqueValues,
+  },
+
+  beforeRouteUpdate (to, from, next) {
+    this.checkUnsavedModule(next)
+  },
+
+  beforeRouteLeave (to, from, next) {
+    this.checkUnsavedModule(next)
   },
 
   props: {
@@ -514,26 +553,43 @@ export default {
 
       updateField: null,
       module: undefined,
+      initialModuleState: undefined,
       hasRecords: true,
       processing: false,
+      processingSave: false,
+      processingClone: false,
+      processingSaveAndClose: false,
+      processingDelete: false,
 
       federationSettings: {
         modal: false,
       },
 
+      dalSchemaAlterations: {
+        modal: false,
+        batchID: undefined,
+      },
+
       discoverySettings: {
         modal: false,
       },
+
+      abortableRequests: [],
     }
   },
 
   computed: {
     ...mapGetters({
       pages: 'page/set',
+      previousPage: 'ui/previousPage',
     }),
 
     title () {
       return this.$route.name === 'admin.modules.edit' ? this.$t('edit.edit') : this.$t('edit.create')
+    },
+
+    isNew () {
+      return this.moduleID === NoID
     },
 
     trModule: {
@@ -639,47 +695,10 @@ export default {
   watch: {
     moduleID: {
       immediate: true,
-      handler (moduleID) {
-        this.module = undefined
-
-        /**
-         * Every time module changes we switch to the 1st tab
-         */
-        this.activeTab = 0
-
-        if (moduleID === NoID) {
-          this.module = new compose.Module(
-            { fields: [new compose.ModuleFieldString({ fieldID: NoID, name: this.$t('general.placeholder.sample') })] },
-            this.namespace,
-          )
-        } else {
-          const params = {
-            // make sure module is loaded from the API every time!
-            force: true,
-            namespace: this.namespace,
-            moduleID: moduleID,
-          }
-
-          this.findModuleByID(params).then((module) => {
-            // Make a copy so that we do not change store item by ref
-            this.module = module.clone()
-
-            const { moduleID, namespaceID, issues = [] } = this.module
-
-            if (issues.length > 0) {
-              // do not proceed with record search as it's
-              // likely to fail due to issues on a module
-              return
-            }
-
-            // Count existing records to see what we can do with this module
-            this.$ComposeAPI
-              .recordList({ moduleID, namespaceID, limit: 1 })
-              .then(({ set }) => { this.hasRecords = (set.length > 0) })
-          })
-        }
-
+      async handler (moduleID) {
+        await this.fetchModule(moduleID)
         this.fetchSensitivityLevels()
+        this.checkAlterations()
       },
     },
 
@@ -688,6 +707,11 @@ export default {
         this.fetchConnection(connectionID)
       },
     },
+  },
+
+  beforeDestroy () {
+    this.abortRequests()
+    this.setDefaultValues()
   },
 
   methods: {
@@ -700,12 +724,30 @@ export default {
       deletePage: 'page/delete',
     }),
 
+    checkUnsavedModule (next) {
+      if (this.isNew) {
+        next(true)
+      } else if (!this.module.deletedAt) {
+        const moduleState = this.module ? this.module.clone() : {}
+        const initialModuleState = this.initialModuleState ? this.initialModuleState.clone() : {}
+
+        next(!isEqual(moduleState, initialModuleState) ? window.confirm(this.$t('general.unsavedChanges')) : true)
+      } else {
+        next(true)
+      }
+    },
+
     handleNewField () {
       this.module.fields.push(new compose.ModuleFieldString())
     },
 
     handleFieldEdit (field) {
       this.updateField = compose.ModuleFieldMaker({ ...field })
+    },
+
+    handleFieldKindUpdate (index) {
+      const field = this.module.fields[index]
+      this.module.fields.splice(index, 1, compose.ModuleFieldMaker({ ...field }))
     },
 
     handleFieldSave (field) {
@@ -723,19 +765,32 @@ export default {
       this.module.config = { ...this.module.config, ...changes }
     },
 
-    handleSave ({ closeOnSuccess = false } = {}) {
+    handleSave ({ module = this.module, closeOnSuccess = false, isClone = false } = {}) {
       /**
        * Pass a special tag alongside payload that
        * instructs store layer to add content-language header to the API request
        */
       const resourceTranslationLanguage = this.currentLanguage
-      this.processing = true
 
-      if (!this.isEdit) {
+      const toggleProcessing = () => {
+        this.processing = !this.processing
+
+        if (closeOnSuccess) {
+          this.processingSaveAndClose = !this.processingSaveAndClose
+        } else if (isClone) {
+          this.processingClone = !this.processingClone
+        } else {
+          this.processingSave = !this.processingSave
+        }
+      }
+
+      toggleProcessing()
+
+      if (module.moduleID === NoID) {
         // Filter out record fields that reference this not yet created module
         let fields = []
         const toBeUpdatedFields = []
-        this.module.fields.forEach(f => {
+        module.fields.forEach(f => {
           if (f.kind === 'Record' && f.options.moduleID === '-1') {
             toBeUpdatedFields.push(f)
           } else {
@@ -745,7 +800,7 @@ export default {
 
         // If such fields exist , after module is created add fields, map moduleID and update module
         // Unfortunately this ruins the initial field order, but we can improve this later
-        this.createModule({ ...this.module, fields, resourceTranslationLanguage }).then(async module => {
+        this.createModule({ ...module, fields, resourceTranslationLanguage }).then(async module => {
           if (toBeUpdatedFields.length) {
             fields = [
               ...module.fields,
@@ -759,45 +814,132 @@ export default {
           }
 
           this.module = new compose.Module({ ...module }, this.namespace)
+          this.initialModuleState = this.module.clone()
 
-          this.toastSuccess(this.$t('notification:module.saved'))
+          this.toastSuccess(this.$t('notification:module.created'))
           if (closeOnSuccess) {
-            this.$router.push({ name: 'admin.modules' })
+            this.$router.push(this.previousPage || { name: 'admin.modules' })
           } else {
             this.$router.push({ name: 'admin.modules.edit', params: { moduleID: this.module.moduleID } })
           }
         }).catch(this.toastErrorHandler(this.$t('notification:module.saveFailed')))
           .finally(() => {
-            this.processing = false
+            toggleProcessing()
           })
       } else {
-        this.updateModule({ ...this.module, resourceTranslationLanguage }).then(module => {
+        this.updateModule({ ...module, resourceTranslationLanguage }).then(module => {
           this.module = new compose.Module({ ...module }, this.namespace)
+          this.initialModuleState = this.module.clone()
+
           this.toastSuccess(this.$t('notification:module.saved'))
           if (closeOnSuccess) {
-            this.$router.push({ name: 'admin.modules' })
+            this.$router.push(this.previousPage || { name: 'admin.modules' })
           }
         }).catch(this.toastErrorHandler(this.$t('notification:module.saveFailed')))
           .finally(() => {
-            this.processing = false
+            toggleProcessing()
           })
+      }
+    },
+
+    async onDalAlterationsHide () {
+      await this.fetchModule(this.moduleID)
+      this.dalSchemaAlterations.batchID = undefined
+    },
+
+    async fetchModule (moduleID = this.moduleID) {
+      this.module = undefined
+      this.initialModuleState = undefined
+
+      /**
+       * Every time module changes we switch to the 1st tab
+       */
+      this.activeTab = 0
+
+      if (moduleID === NoID) {
+        this.module = new compose.Module(
+          { fields: [new compose.ModuleFieldString({ fieldID: NoID, name: this.$t('general.placeholder.sample') })] },
+          this.namespace,
+        )
+      } else {
+        const params = {
+          // make sure module is loaded from the API every time!
+          force: true,
+          namespace: this.namespace,
+          moduleID: moduleID,
+        }
+
+        await this.findModuleByID(params).then((module) => {
+          // Make a copy so that we do not change store item by ref
+          this.module = module.clone()
+
+          const { moduleID, namespaceID, issues = [] } = this.module
+          if (issues.length > 0) {
+            // do not proceed with record search as it's
+            // likely to fail due to issues on a module
+            return
+          }
+
+          // Count existing records to see what we can do with this module
+          const { response, cancel } = this.$ComposeAPI
+            .recordListCancellable({ moduleID, namespaceID, limit: 1 })
+
+          this.abortableRequests.push(cancel)
+
+          response()
+            .then(({ set }) => { this.hasRecords = (set.length > 0) })
+        })
+      }
+
+      this.initialModuleState = this.module.clone()
+    },
+
+    checkAlterations () {
+      const { issues = [] } = this.module || {}
+
+      if (!issues.length) {
+        return
+      }
+
+      // Check if module has Alterations to resolve
+      this.dalSchemaAlterations.batchID = undefined
+      // Pull all batchIDs as they can differ in cases where a related resource
+      // also requires alterations.
+      // @todo this should probably perhaps change but I'm not entirely sure how
+      const aux = (this.module.issues || []).map(({ meta }) => meta.batchID).filter(b => b)
+      if (aux.length > 0) {
+        this.dalSchemaAlterations.batchID = aux
       }
     },
 
     handleDelete () {
       this.processing = true
+      this.processingDelete = true
 
       this.deleteModule(this.module).then(() => {
+        this.module.deletedAt = new Date()
+
         const moduleRecordPage = this.pages.find(p => p.moduleID === this.module.moduleID)
         if (moduleRecordPage) {
           return this.deletePage({ ...moduleRecordPage, strategy: 'rebase' })
         }
-      }).catch(this.toastErrorHandler(this.$t('notification:module.deleteFailed')))
+      })
+        .catch(this.toastErrorHandler(this.$t('notification:module.deleteFailed')))
         .finally(() => {
           this.toastSuccess(this.$t('notification:module.deleted'))
           this.processing = false
+          this.processingDelete = false
           this.$router.push({ name: 'admin.modules' })
         })
+    },
+
+    handleClone () {
+      const module = this.module.clone()
+      module.moduleID = NoID
+      module.name = `${this.module.name} (copy)`
+      module.handle = this.module.handle ? `${this.module.handle}_copy` : ''
+
+      this.handleSave({ module, isClone: true })
     },
 
     async fetchConnection (connectionID) {
@@ -805,6 +947,7 @@ export default {
         this.$SystemAPI.dalConnectionRead({ connectionID })
           .then(connection => {
             this.connection = connection
+            this.initialModuleState.config.dal.connectionID = connection.connectionID
           })
           .catch(this.toastErrorHandler(this.$t('notification:connection.read-failed')))
           .finally(() => {
@@ -825,14 +968,28 @@ export default {
           this.processing = false
         })
     },
+
+    setDefaultValues () {
+      this.activeTab = 0
+      this.connection = undefined
+      this.sensitivityLevels = []
+      this.updateField = null
+      this.module = undefined
+      this.initialModuleState = undefined
+      this.hasRecords = true
+      this.processing = false
+      this.processingSaveAndClose = false
+      this.processingSave = false
+      this.federationSettings = {}
+      this.discoverySettings = {}
+      this.abortableRequests = []
+    },
+
+    abortRequests () {
+      this.abortableRequests.forEach((cancel) => {
+        cancel()
+      })
+    },
   },
 }
 </script>
-
-<style lang="scss">
-.permissions-dropdown {
-  .dropdown-item {
-    padding: 0;
-  }
-}
-</style>

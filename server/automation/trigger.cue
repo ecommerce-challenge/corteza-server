@@ -21,6 +21,11 @@ trigger: {
 				goType: "uint64",
 				storeIdent: "rel_step"
 				dal: { type: "ID" }
+				envoy: {
+					yaml: {
+						identKeyAlias: ["stepID", "step_id"]
+					}
+				}
 			}
 			enabled: {
 				sortable: true,
@@ -30,24 +35,40 @@ trigger: {
 			meta: {
 				goType: "*types.TriggerMeta"
 				dal: { type: "JSON", defaultEmptyObject: true }
+				omitSetter: true
+				omitGetter: true
 			}
 			resource_type: {
 				sortable: true,
 				goType: "string"
 				dal: { length: 64 }
+				envoy: {
+					yaml: {
+						identKeyAlias: ["resourceType", "resource_type"]
+					}
+				}
 			}
 			event_type: {
 				sortable: true,
 				goType: "string"
 				dal: {}
+				envoy: {
+					yaml: {
+						identKeyAlias: ["eventType", "event_type"]
+					}
+				}
 			}
 			constraints: {
 				goType: "types.TriggerConstraintSet"
 				dal: { type: "JSON", defaultEmptyObject: true }
+				omitSetter: true
+				omitGetter: true
 			}
 			input: {
 				goType: "*expr.Vars"
 				dal: { type: "JSON", defaultEmptyObject: true }
+				omitSetter: true
+				omitGetter: true
 			}
 
 			owned_by:   schema.AttributeUserRef
@@ -61,6 +82,16 @@ trigger: {
 
 		indexes: {
 			"primary": { attribute: "id" }
+		}
+	}
+
+	envoy: {
+		yaml: {
+			supportMappedInput: false
+			identKeyAlias: []
+		}
+		store: {
+			customFilterBuilder: true
 		}
 	}
 

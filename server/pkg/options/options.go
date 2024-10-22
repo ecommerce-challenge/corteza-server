@@ -28,6 +28,8 @@ type (
 		Limit       LimitOpt
 		Discovery   DiscoveryOpt
 		Apigw       ApigwOpt
+		Attachment  AttachmentOpt
+		Webapp      WebappOpt
 	}
 )
 
@@ -59,5 +61,7 @@ func Init() *Options {
 		Limit:       *Limit(),
 		Discovery:   *Discovery(),
 		Apigw:       *Apigw(),
+		Attachment:  *Attachment(),
+		Webapp:      *Webapp(),
 	}
 }

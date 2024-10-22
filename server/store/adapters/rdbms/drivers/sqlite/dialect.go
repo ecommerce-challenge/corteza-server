@@ -29,6 +29,10 @@ var (
 
 	nuances = drivers.Nuances{
 		HavingClauseMustUseAlias: true,
+
+		ExpandedJsonColumnSelector: func(ident string) exp.Expression {
+			return exp.NewLiteralExpression(fmt.Sprintf(`%s.value`, ident))
+		},
 	}
 )
 
@@ -48,6 +52,44 @@ func Dialect() *sqliteDialect {
 
 func (sqliteDialect) Nuances() drivers.Nuances {
 	return nuances
+}
+
+func (d sqliteDialect) AggregateBase(t drivers.TableCodec, groupBy []dal.AggregateAttr, out []dal.AggregateAttr) (slct *goqu.SelectDataset) {
+	var (
+		cols = t.Columns()
+
+		// working around a bug inside goqu lib that adds
+		// * to the list of columns to be selected
+		// even if we clear the columns first
+		q = d.GOQU().
+			From(t.Ident())
+	)
+
+	for _, g := range groupBy {
+		// Special handling for multi value fields
+		if g.MultiValue {
+			// Only straight up columns can be multi value so we can freely use RawExpr
+			colName := g.RawExpr
+			q = q.From(
+				t.Ident(),
+				goqu.Func("json_each",
+					goqu.C("values").Table("compose_record"),
+					exp.NewLiteralExpression(fmt.Sprintf(`'$.%s'`, colName)),
+				).As(colName),
+			)
+		}
+	}
+
+	if len(cols) == 0 {
+		return q.SetError(fmt.Errorf("can not create SELECT without columns"))
+	}
+
+	q = q.Select(t.Ident().Col(cols[0].Name()))
+	for _, col := range cols[1:] {
+		q = q.SelectAppend(t.Ident().Col(col.Name()))
+	}
+
+	return q
 }
 
 func (sqliteDialect) GOQU() goqu.DialectWrapper                 { return goquDialectWrapper }
@@ -147,6 +189,10 @@ func (sqliteDialect) AttributeCast(attr *dal.Attribute, val exp.Expression) (exp
 
 }
 
+func (sqliteDialect) AttributeExpression(attr *dal.Attribute, modelIdent string, ident string) (expr exp.Expression, err error) {
+	return exp.NewLiteralExpression("?", exp.NewIdentifierExpression("", modelIdent, ident)), nil
+}
+
 func (sqliteDialect) AttributeToColumn(attr *dal.Attribute) (col *ddl.Column, err error) {
 
 	col = &ddl.Column{
@@ -216,6 +262,57 @@ func (sqliteDialect) AttributeToColumn(attr *dal.Attribute) (col *ddl.Column, er
 	}
 
 	return
+}
+
+func (sqliteDialect) ColumnFits(target, assert *ddl.Column) bool {
+	targetType, targetName, targetMeta := ddl.ParseColumnTypes(target)
+	assertType, assertName, assertMeta := ddl.ParseColumnTypes(assert)
+
+	// If everything matches up perfectly use that
+	if assertType == targetType {
+		return true
+	}
+
+	// See if we can guess it
+	// [the type of the target column][what types fit the target col. type]
+	matches := map[string]map[string]bool{
+		"bigint": {
+			"text": true,
+			"char": true,
+		},
+		"timestamp": {
+			"text": true,
+			"char": true,
+		},
+		"text": {
+			"char": true,
+		},
+		"numeric": {
+			"text": true,
+			"char": true,
+		},
+		"blob": {},
+		"boolean": {
+			"text":    true,
+			"char":    true,
+			"bigint":  true,
+			"numeric": true,
+		},
+		"char": {
+			"text": true,
+		},
+	}
+
+	baseMatch := matches[assertName][targetName]
+
+	// Special cases
+	switch {
+	case assertName == "char" && targetName == "char":
+		// Check char size
+		return baseMatch && assertMeta[0] <= targetMeta[0]
+	}
+
+	return baseMatch
 }
 
 func (d sqliteDialect) ExprHandler(n *ql.ASTNode, args ...exp.Expression) (expr exp.Expression, err error) {

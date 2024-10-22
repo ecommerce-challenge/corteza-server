@@ -6,99 +6,123 @@
       :data="{children:list}"
       tag="ul"
       mixin-parent-key="parent"
-      class="list-group pb-3"
+      class="list-group"
       @changePosition="handleChangePosition"
     >
       <template
         slot-scope="{item}"
       >
-        <b-row
+        <div
           v-if="item.pageID"
           no-gutters
-          class="wrap d-flex pr-2"
+          class="d-flex flex-wrap align-content-center justify-content-between pr-2"
         >
-          <b-col
-            cols="12"
-            xl="6"
-            lg="5"
-            class="flex-fill pl-2 overflow-hidden"
-            :class="{'grab': namespace.canCreatePage}"
+          <div
+            class="px-2 flex-fill overflow-hidden text-truncate gap-1"
+            :class="{'grab': namespace.canCreatePage }"
           >
             {{ item.title }}
-            <span
+            <font-awesome-icon
               v-if="!item.visible && item.moduleID == '0'"
+              v-b-tooltip.noninteractive.hover="{ title: $t('notVisible'), container: '#body' }"
               class="text-danger"
-            >
-              <font-awesome-icon
-                :icon="['fas', 'eye-slash']"
-                :title="$t('notVisible')"
-              />
-            </span>
+              :icon="['fas', 'eye-slash']"
+            />
             <b-badge
               v-if="!isValid(item)"
               variant="danger"
+              class="ml-1"
             >
               {{ $t('invalid') }}
             </b-badge>
-          </b-col>
-          <b-col
-            cols="12"
-            xl="6"
-            lg="7"
-            class="text-right pr-2"
-          >
-            <router-link
-              v-if="item.canUpdatePage"
-              data-test-id="button-page-builder"
-              :to="{name: 'admin.pages.builder', params: { pageID: item.pageID }}"
-              class="btn btn-light mr-2"
-            >
-              {{ $t('block.general.label.pageBuilder') }}
-            </router-link>
-            <span class="view d-inline-block">
-              <router-link
-                v-if="!hideViewPageButton(item)"
-                data-test-id="button-page-view"
-                :to="pageViewer(item)"
-                class="btn"
-              >
-                {{ $t('view') }}
-              </router-link>
-            </span>
-            <span
-              class="d-none d-md-inline-block edit text-left"
-            >
-              <router-link
-                v-if="item.moduleID !== '0'"
-                v-b-tooltip.hover.top
-                data-test-id="button-module-edit"
-                :title="moduleName(item)"
-                class="btn text-primary"
-                :to="{ name: 'admin.modules.edit', params: { moduleID: item.moduleID }}"
-              >
-                {{ $t('moduleEdit') }}
-              </router-link>
-              <router-link
-                v-if="item.canUpdatePage && item.moduleID === '0'"
-                :to="{name: 'admin.pages.edit', params: { pageID: item.pageID }}"
-                data-test-id="button-page-edit"
-                class="btn text-primary"
-              >
-                {{ $t('edit.edit') }}
-              </router-link>
+          </div>
 
-            </span>
-            <c-permissions-button
-              v-if="namespace.canGrant"
-              :title="item.title || item.handle || item.pageID"
-              :target="item.title || item.handle || item.pageID"
-              :resource="`corteza::compose:page/${namespace.namespaceID}/${item.pageID}`"
-              :tooltip="$t('permissions:resources.compose.page.tooltip')"
-              link
-              class="btn px-2"
-            />
-          </b-col>
-        </b-row>
+          <div class="actions px-2">
+            <b-button-group
+              v-if="item.canUpdatePage"
+              size="sm"
+            >
+              <b-button
+                data-test-id="button-page-builder"
+                variant="primary"
+                size="sm"
+                :to="{name: 'admin.pages.builder', params: { pageID: item.pageID }}"
+              >
+                {{ $t('block.general.label.pageBuilder') }}
+                <font-awesome-icon
+                  :icon="['fas', 'tools']"
+                  class="ml-2"
+                />
+              </b-button>
+
+              <b-button
+                v-b-tooltip.noninteractive.hover="{ title: $t('tooltip.view'), container: '#body' }"
+                data-test-id="button-page-view"
+                variant="primary"
+                :to="pageViewer(item)"
+                class="d-flex align-items-center"
+                style="margin-left:2px;"
+              >
+                <font-awesome-icon
+                  :icon="['far', 'eye']"
+                />
+              </b-button>
+
+              <b-button
+                v-b-tooltip.noninteractive.hover="{ title: $t('tooltip.edit.page'), container: '#body' }"
+                data-test-id="button-page-edit"
+                variant="primary"
+                :to="{name: 'admin.pages.edit', params: { pageID: item.pageID }}"
+                class="d-flex align-items-center"
+                style="margin-left:2px;"
+              >
+                <font-awesome-icon
+                  :icon="['far', 'edit']"
+                />
+              </b-button>
+            </b-button-group>
+
+            <b-dropdown
+              v-if="item.canGrant || namespace.canGrant"
+              v-b-tooltip.noninteractive.hover="{ title: $t('permissions:resources.compose.page.tooltip'), container: '#body' }"
+              data-test-id="dropdown-permissions"
+              variant="extra-light"
+              size="sm"
+              class="permissions-dropdown ml-1"
+            >
+              <template #button-content>
+                <font-awesome-icon :icon="['fas', 'lock']" />
+              </template>
+
+              <b-dropdown-item>
+                <c-permissions-button
+                  v-if="namespace.canGrant"
+                  :title="item.title || item.handle || item.pageID"
+                  :target="item.title || item.handle || item.pageID"
+                  :resource="`corteza::compose:page/${namespace.namespaceID}/${item.pageID}`"
+                  :button-label="$t('general:label.page')"
+                  :show-button-icon="false"
+                  button-variant="outline-light"
+                  class="border-0 text-dark text-left w-100"
+                />
+              </b-dropdown-item>
+
+              <b-dropdown-item>
+                <c-permissions-button
+                  v-if="item.canGrant"
+                  :title="item.title || item.handle || item.pageID"
+                  :target="item.title || item.handle || item.pageID"
+                  :resource="`corteza::compose:page-layout/${namespace.namespaceID}/${item.pageID}/*`"
+                  :button-label="$t('general:label.pageLayout')"
+                  :show-button-icon="false"
+                  all-specific
+                  button-variant="outline-light"
+                  class="border-0 text-dark text-left w-100"
+                />
+              </b-dropdown-item>
+            </b-dropdown>
+          </div>
+        </div>
       </template>
     </sortable-tree>
 
@@ -178,12 +202,9 @@ export default {
       return (this.getModuleByID(moduleID) || {}).name
     },
 
-    pageViewer ({ pageID = NoID }) {
-      return { name: 'page', params: { pageID } }
-    },
-
-    hideViewPageButton ({ blocks = {}, moduleID = NoID }) {
-      return blocks && blocks.length >= 1 && moduleID !== NoID
+    pageViewer ({ pageID = NoID, moduleID = NoID }) {
+      const name = moduleID !== NoID ? 'page.record.create' : 'page'
+      return { name, params: { pageID } }
     },
 
     handleChangePosition ({ beforeParent, data, afterParent }) {
@@ -194,7 +215,7 @@ export default {
       const reorder = () => {
         const pageIDs = afterParent.children.map(p => p.pageID)
         if (pageIDs.length) {
-          this.$ComposeAPI.pageReorder({ namespaceID, selfID: afterID, pageIDs: pageIDs }).then(() => {
+          this.$ComposeAPI.pageReorder({ namespaceID, selfID: afterID, pageIDs }).then(() => {
             return this.$store.dispatch('page/load', { namespaceID, clear: true, force: true })
           }).then(() => {
             this.toastSuccess(this.$t('reordered'))
@@ -234,20 +255,134 @@ export default {
   },
 }
 </script>
+
 <style lang="scss" scoped>
-$edit-width: 130px;
-$view-width: 70px;
-
-.edit {
-  width: $edit-width;
-}
-
-.view {
-  width: $view-width;
-}
-
 .grab {
   cursor: grab;
+  z-index: 1;
+}
+</style>
+
+<style lang="scss">
+//!important usage to over-ride library styling
+$input-height: 42px;
+$content-height: 48px;
+$blank-li-height: 10px;
+$left-padding: 5px;
+$border-color: var(--light);
+$hover-color: var(--light);
+$dropping-color: var(--secondary);
+
+.page-name-input {
+  height: $input-height;
+}
+
+.list-group {
+  .content {
+    height: 0 !important;
+  }
+
+  ul {
+    .content {
+      height: 100% !important;
+      min-height: $content-height !important;
+      line-height: $content-height !important;
+
+      .actions {
+        display: none;
+      }
+
+      &:hover {
+        background-color: $hover-color !important;
+
+        .actions {
+          display: block;
+        }
+      }
+    }
+  }
+
+  li {
+    white-space: nowrap;
+    background: var(--white);
+
+    &.blank-li {
+      height: $blank-li-height !important;
+
+      .sortable-tree {
+        max-height: 100%;
+      }
+
+      &:nth-last-of-type(1)::before {
+        border-left-color: var(--white) !important;
+        height: 0;
+      }
+    }
+
+    &::before {
+      top: calc($content-height / -2) !important;
+      border-left-color: var(--white) !important;
+    }
+
+    &::after {
+      height: $content-height !important;
+      top: calc($content-height / 2) !important;
+      border-color: var(--white) !important;
+    }
+
+    &.parent-li:nth-last-child(2)::before {
+      height: $content-height !important;
+      top: calc($content-height / -2) !important;
+    }
+  }
+
+  .parent-li {
+    border-top: 1px solid $border-color;
+
+    .exist-li, .blank-li {
+      border-top: none;
+
+      &::after {
+        border-top: 2px solid $border-color !important;
+        margin-left: 0;
+      }
+
+      &::before {
+        border-left: 2px solid $border-color !important;
+      }
+    }
+
+    &.blank-li {
+      &::before {
+        border-left: 2px solid $border-color !important;
+      }
+    }
+
+    &.exist-li {
+      &::before {
+        border-color: var(--white) !important;
+      }
+
+      .parent-li {
+        &.exist-li {
+          &::before {
+            border-color: $border-color !important;
+          }
+        }
+      }
+    }
+  }
+}
+
+.droper {
+  background: $dropping-color !important;
+}
+
+.pages-list-header {
+  min-height: $content-height;
+  background-color: var(--gray-200);
+  margin-bottom: -1.8rem !important;
+  border-bottom: 2px solid var(--light);
   z-index: 1;
 }
 </style>

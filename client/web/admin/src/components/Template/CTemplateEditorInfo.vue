@@ -1,110 +1,113 @@
 <template>
   <b-card
-    class="shadow-sm"
     data-test-id="card-template-info"
-    header-bg-variant="white"
-    footer-bg-variant="white"
+    header-class="border-bottom"
+    footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
+    class="shadow-sm"
   >
+    <template #header>
+      <h4 class="m-0">
+        {{ $t('title') }}
+      </h4>
+    </template>
+
     <b-form
       @submit="$emit('submit', template)"
     >
-      <b-form-group
-        :label="$t('meta.short')"
-        label-cols="2"
-      >
-        <b-form-input
-          v-model="template.meta.short"
-          data-test-id="input-short-name"
-          required
-          :state="shortState"
-        />
-      </b-form-group>
-
-      <b-form-group
-        :label="$t('handle')"
-        label-cols="2"
-        :class="{ 'mb-0': !template.templateID }"
-      >
-        <b-form-input
-          v-model="template.handle"
-          data-test-id="input-handle"
-          :state="handleState"
-          :placeholder="$t('placeholder-handle')"
-        />
-        <b-form-invalid-feedback :state="handleState">
-          {{ $t('invalid-handle-characters') }}
-        </b-form-invalid-feedback>
-      </b-form-group>
-
-      <b-form-group
-        :label="$t('meta.description')"
-        label-cols="2"
-      >
-        <b-form-textarea
-          v-model="template.meta.description"
-          data-test-id="textarea-description"
-        />
-      </b-form-group>
-
-      <b-form-group
-        :label="$t('type')"
-        label-cols="2"
-      >
-        <b-form-select
-          v-model="template.type"
-          data-test-id="select-template-type"
-          :options="contentTypes"
-        />
-      </b-form-group>
-
-      <b-form-group
-        :label="$t('partial')"
-        :description="$t('partialDescription')"
-        label-cols="2"
-      >
-        <b-form-checkbox
-          v-model="template.partial"
-          data-test-id="checkbox-is-partial-template"
-          name="checkbox-1"
+      <b-row>
+        <b-col
+          cols="12"
+          lg="6"
         >
-          {{ $t('partial') }}
-        </b-form-checkbox>
-      </b-form-group>
+          <b-form-group
+            :label="$t('meta.short')"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="template.meta.short"
+              data-test-id="input-short-name"
+              required
+              :state="shortState"
+            />
+          </b-form-group>
+        </b-col>
 
-      <b-form-group
-        v-if="template.createdAt"
-        data-test-id="input-created-at"
-        :label="$t('createdAt')"
-        label-cols="2"
-      >
-        {{ template.createdAt | locFullDateTime }}
-      </b-form-group>
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('handle')"
+            label-class="text-primary"
+            :class="{ 'mb-0': !template.templateID }"
+          >
+            <b-form-input
+              v-model="template.handle"
+              data-test-id="input-handle"
+              :state="handleState"
+              :placeholder="$t('placeholder-handle')"
+            />
 
-      <b-form-group
-        v-if="template.updatedAt"
-        data-test-id="input-updated-at"
-        :label="$t('updatedAt')"
-        label-cols="2"
-      >
-        {{ template.updatedAt | locFullDateTime }}
-      </b-form-group>
+            <b-form-invalid-feedback :state="handleState">
+              {{ $t('invalid-handle-characters') }}
+            </b-form-invalid-feedback>
+          </b-form-group>
+        </b-col>
 
-      <b-form-group
-        v-if="template.deletedAt"
-        data-test-id="input-deleted-at"
-        :label="$t('deletedAt')"
-        label-cols="2"
-      >
-        {{ template.deletedAt | locFullDateTime }}
-      </b-form-group>
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('type')"
+            label-class="text-primary"
+          >
+            <b-form-select
+              v-model="template.type"
+              data-test-id="select-template-type"
+              :options="contentTypes"
+            />
+          </b-form-group>
+        </b-col>
 
-      <b-form-group
-        v-if="template.lastUsedAt"
-        :label="$t('lastUsedAt')"
-        label-cols="2"
-      >
-        {{ template.lastUsedAt | locFullDateTime }}
-      </b-form-group>
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('meta.description')"
+            label-class="text-primary"
+          >
+            <b-form-textarea
+              v-model="template.meta.description"
+              data-test-id="textarea-description"
+            />
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('partial')"
+            :description="$t('partialDescription')"
+            label-class="text-primary"
+          >
+            <c-input-checkbox
+              v-model="template.partial"
+              data-test-id="checkbox-is-partial-template"
+              switch
+              :labels="checkboxLabel"
+              name="checkbox-1"
+            />
+          </b-form-group>
+        </b-col>
+      </b-row>
+
+      <c-system-fields
+        :resource="template"
+      />
 
       <!--
         include hidden input to enable
@@ -117,28 +120,25 @@
       >
     </b-form>
 
-    <template #header>
-      <h3 class="m-0">
-        {{ $t('title') }}
-      </h3>
-    </template>
-
     <template #footer>
-      <c-submit-button
-        class="float-right"
-        :processing="processing"
-        :success="success"
-        :disabled="saveDisabled"
-        @submit="$emit('submit', template)"
-      />
-
-      <confirmation-toggle
+      <c-input-confirm
         v-if="!fresh && template.canDeleteTemplate"
         :data-test-id="getDeletedButtonStatusCypressId"
+        variant="danger"
+        size="md"
         @confirmed="$emit('delete')"
       >
         {{ getDeleteStatus }}
-      </confirmation-toggle>
+      </c-input-confirm>
+
+      <c-button-submit
+        :disabled="saveDisabled"
+        :processing="processing"
+        :success="success"
+        :text="$t('admin:general.label.submit')"
+        class="ml-auto"
+        @submit="$emit('submit', template)"
+      />
     </template>
   </b-card>
 </template>
@@ -146,8 +146,6 @@
 <script>
 import { NoID } from '@cortezaproject/corteza-js'
 import { handle } from '@cortezaproject/corteza-vue'
-import ConfirmationToggle from 'corteza-webapp-admin/src/components/ConfirmationToggle'
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
 
 export default {
   name: 'CTemplateEditorInfo',
@@ -155,11 +153,6 @@ export default {
   i18nOptions: {
     namespaces: 'system.templates',
     keyPrefix: 'editor.info',
-  },
-
-  components: {
-    ConfirmationToggle,
-    CSubmitButton,
   },
 
   props: {
@@ -190,6 +183,10 @@ export default {
         { value: 'text/html', text: this.$t('contentType.text_html') },
         { value: 'text/plain', text: this.$t('contentType.text_plain') },
       ],
+      checkboxLabel: {
+        on: this.$t('general:label.general.yes'),
+        off: this.$t('general:label.general.no'),
+      },
     }
   },
 

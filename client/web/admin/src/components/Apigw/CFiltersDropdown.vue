@@ -2,7 +2,6 @@
   <b-dropdown
     data-test-id="dropdown-add-filter"
     :text="$t('filters.addFilter')"
-    class="min-content"
     variant="primary"
   >
     <template v-if="filterList.length">
@@ -71,9 +70,3 @@ export default {
   },
 }
 </script>
-
-<style scoped>
-.min-content{
-    max-width: min-content;
-}
-</style>

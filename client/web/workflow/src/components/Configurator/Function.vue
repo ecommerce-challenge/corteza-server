@@ -8,7 +8,7 @@
     >
       <b-card-header
         header-tag="header"
-        class="bg-white p-0 mb-3"
+        class="p-0 mb-3"
       >
         <h5
           class="mb-0"
@@ -25,9 +25,10 @@
           label-class="text-primary"
           class="mb-0"
         >
-          <vue-select
+          <c-input-select
             v-model="functionRef"
             :options="functionTypes"
+            :get-option-key="getOptionTypeKey"
             label="text"
             :selectable="f => !f.disabled"
             :reduce="f => f.value"
@@ -53,7 +54,7 @@
     >
       <b-card-header
         header-tag="header"
-        class="d-flex align-items-center bg-white p-4"
+        class="d-flex align-items-center"
       >
         <h5
           class="mb-0"
@@ -70,12 +71,12 @@
           fixed
           borderless
           hover
-          head-row-variant="secondary"
+          head-variant="light"
           details-td-class="bg-white"
-          class="mb-4"
           :items="args"
           :fields="argumentFields"
           :tbody-tr-class="rowClass"
+          class="mb-4"
           @row-clicked="item=>$set(item, '_showDetails', !item._showDetails)"
         >
           <template #cell(target)="{ item: a }">
@@ -102,9 +103,10 @@
                 v-if="(paramTypes[functionRef][a.target] || []).length > 1"
                 label-class="text-primary"
               >
-                <vue-select
+                <c-input-select
                   v-model="a.type"
                   :options="(paramTypes[functionRef][a.target] || [])"
+                  :get-option-key="getOptionParamKey"
                   :filter="argTypeFilter"
                   :clearable="false"
                   @input="$root.$emit('change-detected')"
@@ -118,28 +120,29 @@
                 <div
                   v-if="a.valueType === 'value'"
                 >
-                  <vue-select
+                  <c-input-select
                     v-if="a.target === 'workflow'"
-                    key="workflowID"
                     v-model="a.value"
                     :options="workflowOptions"
                     :get-option-label="getWorkflowLabel"
+                    :get-option-key="getWorkflowKey"
                     :reduce="wf => a.type === 'ID' ? wf.workflowID : wf.handle"
-                    clearable
-                    placeholder="Search for a workflow"
-                    class="bg-white rounded"
+                    :placeholder="$t('steps:function.configurator.search-workflow')"
+                    :filterable="false"
                     @input="$root.$emit('change-detected')"
                     @search="searchWorkflows"
                   />
-
-                  <vue-select
+                  <!-- Clearable -->
+                  <c-input-select
                     v-else-if="a.input.type === 'select'"
                     v-model="a.value"
                     :options="a.input.properties.options"
+                    :get-option-key="getOptionTypeKey"
                     label="text"
                     :filter="varFilter"
                     :reduce="a => a.value"
                     :placeholder="$t('steps:function.configurator.option-select')"
+                    :clearable="false"
                     @input="$root.$emit('change-detected')"
                   />
 
@@ -156,7 +159,7 @@
 
                   <expression-editor
                     v-else
-                    :value.sync="a.value"
+                    v-model="a.value"
                     @open="openInEditor(index)"
                     @input="$root.$emit('change-detected')"
                   />
@@ -164,7 +167,7 @@
 
                 <expression-editor
                   v-else-if="a.valueType === 'expr'"
-                  :value.sync="a.expr"
+                  v-model="a.expr"
                   lang="javascript"
                   show-line-numbers
                   @open="openInEditor(index)"
@@ -211,7 +214,7 @@
     >
       <b-card-header
         header-tag="header"
-        class="d-flex align-items-center bg-white p-4"
+        class="d-flex align-items-center"
       >
         <h5
           class="mb-0"
@@ -240,7 +243,7 @@
           fixed
           borderless
           hover
-          head-row-variant="secondary"
+          head-variant="light"
           details-td-class="bg-white"
           class="mb-4"
           :items="results"
@@ -296,12 +299,14 @@
       size="lg"
       :ok-title="$t('general:save')"
       :cancel-title="$t('general:cancel')"
+      cancel-variant="light"
       body-class="p-0"
+      no-fade
       @ok="saveExpression"
       @hidden="resetExpression"
     >
       <expression-editor
-        :value.sync="currentExpressionValue"
+        v-model="currentExpressionValue"
         :lang="expressionEditor.lang"
         height="500"
         font-size="18px"
@@ -315,14 +320,12 @@
 
 <script>
 import base from './base'
-import { VueSelect } from 'vue-select'
-import ExpressionEditor from '../ExpressionEditor.vue'
 import ExpressionTable from '../ExpressionTable.vue'
+import ExpressionEditor from '../ExpressionEditor.vue'
 import { objectSearchMaker, stringSearchMaker } from '../../lib/filter'
 
 export default {
   components: {
-    VueSelect,
     ExpressionEditor,
     ExpressionTable,
   },
@@ -395,18 +398,19 @@ export default {
       return [
         {
           key: 'target',
-          thClass: 'pl-3 py-2',
+          label: this.$t('steps:function.configurator.target'),
+          thClass: 'pl-3',
           tdClass: 'text-truncate pointer',
         },
         {
           key: 'type',
-          thClass: 'py-2',
+          label: this.$t('steps:function.configurator.type'),
           tdClass: 'text-truncate pointer',
         },
         {
           key: 'expr',
           label: this.$t('steps:function.configurator.result'),
-          thClass: 'pr-3 py-2',
+          thClass: 'mr-3',
           tdClass: 'position-relative pointer',
         },
       ]
@@ -518,7 +522,7 @@ export default {
             target: param.name,
             type: arg.type || this.paramTypes[func.ref][param.name][0],
             valueType: this.getValueType(arg, arg.type || this.paramTypes[func.ref][param.name][0], input),
-            value: arg.value || null,
+            value: arg.value || input.default || null,
             expr: arg.expr || arg.source || null,
             required: param.required || false,
             input,
@@ -657,6 +661,18 @@ export default {
       }
 
       return typeDescriptions[type]
+    },
+
+    getOptionTypeKey ({ value }) {
+      return value
+    },
+
+    getOptionEWorkflowLabelKey ({ workflowID }) {
+      return workflowID
+    },
+
+    getOptionParamKey (type) {
+      return type
     },
   },
 }

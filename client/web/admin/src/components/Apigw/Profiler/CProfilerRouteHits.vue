@@ -2,46 +2,42 @@
   <b-card
     data-test-id="card-requests"
     no-body
+    footer-class="border-top border-top border-top d-flex align-items-center justify-content-center"
+    header-class="border-bottom"
     class="shadow-sm"
-    footer-class="d-flex align-items-center justify-content-center"
-    footer-bg-variant="white"
-    header-bg-variant="white"
   >
     <template #header>
-      <h3>
+      <h4 class="mb-0">
         {{ $t('general:label.requests') }}
-      </h3>
-
-      <div
-        class="d-flex align-items-center justify-content-between"
-      >
-        <div>
-          <b-button
-            data-test-id="button-refresh"
-            variant="primary"
-            :disabled="loading"
-            @click="loadItems()"
-          >
-            {{ $t('general:label.refresh') }}
-          </b-button>
-          <span
-            class="ml-1"
-            :class="{ 'loading': loading }"
-          >
-            {{ autoRefreshLabel }}
-          </span>
-        </div>
-
-        <c-input-confirm
-          :disabled="!items.length"
-          :borderless="false"
-          variant="danger"
-          @confirmed="purgeRequests"
-        >
-          {{ $t('purge.this') }}
-        </c-input-confirm>
-      </div>
+      </h4>
     </template>
+
+    <div class="d-flex align-items-center flex-wrap flex-fill p-3 gap-1">
+      <div class="flex-fill">
+        <b-button
+          data-test-id="button-refresh"
+          variant="primary"
+          :disabled="loading"
+          @click="loadItems()"
+        >
+          {{ $t('general:label.refresh') }}
+        </b-button>
+        <span
+          class="ml-1"
+          :class="{ 'loading': loading }"
+        >
+          {{ autoRefreshLabel }}
+        </span>
+      </div>
+
+      <c-input-confirm
+        :disabled="!items.length"
+        :processing="processingPurge"
+        :text="$t('purge.this')"
+        variant="danger"
+        @confirmed="purgeRequests"
+      />
+    </div>
 
     <b-card-body
       class="p-0"
@@ -79,7 +75,7 @@
             data-test-id="button-edit-route"
             variant="link"
             class="p-0"
-            :to="{ name: 'system.apigw.profiler.hit.list', params: { hitID: row.item.hitID } }"
+            :to="{ name: 'system.apigw.profiler.hit', params: { hitID: row.item.hitID } }"
           >
             <font-awesome-icon
               :icon="['fas', 'info-circle']"
@@ -127,6 +123,8 @@ export default {
 
   data () {
     return {
+      processingPurge: false,
+
       filter: {
         routeID: '',
         next: '',
@@ -244,7 +242,7 @@ export default {
 
           return { filter, set }
         })
-        .catch(this.toastErrorHandler(this.$t('notification:gateway.profiler.purge.fetch')))
+        .catch(this.toastErrorHandler(this.$t('notification:gateway.profiler.fetch.error')))
         .finally(() => {
           if (!append) {
             this.filter.before = oldBeforeID
@@ -254,6 +252,8 @@ export default {
     },
 
     purgeRequests () {
+      this.processingPurge = false
+
       const { routeID } = this.filter
       this.$SystemAPI.apigwProfilerPurge({ routeID })
         .then(() => {
@@ -261,6 +261,9 @@ export default {
           this.toastSuccess(this.$t('notification:gateway.profiler.purge.success'))
         })
         .catch(this.toastErrorHandler(this.$t('notification:gateway.profiler.purge.error')))
+        .finally(() => {
+          this.processingPurge = true
+        })
     },
 
     resetItems (sorting = this.sorting) {

@@ -24,6 +24,7 @@
   </wrap>
 </template>
 <script>
+import axios from 'axios'
 import base from '../base'
 import { system, reporter, NoID } from '@cortezaproject/corteza-js'
 import DisplayElement from './DisplayElements'
@@ -42,6 +43,7 @@ export default {
       processing: false,
       report: undefined,
       displayElement: undefined,
+      abortableRequests: [],
     }
   },
 
@@ -57,6 +59,11 @@ export default {
     },
   },
 
+  beforeDestroy () {
+    this.abortRequests()
+    this.setDefaultValues()
+  },
+
   created () {
     this.refreshBlock(this.refresh)
   },
@@ -65,12 +72,21 @@ export default {
     fetchReport (reportID) {
       this.processing = true
 
-      return this.$SystemAPI.reportRead({ reportID })
+      const { response, cancel } = this.$SystemAPI
+        .reportReadCancellable({ reportID })
+
+      this.abortableRequests.push(cancel)
+
+      return response()
         .then(report => {
           this.report = new system.Report(report)
 
           return this.getDataframes()
-        }).catch(this.toastErrorHandler(this.$t('notification:report.fetchFailed')))
+        }).catch((e) => {
+          if (!axios.isCancel(e)) {
+            this.toastErrorHandler(this.$t('notification:report.fetchFailed'))(e)
+          }
+        })
         .finally(() => {
           this.processing = false
         })
@@ -105,7 +121,7 @@ export default {
                   dataframes,
                 }
               }).catch((e) => {
-                this.toastErrorHandler(this.$t('notification:report.run-failed'))(e)
+                this.toastErrorHandler(this.$t('notification:report.runFailed'))(e)
               })
           }
         } else {
@@ -136,6 +152,19 @@ export default {
     refresh () {
       this.fetchReport(this.options.reportID).then(() => {
         this.key++
+      })
+    },
+
+    setDefaultValues () {
+      this.processing = false
+      this.report = undefined
+      this.displayElement = undefined
+      this.abortableRequests = []
+    },
+
+    abortRequests () {
+      this.abortableRequests.forEach((cancel) => {
+        cancel()
       })
     },
   },

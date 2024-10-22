@@ -6,7 +6,7 @@
     >
       <b-card-header
         header-tag="header"
-        class="d-flex align-items-center bg-white py-4"
+        class="d-flex align-items-center py-4"
       >
         <h5
           class="d-flex align-items-center mb-0"
@@ -56,12 +56,14 @@
       size="lg"
       :ok-title="$t('general:save')"
       :cancel-title="$t('general:cancel')"
+      cancel-variant="light"
       body-class="p-0"
+      no-fade
       @ok="saveExpression"
       @hidden="resetExpression"
     >
       <expression-editor
-        :value.sync="currentExpressionValue"
+        v-model="currentExpressionValue"
         height="500"
         lang="javascript"
         font-size="18px"
@@ -75,8 +77,8 @@
 
 <script>
 import base from './base'
-import ExpressionEditor from '../ExpressionEditor.vue'
 import ExpressionTable from '../ExpressionTable.vue'
+import ExpressionEditor from '../ExpressionEditor.vue'
 
 export default {
   components: {
@@ -114,18 +116,16 @@ export default {
       return [
         {
           key: 'target',
-          thClass: 'pl-3 py-2',
-          tdClass: 'text-truncate pointer',
-          formatter: (value, key, item) => {
+          label: this.$t('steps:expressions.configurator.target'),
+          thClass: 'pl-4 ml-1',
+          formatter: (item) => {
             return `${item.target}(${item.type})`
           },
-
         },
         {
           key: 'expr',
           label: this.$t('steps:expressions.configurator.expression'),
-          thClass: 'py-2 pr-3',
-          tdClass: 'position-relative pointer',
+          thClass: 'pl-1 mr-3',
         },
       ]
     },

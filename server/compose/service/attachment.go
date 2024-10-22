@@ -21,6 +21,7 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/edwvee/exiffix"
 	"github.com/gabriel-vasile/mimetype"
+	"github.com/mat/besticon/ico"
 )
 
 const (
@@ -59,6 +60,7 @@ type (
 		FindByID(ctx context.Context, namespaceID, attachmentID uint64) (*types.Attachment, error)
 		Find(ctx context.Context, filter types.AttachmentFilter) (types.AttachmentSet, types.AttachmentFilter, error)
 		CreatePageAttachment(ctx context.Context, namespaceID uint64, name string, size int64, fh io.ReadSeeker, pageID uint64) (*types.Attachment, error)
+		CreateIconAttachment(ctx context.Context, name string, size int64, fh io.ReadSeeker) (*types.Attachment, error)
 		CreateRecordAttachment(ctx context.Context, namespaceID uint64, name string, size int64, fh io.ReadSeeker, moduleID, recordID uint64, fieldName string) (*types.Attachment, error)
 		CreateNamespaceAttachment(ctx context.Context, name string, size int64, fh io.ReadSeeker) (*types.Attachment, error)
 		OpenOriginal(att *types.Attachment) (io.ReadSeekCloser, error)
@@ -82,7 +84,7 @@ func (svc attachment) Find(ctx context.Context, filter types.AttachmentFilter) (
 	)
 
 	err = func() error {
-		if filter.NamespaceID == 0 {
+		if filter.NamespaceID == 0 && filter.Kind != types.IconAttachment {
 			return AttachmentErrInvalidNamespaceID()
 		}
 
@@ -111,7 +113,7 @@ func (svc attachment) Find(ctx context.Context, filter types.AttachmentFilter) (
 			}
 		}
 
-		set, f, err = store.SearchComposeAttachments(ctx, svc.store, f)
+		set, f, err = store.SearchComposeAttachments(ctx, svc.store, filter)
 		return err
 	}()
 
@@ -163,7 +165,7 @@ func (svc attachment) DeleteByID(ctx context.Context, namespaceID, attachmentID 
 	return svc.recordAction(ctx, aProps, AttachmentActionDelete, err)
 }
 
-//func (svc attachment) findNamespaceByID(namespaceID uint64) (ns *types.Namespace, err error) {
+// func (svc attachment) findNamespaceByID(namespaceID uint64) (ns *types.Namespace, err error) {
 //	if namespaceID == 0 {
 //		return nil, AttachmentErrInvalidNamespaceID()
 //	}
@@ -178,9 +180,9 @@ func (svc attachment) DeleteByID(ctx context.Context, namespaceID, attachmentID 
 //	}
 //
 //	return ns, nil
-//}
+// }
 //
-//func (svc attachment) findPageByID(namespaceID, pageID uint64) (p *types.Page, err error) {
+// func (svc attachment) findPageByID(namespaceID, pageID uint64) (p *types.Page, err error) {
 //	if pageID == 0 {
 //		return nil, AttachmentErrInvalidPageID()
 //	}
@@ -195,9 +197,9 @@ func (svc attachment) DeleteByID(ctx context.Context, namespaceID, attachmentID 
 //	}
 //
 //	return p, nil
-//}
+// }
 //
-//func (svc attachment) findModuleByID(namespaceID, moduleID uint64) (m *types.Module, err error) {
+// func (svc attachment) findModuleByID(namespaceID, moduleID uint64) (m *types.Module, err error) {
 //	if moduleID == 0 {
 //		return nil, AttachmentErrInvalidModuleID()
 //	}
@@ -212,9 +214,9 @@ func (svc attachment) DeleteByID(ctx context.Context, namespaceID, attachmentID 
 //	}
 //
 //	return m, nil
-//}
+// }
 //
-//func (svc attachment) findRecordByID(m *types.Module, recordID uint64) (r *types.Record, err error) {
+// func (svc attachment) findRecordByID(m *types.Module, recordID uint64) (r *types.Record, err error) {
 //	if recordID == 0 {
 //		return nil, AttachmentErrInvalidRecordID()
 //	}
@@ -229,7 +231,7 @@ func (svc attachment) DeleteByID(ctx context.Context, namespaceID, attachmentID 
 //	}
 //
 //	return r, nil
-//}
+// }
 
 func (svc attachment) OpenOriginal(att *types.Attachment) (io.ReadSeekCloser, error) {
 	if len(att.Url) == 0 {
@@ -281,20 +283,10 @@ func (svc attachment) CreatePageAttachment(ctx context.Context, namespaceID uint
 			var (
 				maxSize      = int64(systemService.CurrentSettings.Compose.Page.Attachments.MaxSize) * megabyte
 				allowedTypes = systemService.CurrentSettings.Compose.Page.Attachments.Mimetypes
-				mimeType     *mimetype.MIME
 			)
 
-			if maxSize > 0 && maxSize < size {
-				return AttachmentErrTooLarge().Apply(
-					errors.Meta("size", size),
-					errors.Meta("maxSize", maxSize),
-				)
-			}
-
-			if mimeType, err = svc.extractMimetype(fh); err != nil {
+			if err = svc.verifySizeAndMimetype(fh, size, maxSize, allowedTypes); err != nil {
 				return err
-			} else if !svc.checkMimeType(mimeType, allowedTypes...) {
-				return AttachmentErrNotAllowedToUploadThisType()
 			}
 		}
 
@@ -309,6 +301,63 @@ func (svc attachment) CreatePageAttachment(ctx context.Context, namespaceID uint
 
 	return att, svc.recordAction(ctx, aProps, AttachmentActionCreate, err)
 
+}
+
+func (svc attachment) CreateIconAttachment(ctx context.Context, name string, size int64, fh io.ReadSeeker) (att *types.Attachment, err error) {
+	var (
+		aProps = &attachmentActionProps{}
+	)
+
+	err = store.Tx(ctx, svc.store, func(ctx context.Context, s store.Storer) (err error) {
+		if size == 0 {
+			return AttachmentErrNotAllowedToCreateEmptyAttachment()
+		}
+
+		{
+			// Verify size and type of the uploaded page attachment
+			// Max size & allowed mime-types are pulled from the current settings
+			var (
+				maxSize      = int64(systemService.CurrentSettings.Compose.Icon.Attachments.MaxSize) * megabyte
+				allowedTypes = systemService.CurrentSettings.Compose.Icon.Attachments.Mimetypes
+			)
+
+			if err = svc.verifySizeAndMimetype(fh, size, maxSize, allowedTypes); err != nil {
+				return err
+			}
+		}
+
+		att = &types.Attachment{
+			Name: strings.TrimSpace(name),
+			Kind: types.IconAttachment,
+		}
+
+		return svc.create(ctx, s, name, size, fh, att)
+	})
+
+	return att, svc.recordAction(ctx, aProps, AttachmentActionCreate, err)
+}
+
+func (svc attachment) verifySizeAndMimetype(fh io.ReadSeeker, size, maxSize int64, allowedTypes []string) (err error) {
+	// Verify size and type of the uploaded page attachment
+	// Max size & allowed mime-types are pulled from the current settings
+	var (
+		mimeType *mimetype.MIME
+	)
+
+	if maxSize > 0 && maxSize < size {
+		return AttachmentErrTooLarge().Apply(
+			errors.Meta("size", size),
+			errors.Meta("maxSize", maxSize),
+		)
+	}
+
+	if mimeType, err = svc.extractMimetype(fh); err != nil {
+		return err
+	} else if !svc.checkMimeType(mimeType, allowedTypes...) {
+		return AttachmentErrNotAllowedToUploadThisType()
+	}
+
+	return
 }
 
 func (svc attachment) CreateRecordAttachment(ctx context.Context, namespaceID uint64, name string, size int64, fh io.ReadSeeker, moduleID, recordID uint64, fieldName string) (att *types.Attachment, err error) {
@@ -540,10 +589,15 @@ func (svc attachment) extractMimetypeS(file io.ReadSeeker) (mType string, err er
 }
 
 func (svc attachment) processImage(original io.ReadSeeker, att *types.Attachment) (err error) {
-	if !strings.HasPrefix(att.Meta.Original.Mimetype, "image/") || att.Meta.Original.Mimetype == "image/x-icon" {
+	if !strings.HasPrefix(att.Meta.Original.Mimetype, "image/") {
 		// Only supporting previews from images (for now)
 		return
 	}
+
+	const (
+		iconMimetype  = "image/x-icon"
+		iconExtension = "ico"
+	)
 
 	var (
 		preview       image.Image
@@ -555,48 +609,55 @@ func (svc attachment) processImage(original io.ReadSeeker, att *types.Attachment
 			imaging.JPEG: "image/jpeg",
 			imaging.GIF:  "image/gif",
 		}
-
 		f2e = map[imaging.Format]string{
 			imaging.JPEG: "jpg",
 			imaging.GIF:  "gif",
 		}
+		isIcon = att.Meta.Original.Mimetype == iconMimetype
 	)
 
 	if _, err = original.Seek(0, 0); err != nil {
 		return
 	}
 
-	if format, err = imaging.FormatFromExtension(att.Meta.Original.Extension); err != nil {
-		return errors.Internal("could not get format from extension '%s'", att.Meta.Original.Extension).Wrap(err)
-	}
-
-	previewFormat = format
-
-	if imaging.JPEG == format {
-		// Rotate image if needed
-		// if preview, _, err = exiffix.Decode(original); err != nil {
-		// 	return fmt.Errorf("Could not decode EXIF from JPEG", err)
-		// }
-		preview, _, _ = exiffix.Decode(original)
-	}
-
-	if imaging.GIF == format {
-		// Decode all and check loops & delay to determine if GIF is animated or not
-		if cfg, err := gif.DecodeAll(original); err == nil {
-			animated = cfg.LoopCount > 0 || len(cfg.Delay) > 1
-
-			// Use first image for the preview
-			preview = cfg.Image[0]
-		} else {
-			return errors.Internal("Could not decode gif config").Wrap(err)
+	if isIcon {
+		preview, err = ico.Decode(original)
+		if err != nil {
+			return errors.Internal("Could not decode ico config").Wrap(err)
+		}
+	} else {
+		if format, err = imaging.FormatFromExtension(att.Meta.Original.Extension); err != nil {
+			return errors.Internal("could not get format from extension '%s'", att.Meta.Original.Extension).Wrap(err)
 		}
 
-	} else {
-		// Use GIF preview for GIFs and JPEG for everything else!
-		previewFormat = imaging.JPEG
+		previewFormat = format
 
-		// Store with a bit lower quality
-		opts = append(opts, imaging.JPEGQuality(85))
+		if imaging.JPEG == format {
+			// Rotate image if needed
+			// if preview, _, err = exiffix.Decode(original); err != nil {
+			// 	return fmt.Errorf("Could not decode EXIF from JPEG", err)
+			// }
+			preview, _, _ = exiffix.Decode(original)
+		}
+
+		if imaging.GIF == format {
+			// Decode all and check loops & delay to determine if GIF is animated or not
+			if cfg, err := gif.DecodeAll(original); err == nil {
+				animated = cfg.LoopCount > 0 || len(cfg.Delay) > 1
+
+				// Use first image for the preview
+				preview = cfg.Image[0]
+			} else {
+				return errors.Internal("Could not decode gif config").Wrap(err)
+			}
+
+		} else {
+			// Use GIF preview for GIFs and JPEG for everything else!
+			previewFormat = imaging.JPEG
+
+			// Store with a bit lower quality
+			opts = append(opts, imaging.JPEGQuality(85))
+		}
 	}
 
 	// In case of JPEG we decode the image and rotate it beforehand
@@ -628,8 +689,14 @@ func (svc attachment) processImage(original io.ReadSeeker, att *types.Attachment
 
 	meta := att.SetPreviewImageMeta(width, height, false)
 	meta.Size = int64(buf.Len())
-	meta.Mimetype = f2m[previewFormat]
-	meta.Extension = f2e[previewFormat]
+
+	if isIcon {
+		meta.Mimetype = iconMimetype
+		meta.Extension = iconExtension
+	} else {
+		meta.Mimetype = f2m[previewFormat]
+		meta.Extension = f2e[previewFormat]
+	}
 
 	// Can and how we make a preview of this attachment?
 	att.PreviewUrl = svc.objects.Preview(att.ID, meta.Extension)

@@ -1,10 +1,16 @@
 import { PageBlock, PageBlockInput, Registry } from './base'
-import { dimensionFunctions } from '../chart/util'
-import { CortezaID, Apply } from '../../../cast'
-
+import { merge } from 'lodash'
+import { Apply } from '../../../cast'
+import { Options as PageBlockRecordListOptions } from './record-list'
 const kind = 'Metric'
 
 type Reporter = (p: ReporterParams) => Promise<any>
+
+interface DrillDown {
+  enabled: boolean;
+  blockID: string;
+  recordListOptions: Partial<PageBlockRecordListOptions>;
+}
 
 interface ReporterParams {
   moduleID: string;
@@ -16,7 +22,7 @@ interface ReporterParams {
 interface Style {
   color: string;
   backgroundColor: string;
-  fontSize: string;
+  fontSize?: string;
 }
 
 interface Metric {
@@ -34,20 +40,51 @@ interface Metric {
   transformFx?: string;
 
   // @todo allow conditional styles; eg. if value is < 10 render with bold red text
-  labelStyle?: Style;
   valueStyle?: Style;
+  drillDown: DrillDown;
 }
+
+const defaultMetric: Readonly<Metric> = Object.freeze({
+  label: '',
+  moduleID: '',
+  dimensionField: '',
+  dateFormat: '',
+  filter: '',
+  bucketSize: '',
+  metricField: '',
+  operation: '',
+  numberFormat: '',
+  prefix: '',
+  suffix: '',
+  transformFx: '',
+
+  valueStyle: {
+    backgroundColor: '#FFFFFF00',
+    color: '#000000',
+    fontSize: undefined,
+  },
+
+  drillDown: {
+    enabled: false,
+    blockID: '',
+    recordListOptions: {
+      fields: [],
+    },
+  },
+})
 
 interface Options {
   metrics: Array<Metric>;
   refreshRate: number;
   showRefresh: boolean;
+  magnifyOption: string;
 }
 
 const defaults: Readonly<Options> = Object.freeze({
   metrics: [],
   refreshRate: 0,
   showRefresh: false,
+  magnifyOption: '',
 })
 
 export class PageBlockMetric extends PageBlock {
@@ -64,8 +101,9 @@ export class PageBlockMetric extends PageBlock {
     if (!o) return
     Apply(this.options, o, Number, 'refreshRate')
     Apply(this.options, o, Boolean, 'showRefresh')
+    Apply(this.options, o, String, 'magnifyOption')
     if (o.metrics) {
-      this.options.metrics = o.metrics
+      this.options.metrics = o.metrics.map((m) => merge({}, defaultMetric, m))
     }
   }
 
@@ -88,6 +126,7 @@ export class PageBlockMetric extends PageBlock {
     }
 
     if (m.transformFx) {
+      // eslint-disable-next-line no-new-func
       rtr = (new Function('v', `return ${m.transformFx}`))(rtr)
     }
 
@@ -108,8 +147,13 @@ export class PageBlockMetric extends PageBlock {
       moduleID,
       filter,
       metrics,
-      dimensions: dimensionFunctions.convert({ modifier: 'YEAR', field: 'createdAt' }),
+      // Since metric produces one value we want one dataset, deletedAt is the same for all existing records
+      dimensions: 'deletedAt',
     }
+  }
+
+  makeMetric () {
+    return merge({}, defaultMetric)
   }
 }
 

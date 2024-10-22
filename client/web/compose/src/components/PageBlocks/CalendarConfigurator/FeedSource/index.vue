@@ -1,66 +1,61 @@
 <template>
-  <fieldset class="form-group">
+  <b-row>
     <!-- Feed list -->
-    <div
+    <b-col
       v-for="(feed, i) in options.feeds"
       :key="i"
+      cols="12"
+      class="p-0"
     >
-      <!-- define feed resource; eg. module, reminders, google calendar, ... -->
-      <b-form-group
-        horizontal
-        :label="$t('calendar.feedLabel')"
+      <b-card
+        class="list-background mx-3 mb-3"
       >
-        <b-input-group>
-          <b-form-select
+        <h5 class="d-flex align-items-center mb-3">
+          {{ $t('calendar.source.label') }} {{ i + 1 }}
+
+          <c-input-confirm
+            show-icon
+            class="ml-auto mt-1"
+            @confirmed="onRemoveFeed(i)"
+          />
+        </h5>
+
+        <!-- define feed resource; eg. module, reminders, google calendar, ... -->
+        <b-form-group
+          :label="$t('calendar.eventSource')"
+          label-class="text-primary"
+        >
+          <c-input-select
             v-model="feed.resource"
             :options="feedSources"
-          >
-            <template slot="first">
-              <option
-                value=""
-                :disabled="true"
-              >
-                {{ $t('calendar.feedPlaceholder') }}
-              </option>
-            </template>
-          </b-form-select>
+            :clearable="false"
+            label="text"
+            :reduce="o => o.value"
+          />
+        </b-form-group>
 
-          <!-- allow feed removal -->
-          <template
-            v-if="feed.resource"
-            v-slot:append
-          >
-            <b-button
-              variant="outline-danger"
-              class="border-0"
-              @click="onRemoveFeed(i)"
-            >
-              <font-awesome-icon :icon="['far', 'trash-alt']" />
-            </b-button>
-          </template>
-        </b-input-group>
-      </b-form-group>
-
-      <b-form-group horizontal>
-        <!-- source configurator -->
         <component
           :is="configurator(feed)"
           v-if="feed.resource && configurator(feed)"
           :feed="feed"
           :modules="modules"
+          :page="page"
+          :record="record"
+          :module="module"
         />
-      </b-form-group>
+      </b-card>
+    </b-col>
 
-      <hr>
-    </div>
-
-    <b-button
-      class="btn btn-url test-feed-add"
-      @click.prevent="handleAddButton"
-    >
-      {{ $t('calendar.addEventsSource') }}
-    </b-button>
-  </fieldset>
+    <b-col cols="12">
+      <b-button
+        variant="primary"
+        class="test-feed-add"
+        @click.prevent="handleAddButton"
+      >
+        {{ $t('calendar.addEventsSource') }}
+      </b-button>
+    </b-col>
+  </b-row>
 </template>
 <script>
 import { mapGetters } from 'vuex'
@@ -73,10 +68,14 @@ export default {
     namespaces: 'block',
   },
 
-  components: {
-  },
-
   extends: base,
+
+  props: {
+    page: {
+      type: compose.Page,
+      required: true,
+    },
+  },
 
   computed: {
     ...mapGetters({
@@ -133,3 +132,9 @@ export default {
   },
 }
 </script>
+
+<style lang="scss" scoped>
+.list-background {
+  background-color: var(--body-bg);
+}
+</style>

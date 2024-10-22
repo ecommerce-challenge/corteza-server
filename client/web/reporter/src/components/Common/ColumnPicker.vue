@@ -16,7 +16,7 @@
       style="max-height: 40vh;"
     >
       <template
-        v-slot:default="{ field }"
+        #default="{ field }"
       >
         <b class="cursor-default text-dark">
           <template
@@ -83,14 +83,7 @@ export default {
       },
 
       set (selected) {
-        // take list of field names passed to the setter
-        // and filter out the options to recreate the list
-        // module field objects
-        const fields = selected.map(s => {
-          return (this.options.find(({ value }) => value === s) || {}).field
-        }).filter(f => f)
-
-        this.$emit('update:selected-items', fields)
+        this.$emit('update:selected-items', selected)
       },
     },
 

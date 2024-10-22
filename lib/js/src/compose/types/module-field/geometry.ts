@@ -7,6 +7,9 @@ interface GeometryOptions extends Options {
   center: number[];
   zoom: number;
   multiDelimiter: string;
+  prefillWithCurrentLocation: boolean;
+  hideCurrentLocationButton: boolean;
+  hideGeoSearch: boolean,
 }
 
 const defaults = (): Readonly<GeometryOptions> => Object.freeze({
@@ -14,6 +17,9 @@ const defaults = (): Readonly<GeometryOptions> => Object.freeze({
   center: [30, 30],
   zoom: 3,
   multiDelimiter: '\n',
+  prefillWithCurrentLocation: false,
+  hideCurrentLocationButton: false,
+  hideGeoSearch: false,
 })
 
 export class ModuleFieldGeometry extends ModuleField {
@@ -32,6 +38,7 @@ export class ModuleFieldGeometry extends ModuleField {
 
     Apply(this.options, o, String, 'multiDelimiter')
     Apply(this.options, o, Number, 'zoom')
+    Apply(this.options, o, Boolean, 'prefillWithCurrentLocation', 'hideCurrentLocationButton', 'hideGeoSearch')
 
     if (o.center) {
       this.options.center = o.center

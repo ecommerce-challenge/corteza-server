@@ -7,15 +7,15 @@
       :description="$t('connection.description')"
       label-class="text-primary"
     >
-      <vue-select
+      <c-input-select
         v-model="module.config.dal.connectionID"
         :options="connections"
+        :get-option-key="getOptionKey"
         :disabled="processing"
         :clearable="false"
         :reduce="s => s.connectionID"
         :placeholder="$t('connection.placeholder')"
         :get-option-label="getConnectionLabel"
-        class="bg-white"
       />
     </b-form-group>
 
@@ -33,10 +33,11 @@
     <b-form-group
       :label="$t('module-fields.label')"
       :description="$t('module-fields.description')"
+      label-class="text-primary"
     >
       <dal-field-store-encoding
-        v-for="({ field, storeIdent, label, isMulti }) in moduleFields"
-        :key="field"
+        v-for="({ field, storeIdent, label, isMulti }, i) in moduleFields"
+        :key="i"
         :config="moduleFieldEncoding[field] || {}"
         :field="field"
         :label="label"
@@ -48,12 +49,11 @@
     </b-form-group>
 
     <b-form-group
+      :label="$t('system-fields.label')"
       :description="$t('system-fields.description')"
+      label-class="text-primary"
     >
-      <div class="my-4 d-flex justify-content-between align-items-center flex-wrap">
-        <label>
-          {{ $t('system-fields.label') }}
-        </label>
+      <div class="d-flex justify-content-end align-items-center flex-wrap">
         <b-form-radio-group
           v-model="selectedGroup"
           buttons
@@ -67,8 +67,8 @@
       </div>
 
       <dal-field-store-encoding
-        v-for="({ field, storeIdent, label, disabled }) in systemFields"
-        :key="field"
+        v-for="({ field, storeIdent, label, disabled }, i) in systemFields"
+        :key="i"
         :config="systemFieldEncoding[field] || {}"
         :field="field"
         :label="label"
@@ -84,7 +84,6 @@
 <script>
 import { compose, NoID } from '@cortezaproject/corteza-js'
 import { moduleFieldStrategyConfig, systemFieldStrategyConfig, types } from './encoding-strategy'
-import VueSelect from 'vue-select'
 import DalFieldStoreEncoding from 'corteza-webapp-compose/src/components/Admin/Module/DalFieldStoreEncoding'
 
 const PrimaryConnType = 'corteza::system:primary-dal-connection'
@@ -96,7 +95,6 @@ export default {
   },
 
   components: {
-    VueSelect,
     DalFieldStoreEncoding,
   },
 
@@ -193,6 +191,10 @@ export default {
     this.fetchConnections()
   },
 
+  beforeDestroy () {
+    this.setDefaultValues()
+  },
+
   methods: {
     async fetchConnections () {
       this.processing = true
@@ -256,6 +258,21 @@ export default {
         }
         return enc
       }, {})
+    },
+
+    getOptionKey ({ connectionID }) {
+      return connectionID
+    },
+
+    setDefaultValues () {
+      this.processing = false
+      this.connections = []
+      this.moduleFields = []
+      this.moduleFieldEncoding = []
+      this.selectedGroup = ''
+      this.systemFields = []
+      this.systemFieldEncoding = []
+      this.optionsGroups = []
     },
   },
 }

@@ -13,6 +13,8 @@ type (
 		Saml                      SAML
 		MultiFactor               MultiFactor
 		BackgroundUI              BackgroundUI
+		ProfileAvatarEnabled      bool
+		SendUserInviteEmail       bool
 	}
 
 	SAML struct {

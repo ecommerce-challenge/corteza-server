@@ -1,31 +1,35 @@
 <template>
   <b-card
     data-test-id="card-filter-list"
-    header-bg-variant="white"
-    footer-bg-variant="white"
     body-class="p-0"
-    class="apigw shadow-sm mt-3"
+    footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
+    class="shadow-sm mt-3"
   >
-    <c-filter-modal
-      :visible="!!selectedFilter"
-      :filter="selectedFilter"
-      @submit="onSubmit"
-      @reset="onReset"
-    />
+    <template #header>
+      <h4 class="m-0">
+        {{ $t('filters.title') }}
+      </h4>
+    </template>
 
     <b-tabs
       data-test-id="filter-steps"
-      active-nav-item-class="active-tab bg-white"
-      class="border-0"
-      content-class="border-bottom"
+      card
     >
       <b-tab
         v-for="(step, index) in steps"
         :key="index"
-        class="border-0"
+        :button-id="steps[index]"
         :title="$t(`filters.step_title.${step}`)"
+        class="border-0 p-0"
         @click="onActivateTab(index)"
       >
+        <c-filters-dropdown
+          :available-filters="getAvailableFiltersByStep"
+          :filters="getSelectedFiltersByStep"
+          class="p-3"
+          @addFilter="onAddFilter"
+        />
+
         <c-filters-table
           :filters="getSelectedFiltersByStep"
           :step="index"
@@ -37,34 +41,28 @@
       </b-tab>
     </b-tabs>
 
-    <template #header>
-      <h3 class="m-0">
-        {{ $t('filters.title') }}
-      </h3>
+    <template #footer>
+      <c-button-submit
+        :disabled="disabled"
+        :processing="processing"
+        :success="success"
+        :text="$t('admin:general.label.submit')"
+        class="ml-auto"
+        @submit="$emit('submit')"
+      />
     </template>
 
-    <template #footer>
-      <div
-        class="d-flex justify-content-between"
-      >
-        <c-filters-dropdown
-          :available-filters="getAvailableFiltersByStep"
-          :filters="getSelectedFiltersByStep"
-          @addFilter="onAddFilter"
-        />
-        <c-submit-button
-          :processing="processing"
-          :success="success"
-          :disabled="disabled"
-          @submit="$emit('submit')"
-        />
-      </div>
-    </template>
+    <c-filter-modal
+      :visible="!!selectedFilter"
+      :filter="selectedFilter"
+      @submit="onSubmit"
+      @reset="onReset"
+    />
   </b-card>
 </template>
+
 <script>
 import CFilterModal from 'corteza-webapp-admin/src/components/Apigw/CFilterModal'
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
 import CFiltersTable from 'corteza-webapp-admin/src/components/Apigw/CFiltersTable'
 import CFiltersDropdown from 'corteza-webapp-admin/src/components/Apigw/CFiltersDropdown'
 
@@ -77,31 +75,36 @@ const mapKindToStep = {
 export default {
   components: {
     CFilterModal,
-    CSubmitButton,
     CFiltersTable,
     CFiltersDropdown,
   },
+
   props: {
     fetching: {
       type: Boolean,
       value: false,
     },
+
     processing: {
       type: Boolean,
       value: false,
     },
+
     success: {
       type: Boolean,
       value: false,
     },
+
     filters: {
       type: Array,
       required: true,
     },
+
     availableFilters: {
       type: Array,
       required: true,
     },
+
     steps: {
       type: Array,
       required: true,
@@ -201,18 +204,3 @@ export default {
   },
 }
 </script>
-<style lang="scss" >
-
-.apigw {
-  .nav-link {
-    color: $primary;
-    border-width: 0 0 3px 0 !important;
-    border-color: transparent !important;
-  }
-
-  .active-tab {
-    color: $primary !important;
-    border-color: $primary !important;
-  }
-}
-</style>

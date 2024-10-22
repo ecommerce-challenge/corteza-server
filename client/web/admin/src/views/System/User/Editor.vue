@@ -1,35 +1,30 @@
 <template>
   <b-container
     v-if="user"
-    class="py-3"
+    class="pt-2 pb-3"
   >
     <c-content-header
       :title="title"
     >
-      <span
-        v-if="userID"
-        class="text-nowrap"
+      <b-button
+        v-if="userID && canCreate"
+        data-test-id="button-new-user"
+        variant="primary"
+        :to="{ name: 'system.user.new' }"
       >
-        <b-button
-          v-if="canCreate"
-          data-test-id="button-new-user"
-          variant="primary"
-          class="mr-2"
-          :to="{ name: 'system.user.new' }"
-        >
-          {{ $t('new') }}
-        </b-button>
-        <c-permissions-button
-          v-if="canGrant"
-          :title="user.name || user.handle || user.email || userID"
-          :target="user.name || user.handle || user.email || userID"
-          :resource="`corteza::system:user/${userID}`"
-          button-variant="light"
-        >
-          <font-awesome-icon :icon="['fas', 'lock']" />
-          {{ $t('permissions') }}
-        </c-permissions-button>
-      </span>
+        {{ $t('new') }}
+      </b-button>
+
+      <c-permissions-button
+        v-if="userID && canGrant"
+        :title="user.name || user.handle || user.email || userID"
+        :target="user.name || user.handle || user.email || userID"
+        :resource="`corteza::system:user/${userID}`"
+      >
+        <font-awesome-icon :icon="['fas', 'lock']" />
+        {{ $t('permissions') }}
+      </c-permissions-button>
+
       <c-corredor-manual-buttons
         ui-page="user/editor"
         ui-slot="toolbar"
@@ -52,8 +47,19 @@
       @sessionsRevoke="onSessionsRevoke"
     />
 
+    <c-user-editor-avatar
+      v-if="user && userID && $Settings.get('auth.internal.profile-avatar.Enabled', false)"
+      :user="user"
+      :processing-avatar="avatar.processing"
+      :success="avatar.success"
+      class="mt-3"
+      @submit="onAvatarSubmit"
+      @onUpload="onAvatarUpload"
+      @resetAttachment="onResetAvatar"
+    />
+
     <c-user-editor-roles
-      v-if="user && userID"
+      v-if="user && userID && membership.active"
       v-model="membership.active"
       class="mt-3"
       :processing="roles.processing"
@@ -89,9 +95,11 @@
 </template>
 
 <script>
+import { isEqual } from 'lodash'
 import { NoID, system } from '@cortezaproject/corteza-js'
 import editorHelpers from 'corteza-webapp-admin/src/mixins/editorHelpers'
 import CUserEditorInfo from 'corteza-webapp-admin/src/components/User/CUserEditorInfo'
+import CUserEditorAvatar from '../../../components/User/CUserEditorAvatar'
 import CUserEditorPassword from 'corteza-webapp-admin/src/components/User/CUserEditorPassword'
 import CUserEditorMfa from 'corteza-webapp-admin/src/components/User/CUserEditorMFA'
 import CUserEditorRoles from 'corteza-webapp-admin/src/components/User/CUserEditorRoles'
@@ -103,6 +111,7 @@ export default {
     CUserEditorRoles,
     CUserEditorPassword,
     CUserEditorInfo,
+    CUserEditorAvatar,
     CUserEditorMfa,
     CUserEditorExternalAuthProviders,
   },
@@ -116,6 +125,14 @@ export default {
     editorHelpers,
   ],
 
+  beforeRouteUpdate (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
+
+  beforeRouteLeave (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
+
   props: {
     userID: {
       type: String,
@@ -127,10 +144,11 @@ export default {
   data () {
     return {
       user: undefined,
+      initialUserState: undefined,
 
       membership: {
-        active: [],
-        original: [],
+        active: undefined,
+        initial: undefined,
       },
 
       externalAuthProviders: [],
@@ -140,14 +158,22 @@ export default {
         processing: false,
         success: false,
       },
+
+      avatar: {
+        processing: false,
+        success: false,
+      },
+
       password: {
         processing: false,
         success: false,
       },
+
       mfa: {
         processing: false,
         success: false,
       },
+
       roles: {
         processing: false,
         success: false,
@@ -183,6 +209,7 @@ export default {
           this.fetchExternalAuthProviders()
         } else {
           this.user = new system.User()
+          this.initialUserState = this.user.clone()
         }
       },
     },
@@ -193,12 +220,13 @@ export default {
       return system.UserEvent(res)
     },
 
-    fetchUser () {
+    async fetchUser () {
       this.incLoader()
 
-      this.$SystemAPI.userRead({ userID: this.userID })
+      return this.$SystemAPI.userRead({ userID: this.userID })
         .then(user => {
           this.user = new system.User(user)
+          this.initialUserState = this.user.clone()
         })
         .catch(this.toastErrorHandler(this.$t('notification:user.fetch.error')))
         .finally(() => {
@@ -210,7 +238,10 @@ export default {
       this.incLoader()
       return this.$SystemAPI.userMembershipList({ userID: this.userID })
         .then((set = []) => {
-          this.membership = { active: [...set], original: [...set] }
+          this.membership = {
+            active: [...set],
+            initial: [...set],
+          }
         })
         .catch(this.toastErrorHandler(this.$t('notification:user.roles.error')))
         .finally(() => {
@@ -247,6 +278,7 @@ export default {
         this.$SystemAPI.userUpdate(payload)
           .then(user => {
             this.user = new system.User(user)
+            this.initialUserState = this.user.clone()
 
             this.animateSuccess('info')
             this.toastSuccess(this.$t('notification:user.update.success'))
@@ -269,6 +301,27 @@ export default {
             this.info.processing = false
           })
       }
+    },
+
+    onAvatarSubmit (user) {
+      this.avatar.processing = true
+
+      const payload = {
+        userID: user.userID,
+        avatarColor: user.meta.avatarColor,
+        avatarBgColor: user.meta.avatarBgColor,
+      }
+
+      this.$SystemAPI.userProfileAvatarInitial(payload)
+        .then(() => this.fetchUser())
+        .then(() => {
+          this.animateSuccess('avatar')
+          this.toastSuccess(this.$t('notification:user.avatarSettings.success'))
+        })
+        .catch(this.toastErrorHandler(this.$t('notification:user.avatarSettings.error')))
+        .finally(() => {
+          this.avatar.processing = false
+        })
     },
 
     /**
@@ -294,6 +347,7 @@ export default {
           .then(() => {
             this.fetchUser()
 
+            this.user.deletedAt = new Date()
             this.toastSuccess(this.$t('notification:user.delete.success'))
             this.$router.push({ name: 'system.user' })
           })
@@ -353,14 +407,7 @@ export default {
       }
 
       return this.$SystemAPI.api().request(cfg).then(response => {
-        if (response.data.error) {
-          return Promise.reject(response.data.error)
-        } else {
-          return response.data.response
-        }
-      }).then(user => {
-        this.user = new system.User(user)
-        this.fetchExternalAuthProviders()
+        this.fetchUser()
       })
     },
 
@@ -373,15 +420,15 @@ export default {
 
       const userID = this.userID
 
-      const { active, original } = this.membership
+      const { active, initial } = this.membership
 
       Promise.all([
         // all removed memberships
-        ...original.filter(roleID => !active.includes(roleID)).map(roleID => {
+        ...initial.filter(roleID => !active.includes(roleID)).map(roleID => {
           return this.$SystemAPI.userMembershipRemove({ roleID, userID })
         }),
-        // all new memerships
-        ...active.filter(roleID => !original.includes(roleID)).map(roleID => {
+        // all new memberships
+        ...active.filter(roleID => !initial.includes(roleID)).map(roleID => {
           return this.$SystemAPI.userMembershipAdd({ roleID, userID })
         }),
       ])
@@ -450,6 +497,42 @@ export default {
         .finally(() => {
           this.decLoader()
         })
+    },
+
+    onAvatarUpload () {
+      this.fetchUser().then(() => {
+        this.toastSuccess(this.$t('notification:user.avatarUpload.success'))
+      })
+    },
+
+    onResetAvatar () {
+      this.avatar.processing = true
+
+      const userID = this.userID
+
+      this.$SystemAPI.userDeleteAvatar({ userID })
+        .then(() => this.fetchUser())
+        .then(() => {
+          this.toastSuccess(this.$t('notification:user.avatarDelete.success'))
+        })
+        .catch(this.toastErrorHandler(this.$t('notification:user.avatarDelete.error')))
+        .finally(() => {
+          this.avatar.processing = false
+        })
+    },
+
+    checkUnsavedChanges (next, to) {
+      const isNewPage = this.$route.path.includes('/new') && to.name.includes('edit')
+      const { deletedAt } = this.user || {}
+
+      if (isNewPage || deletedAt) {
+        next(true)
+      } else if (!to.name.includes('edit')) {
+        let userChangesStatus = !isEqual(this.user, this.initialUserState)
+        let membershipChangesStatus = !isEqual(this.membership.initial, this.membership.active)
+
+        next((userChangesStatus || membershipChangesStatus) ? window.confirm(this.$t('general:editor.unsavedChanges')) : true)
+      }
     },
   },
 }

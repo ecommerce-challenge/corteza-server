@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="loaded"
+    v-if="namespace"
     class="d-flex flex-column w-100 h-100"
   >
     <portal to="topbar-title">
@@ -11,7 +11,6 @@
       <b-button-group
         v-if="isEdit"
         size="sm"
-        class="mr-1"
       >
         <b-button
           data-test-id="button-visit-namespace"
@@ -21,10 +20,14 @@
           :disabled="!namespaceEnabled"
         >
           {{ $t('visit') }}
+          <font-awesome-icon
+            :icon="['far', 'eye']"
+            class="ml-2"
+          />
         </b-button>
         <b-button
           v-if="namespace.canManageNamespace"
-          :title="$t('configure')"
+          v-b-tooltip.noninteractive.hover="{ title: $t('configure'), container: '#body' }"
           data-test-id="button-visit-admin-panel"
           variant="primary"
           class="d-flex align-items-center"
@@ -32,55 +35,60 @@
           style="margin-left:2px;"
         >
           <font-awesome-icon
-            :icon="['fas', 'cogs']"
+            :icon="['far', 'edit']"
           />
         </b-button>
         <namespace-translator
           v-if="namespace"
           :namespace="namespace"
           :disabled="isNew"
+          button-variant="primary"
           style="margin-left:2px;"
         />
       </b-button-group>
     </portal>
 
-    <div class="flex-grow-1 overflow-auto mb-2">
+    <div class="flex-grow-1 overflow-auto py-3">
       <b-container
         fluid="xl"
         class="flex-grow-1"
       >
-        <div
-          v-if="isEdit"
-          class="d-flex align-items-center mt-1 mb-2"
-        >
-          <b-btn
-            data-test-id="button-export-namespace"
-            variant="light"
-            size="lg"
-            class="ml-1"
-            @click="exportNamespace"
-          >
-            {{ $t('export') }}
-          </b-btn>
-
-          <c-permissions-button
-            v-if="namespace.canGrant"
-            data-test-id="button-permissions"
-            :title="namespace.name || namespace.slug || namespace.namespaceID"
-            :target="namespace.name || namespace.slug || namespace.namespaceID"
-            :resource="`corteza::compose:namespace/${namespace.namespaceID}`"
-            button-variant="light"
-            :button-label="$t('label.permissions')"
-            class="ml-1 btn-lg"
-          />
-        </div>
-
         <b-card
+          header-class="d-flex align-items-center gap-1 border-bottom"
           body-class="p-3"
           footer-bg-variant="warning"
         >
+          <template
+            v-if="isEdit"
+            #header
+          >
+            <b-btn
+              v-if="namespace.canExportNamespace"
+              data-test-id="button-export-namespace"
+              variant="light"
+              size="lg"
+              @click="exportNamespace"
+            >
+              {{ $t('export') }}
+            </b-btn>
+
+            <c-permissions-button
+              v-if="namespace.canGrant"
+              data-test-id="button-permissions"
+              :title="namespace.name || namespace.slug || namespace.namespaceID"
+              :target="namespace.name || namespace.slug || namespace.namespaceID"
+              :resource="`corteza::compose:namespace/${namespace.namespaceID}`"
+              :button-label="$t('label.permissions')"
+              button-variant="light"
+              class="btn-lg"
+            />
+          </template>
+
           <b-form>
-            <b-form-group :label="$t('name.label')">
+            <b-form-group
+              :label="$t('name.label')"
+              label-class="text-primary"
+            >
               <b-input-group>
                 <b-form-input
                   id="ns-nm"
@@ -95,7 +103,6 @@
                   <namespace-translator
                     :namespace="namespace"
                     highlight-key="name"
-                    button-variant="light"
                     :disabled="isNew"
                   />
                 </b-input-group-append>
@@ -104,6 +111,7 @@
             <b-form-group
               :label="$t('slug.label')"
               :description="$t('slug.description')"
+              label-class="text-primary"
             >
               <b-form-input
                 v-model="namespace.slug"
@@ -205,7 +213,10 @@
               />
             </b-form-group> -->
 
-            <b-form-group :label="$t('subtitle.label')">
+            <b-form-group
+              :label="$t('subtitle.label')"
+              label-class="text-primary"
+            >
               <b-input-group>
                 <b-form-input
                   v-model="namespace.meta.subtitle"
@@ -216,8 +227,7 @@
                 <b-input-group-append>
                   <namespace-translator
                     :namespace="namespace"
-                    highlight-key="subtitle"
-                    button-variant="light"
+                    highlight-key="meta.subtitle"
                     :disabled="isNew"
                   />
                 </b-input-group-append>
@@ -226,6 +236,7 @@
 
             <b-form-group
               :label="$t('description.label')"
+              label-class="text-primary"
               class="mb-3"
             >
               <b-input-group>
@@ -238,8 +249,7 @@
                 <b-input-group-append>
                   <namespace-translator
                     :namespace="namespace"
-                    highlight-key="description"
-                    button-variant="light"
+                    highlight-key="meta.description"
                     :disabled="isNew"
                   />
                 </b-input-group-append>
@@ -249,6 +259,7 @@
 
             <b-form-group
               :label="$t('sidebar.configure')"
+              label-class="text-primary"
             >
               <b-form-checkbox
                 v-model="namespace.meta.hideSidebar"
@@ -271,14 +282,18 @@
 
     <editor-toolbar
       :processing="processing"
-      :back-link="{ name: 'namespace.manage' }"
+      :processing-save="processingSave"
+      :processing-save-and-close="processingSaveAndClose"
+      :processing-clone="processingClone"
+      :processing-delete="processingDelete"
       :hide-delete="hideDelete"
       :hide-clone="!isEdit"
       :hide-save="hideSave"
       :disable-save="disableSave"
+      @back="$router.go(-1)"
       @delete="handleDelete"
       @save="handleSave()"
-      @clone="$router.push({ name: 'namespace.clone', params: { namespaceID: namespace.namespaceID }})"
+      @clone="handleClone()"
       @saveAndClose="handleSave({ closeOnSuccess: true })"
     />
 
@@ -287,6 +302,7 @@
       hide-header
       hide-footer
       centered
+      no-fade
       body-class="p-1"
     >
       <b-img
@@ -301,6 +317,7 @@
       hide-header
       hide-footer
       centered
+      no-fade
       body-class="p-1"
     >
       <b-img
@@ -312,42 +329,73 @@
 </template>
 
 <script>
+import { isEqual } from 'lodash'
 import { compose, NoID } from '@cortezaproject/corteza-js'
 import { url, handle } from '@cortezaproject/corteza-vue'
 import EditorToolbar from 'corteza-webapp-compose/src/components/Admin/EditorToolbar'
 import NamespaceTranslator from 'corteza-webapp-compose/src/components/Namespaces/NamespaceTranslator'
-import { mapGetters } from 'vuex'
+import { mapGetters, mapActions } from 'vuex'
 
 export default {
   i18nOptions: {
     namespaces: 'namespace',
   },
 
+  name: 'EditNamespace',
+
   components: {
     EditorToolbar,
     NamespaceTranslator,
   },
 
+  beforeRouteUpdate (to, from, next) {
+    this.checkUnsavedNamespace(next)
+  },
+
+  beforeRouteLeave (to, from, next) {
+    this.checkUnsavedNamespace(next)
+  },
+
+  props: {
+    isClone: {
+      type: Boolean,
+      default: false,
+    },
+  },
+
   data () {
     return {
-      loaded: false,
       processing: false,
+      processingSave: false,
+      processingSaveAndClose: false,
+      processingClone: false,
+      processingDelete: false,
 
-      namespace: new compose.Namespace({ enabled: true }),
+      namespace: undefined,
+      initialNamespaceState: undefined,
+
       namespaceAssets: {
         logo: undefined,
         icon: undefined,
       },
+
+      namespaceAssetsInitialState: {
+        logo: undefined,
+        icon: undefined,
+      },
+
       namespaceEnabled: false,
 
       application: undefined,
       isApplication: false,
+      isApplicationInitialState: false,
     }
   },
 
   computed: {
     ...mapGetters({
       can: 'rbac/can',
+      previousPage: 'ui/previousPage',
     }),
 
     canCreateApplication () {
@@ -379,11 +427,7 @@ export default {
     },
 
     isEdit () {
-      return this.$route.name === 'namespace.edit'
-    },
-
-    isClone () {
-      return this.$route.name === 'namespace.clone'
+      return this.$route.name === 'namespace.edit' || this.isClone
     },
 
     logoPreview () {
@@ -422,31 +466,41 @@ export default {
   watch: {
     watchKey: {
       immediate: true,
-      handler (namespaceID) {
-        this.fetchNamespace(namespaceID)
+      handler () {
+        this.fetchNamespace()
       },
     },
   },
 
+  beforeDestroy () {
+    this.setDefaultValues()
+  },
+
   methods: {
+    ...mapActions({
+      updateNamespace: 'namespace/update',
+      createNamespace: 'namespace/create',
+      findNamespace: 'namespace/findByID',
+      cloneNamespace: 'namespace/clone',
+      deleteNamespace: 'namespace/delete',
+    }),
+
     async fetchNamespace () {
       this.processing = true
 
       const namespaceID = this.$route.params.namespaceID
 
+      this.namespace = undefined
+      this.initialNamespaceState = undefined
       this.application = undefined
       this.isApplication = false
+      this.isApplicationInitialState = this.isApplication
 
       if (namespaceID) {
-        await this.$store.dispatch('namespace/findByID', { namespaceID })
+        await this.findNamespace({ namespaceID })
           .then(ns => {
             this.namespaceEnabled = ns.enabled
             this.namespace = new compose.Namespace(ns)
-
-            if (this.isClone) {
-              this.namespace.name = `${ns.name} (${this.$t('cloneSuffix')})`
-              this.namespace.slug = ns.slug ? `${ns.slug}_${this.$t('cloneSuffix')}` : ''
-            }
 
             this.fetchApplication()
           })
@@ -458,11 +512,14 @@ export default {
         subtitle: '',
         description: '',
         hideSidebar: false,
+        logoEnabled: null,
         ...this.namespace.meta,
       }
 
+      this.initialNamespaceState = this.namespace.clone()
+      this.namespaceAssetsInitialState = this.namespaceAssets
+
       this.processing = false
-      this.loaded = true
     },
 
     exportNamespace () {
@@ -488,13 +545,24 @@ export default {
           if (set.length) {
             this.application = set[0]
             this.isApplication = this.application.enabled
+            this.isApplicationInitialState = this.isApplication
           }
         })
         .catch(this.toastErrorHandler(this.$t('notification:namespace.application.fetchFailed')))
     },
 
     async handleSave ({ closeOnSuccess = false } = {}) {
-      this.processing = true
+      const toggleProcessing = () => {
+        this.processing = !this.processing
+
+        if (closeOnSuccess) {
+          this.processingSaveAndClose = !this.processingSaveAndClose
+        } else {
+          this.processingSave = !this.processingSave
+        }
+      }
+
+      toggleProcessing()
 
       /**
        * Pass a special tag alongside payload that
@@ -509,10 +577,10 @@ export default {
         try {
           assets = await this.uploadAssets()
           meta = { ...meta, ...assets }
+          this.namespaceAssetsInitialState = this.namespaceAssets
         } catch (e) {
-          const error = JSON.stringify(e) === '{}' ? '' : e
-          this.toastErrorHandler(this.$t('notification:namespace.assetUploadFailed'))(error)
-          this.processing = false
+          this.toastErrorHandler(this.$t('notification:namespace.assetUploadFailed'))(e)
+          toggleProcessing()
           return
         }
       }
@@ -527,7 +595,7 @@ export default {
 
       if (this.isEdit) {
         try {
-          await this.$store.dispatch('namespace/update', { ...payload, namespaceID }).then((ns) => {
+          await this.updateNamespace({ ...payload, namespaceID }).then((ns) => {
             this.namespaceEnabled = ns.enabled
             this.namespace = new compose.Namespace(ns)
 
@@ -535,22 +603,12 @@ export default {
           })
         } catch (e) {
           this.toastErrorHandler(this.$t('notification:namespace.saveFailed'))(e)
-          this.processing = false
-          return
-        }
-      } else if (this.isClone) {
-        try {
-          await this.$store.dispatch('namespace/clone', { namespaceID, name, slug, enabled, meta }).then((ns) => {
-            this.namespace = new compose.Namespace(ns)
-          })
-        } catch (e) {
-          this.toastErrorHandler(this.$t('notification:namespace.cloneFailed'))(e)
-          this.processing = false
+          toggleProcessing()
           return
         }
       } else {
         try {
-          await this.$store.dispatch('namespace/create', payload).then((ns) => {
+          await this.createNamespace(payload).then((ns) => {
             this.namespaceEnabled = ns.enabled
             this.namespace = new compose.Namespace(ns)
 
@@ -558,7 +616,7 @@ export default {
           })
         } catch (e) {
           this.toastErrorHandler(this.$t('notification:namespace.createFailed'))(e)
-          this.processing = false
+          toggleProcessing()
           return
         }
       }
@@ -566,31 +624,49 @@ export default {
       await this.handleApplicationSave()
         .catch(() => this.toastErrorHandler(this.$t('notification:namespace.createAppFailed')))
 
-      this.processing = false
+      this.initialNamespaceState = this.namespace.clone()
+      this.isApplicationInitialState = this.isApplication
+
+      toggleProcessing()
 
       if (closeOnSuccess) {
-        this.$router.push({ name: 'namespace.manage' })
+        this.$router.push(this.previousPage || { name: 'namespace.manage' })
       } else if (!this.isEdit || this.isClone) {
         this.$router.push({ name: 'namespace.edit', params: { namespaceID: this.namespace.namespaceID } })
       }
+    },
 
-      this.namespace.meta = {
-        subtitle: '',
-        description: '',
-        hideSidebar: false,
-        ...this.namespace.meta,
-      }
+    handleClone () {
+      this.processingClone = true
+
+      let { name, slug } = this.namespace
+
+      name = `${name} (${this.$t('cloneSuffix')})`
+      slug = slug ? `${slug}_${this.$t('cloneSuffix')}` : ''
+
+      return this.cloneNamespace({ ...this.namespace, name, slug }).then(({ namespaceID }) => {
+        this.$route.params.namespaceID = namespaceID
+        this.toastSuccess(this.$t('notification:namespace.cloned'))
+        this.$router.push({ name: 'namespace.edit', params: { namespaceID, isClone: true } })
+      }).catch(e => {
+        this.toastErrorHandler(this.$t('notification:namespace.cloneFailed'))(e)
+      }).finally(() => {
+        this.processingClone = false
+      })
     },
 
     handleDelete () {
       this.processing = true
+      this.processingDelete = true
 
       const { namespaceID } = this.namespace
       const { applicationID } = this.application || {}
 
-      this.$store.dispatch('namespace/delete', { namespaceID })
+      this.deleteNamespace({ namespaceID })
         .catch(this.toastErrorHandler(this.$t('notification:namespace.deleteFailed')))
         .then(() => {
+          this.namespace.deletedAt = new Date()
+
           if (applicationID) {
             return this.$SystemAPI.applicationDelete({ applicationID })
           }
@@ -601,6 +677,7 @@ export default {
         })
         .finally(() => {
           this.processing = false
+          this.processingDelete = false
         })
     },
 
@@ -625,7 +702,10 @@ export default {
         this.application.unify.logo = this.application.unify.logo || this.namespace.meta.logo
 
         return this.$SystemAPI.applicationUpdate({ ...this.application, enabled })
-          .then(app => { this.application = app })
+          .then(app => {
+            this.application = app
+            this.isApplication = this.application.enabled
+          })
           .catch(this.toastErrorHandler(this.$t('notification:namespace.application.saveFailed')))
       } else if (this.isApplication) {
         // If namespace not an application - create one and enable
@@ -641,7 +721,10 @@ export default {
           },
         }
         return this.$SystemAPI.applicationCreate({ ...application })
-          .then(app => { this.application = app })
+          .then(app => {
+            this.application = app
+            this.isApplication = this.application.enabled
+          })
           .catch(this.toastErrorHandler(this.$t('notification:namespace.application.createFailed')))
       }
     },
@@ -650,16 +733,19 @@ export default {
       const rr = {}
 
       const rq = async (file) => {
-        var formData = new FormData()
+        const formData = new FormData()
         formData.append('upload', file)
 
         const rsp = await this.$ComposeAPI.api().request({
           method: 'post',
           url: this.$ComposeAPI.namespaceUploadEndpoint(),
           data: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
         })
         if (rsp.data.error) {
-          throw new Error(rsp.data.error)
+          throw new Error(rsp.data.error.message)
         }
         return rsp.data.response
       }
@@ -688,6 +774,33 @@ export default {
     resetLogo () {
       this.namespace.meta.logo = undefined
       this.namespace.meta.logoID = undefined
+    },
+
+    checkUnsavedNamespace (next) {
+      if (this.isNew || this.processingClone || this.namespace.deletedAt) {
+        return next(true)
+      }
+
+      const namespaceState = !isEqual(this.namespace.clone(), this.initialNamespaceState.clone())
+      const isApplicationState = !(this.isApplication === this.isApplicationInitialState)
+      const namespaceAssetsState = !isEqual(this.namespaceAssets, this.namespaceAssetsInitialState)
+
+      return next((namespaceState || isApplicationState || namespaceAssetsState) ? window.confirm(this.$t('manage.unsavedChanges')) : true)
+    },
+
+    setDefaultValues () {
+      this.processing = false
+      this.processingSaveAndClose = false
+      this.processingSave = false
+      this.processingClone = false
+      this.namespace = undefined
+      this.initialNamespaceState = undefined
+      this.namespaceAssets = {}
+      this.namespaceAssetsInitialState = {}
+      this.namespaceEnabled = false
+      this.application = undefined
+      this.isApplication = false
+      this.isApplicationInitialState = false
     },
   },
 }

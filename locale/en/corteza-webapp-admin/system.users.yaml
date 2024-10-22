@@ -5,13 +5,15 @@ editor:
     type: Type
   info:
     confirmEmail: Confirm email address
+    id: ID
     createdAt: Created at
+    createdBy: Created by
     delete: Delete
     deletedAt: Deleted at
     email: Email *
     handle: Handle
     placeholder-handle: handle (a - z, 0 - 9, underscore, dash)
-    invalid-handle-characters: Should be at least 2 characters long and start with a letter. Can contain only letters, numbers, dashes, underscores and dots
+    invalid-handle-characters: Should be at least 2 characters long. Can contain only letters, numbers, underscores and dots. Must end with letter or number
     name: Full name
     revokeAllSession: Revoke all active sessions
     suspend: Suspend
@@ -20,6 +22,18 @@ editor:
     undelete: Undelete
     unsuspend: Unsuspend
     updatedAt: Updated at
+  avatar:
+    title: Profile avatar
+    preview:
+      label: Avatar
+      title: Avatar
+    initial:
+      color: Text color
+      backgroundColor: Background color
+    uploader:
+      instructions: Upload avatar
+      uploading: Uploading user avatar
+    colorPicker: Choose a color
   mfa:
     TOTP:
       disabled:
@@ -42,7 +56,7 @@ editor:
           Email OTP protection is enabled for this user
           User will receive email with the security code on each login
     title: Multi-factor authentication
-  new: New
+  new: New User
   password:
     confirm: Confirm password
     length: The passwords must be at least {{length}} characters long!
@@ -69,6 +83,11 @@ list:
     handle: Handle
     name: Name
     state: State
+  suspend: Suspend
+  unsuspend: Unsuspend
+  delete: Delete
+  undelete: Undelete
+  revokeActiveSession: Revoke Session
   export: Export
   rows:
     filters:
@@ -89,7 +108,7 @@ list:
     suspended:
       label: suspended users
   loading: Loading users
-  new: New
+  new: New User
   numFound: '{{count}} user found'
   numFound_plural: '{{count}} users found'
   permissions: Permissions

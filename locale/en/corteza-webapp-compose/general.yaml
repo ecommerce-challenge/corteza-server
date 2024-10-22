@@ -1,7 +1,7 @@
 label:
   app-name:
-    public: Low Code
-    private: Low Code - Admin
+    public: Namespaces
+    private: Namespaces - Admin
   actions: Actions
   active: Active
   add: Add
@@ -34,11 +34,12 @@ label:
   general: General
   handle: Handle
   here: here
+  home: Home
   import: Import
+  all: All
   importPlaceholder: Upload files to import
   loading: Loading
   makeDefault: Make default
-  module: Module
   moduleName: Module name
   multi: Multi
   name: Name
@@ -48,7 +49,8 @@ label:
   none: None
   now: Now
   ok: Ok
-  openBookmarks: Open bookmarks
+  page: Page
+  pageLayout: Page layout
   pageBuilder: Page builder
   permissions: Permissions
   private: Private
@@ -78,32 +80,49 @@ label:
   validation: Validation
   view: View
   yes: Yes
+  chart:
+    single: Chart
+    plural: Charts
+  namespace:
+    single: Namespace
+    plural: Namespaces
+  module:
+    single: Module
+    plural: Modules
 navigation:
   chart: Charts
   namespace: Namespaces
   module: Modules
   page: Pages
+  pageLayout: Page Layouts
 placeholder:
   handle: handle (a - z, 0 - 9, underscore, dash)
   sample: Sample
 reminder:
-  add: Add a new reminder
+  add: Add a reminder
   dismiss: Dismiss
+  dismissed: Dismissed
+  dismissedAt: Dismissed at
+  undismiss: Undismiss
+  delete: Delete reminder
+  recordPageLink: View record
   edit:
+    label: Edit reminder
     assigneeLabel: Assignee
     assigneePlaceholder: Myself (default)
     notesLabel: Notes
     notesPlaceholder: Notes
-    remindAtLabel: Notify me
+    remindAtLabel: Remind me at
     remindAtNone: Never
     titleLabel: Title
     titlePlaceholder: Title
   listLabel: Reminders
-  routesTo: 'Includes link to:'
-  snooze: Snooze
+  routesTo: Label for page link
+  snooze:
+    label: Snooze
+    count: Snooze count {{count}}
 tooltip:
   dragAndDrop: Drag and drop to change order
-  field: Configure field
 fieldKinds:
   Bool:
     label: Checkbox (Y/N)
@@ -126,7 +145,7 @@ fieldKinds:
   User:
     label: User selector
   Geometry:
-    label: Geometry
+    label: Location
 field:
   selectAll: Select all
   tooltip:
@@ -141,6 +160,28 @@ resourceList:
   pagination:
     next: Next
     prev: Previous
-    showing: '{{from}} - {{to}} of {{count}} items'
-    single: One item
-    single_plural: '{{count}} items'
+    showing: '{{from}} - {{to}} of {{count}} {{data}}'
+    single: 'One {{data}}'
+    single_plural: '{{count}} {{data}}'
+    recordsPerPage: Per Page
+recordNavigation:
+  next: Next record
+  prev: Previous record
+variants:
+  primary: Primary
+  secondary: Secondary
+  light: Light
+  dark: Dark
+  info: Info
+  success: Success
+  danger: Danger
+  warning: Warning
+editor:
+  unsavedChanges:  Unsaved changes will be lost. Do you wish to leave the page?
+record:
+  unsavedChanges:  Unsaved changes will be lost. Do you wish to close the record?
+
+themes:
+  labels:
+    light: Light
+    dark: Dark

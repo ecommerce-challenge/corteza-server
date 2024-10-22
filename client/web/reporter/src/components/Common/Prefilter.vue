@@ -1,5 +1,5 @@
 <template>
-  <div class="prefilter">
+  <c-form-table-wrapper hide-add-button>
     <b-table-simple
       v-if="render && filter.ref"
       responsive
@@ -23,6 +23,7 @@
               class="w-auto"
               @change="reRender()"
             />
+
             <span
               v-else
               class="px-3"
@@ -31,6 +32,7 @@
               {{ argIndex === 0 ? 'Where' : `${group.args[0].ref[0].toUpperCase() + group.args[0].ref.slice(1).toLowerCase()}` }}
             </span>
           </td>
+
           <template v-if="Object.keys(arg).includes('raw')">
             <td>
               <b-input-group>
@@ -54,6 +56,7 @@
               </b-input-group>
             </td>
           </template>
+
           <template v-else-if="group">
             <td>
               <b-input-group>
@@ -110,17 +113,17 @@
               </b-input-group>
             </td>
           </template>
+
           <td
             class="fit text-center align-middle pl-2 pr-0"
           >
             <c-input-confirm
-              variant="link"
-              size="lg"
-              button-class="text-dark px-0"
+              show-icon
               @confirmed="deleteFilter(groupIndex, argIndex)"
             />
           </td>
         </tr>
+
         <tr
           :key="`${groupIndex}-add`"
         >
@@ -129,8 +132,9 @@
             :class="{ 'text-center': group.args[0].args && group.args[0].args.length }"
           >
             <b-button
-              variant="link text-decoration-none"
-              class="px-0"
+              variant="primary"
+              size="sm"
+              class="mt-1"
               @click="addFilter(groupIndex)"
             >
               <font-awesome-icon
@@ -180,8 +184,8 @@
       v-else
     >
       <b-button
-        variant="link text-decoration-none"
-        class="px-0"
+        variant="primary"
+        size="sm"
         @click="initFilter()"
       >
         <font-awesome-icon
@@ -192,7 +196,7 @@
         {{ $t('general:label.add') }}
       </b-button>
     </tr>
-  </div>
+  </c-form-table-wrapper>
 </template>
 
 <script>
@@ -426,8 +430,8 @@ export default {
 
 .btn-add-group {
   &:hover, &:active {
-    background-color: $primary !important;
-    color: white !important;
+    background-color: var(--primary) !important;
+    color: var(--white) !important;
   }
 }
 

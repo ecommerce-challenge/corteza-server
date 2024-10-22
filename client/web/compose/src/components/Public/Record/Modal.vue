@@ -6,9 +6,9 @@
     dialog-class="h-100 mw-90"
     content-class="position-initial"
     body-class="p-0"
-    footer-class="p-0"
+    footer-class="p-0 overflow-hidden"
     size="xl"
-    @hidden="hideModal"
+    @hidden="onHidden"
   >
     <template #modal-title>
       <portal-target
@@ -22,7 +22,12 @@
       :page="page"
       :module="module"
       :record-i-d="recordID"
-      :show-record-modal="showModal"
+      :values="values"
+      :ref-record="refRecord"
+      :edit="edit"
+      show-record-modal
+      @handle-record-redirect="loadRecord"
+      @on-modal-back="loadRecord"
     />
 
     <template #modal-footer>
@@ -35,10 +40,10 @@
 </template>
 
 <script>
+import { NoID, compose } from '@cortezaproject/corteza-js'
+import { mapGetters, mapActions } from 'vuex'
 import record from 'corteza-webapp-compose/src/mixins/record'
-import { compose } from '@cortezaproject/corteza-js'
 import ViewRecord from 'corteza-webapp-compose/src/views/Public/Pages/Records/View'
-import { mapGetters } from 'vuex'
 
 export default {
   i18nOptions: {
@@ -68,6 +73,9 @@ export default {
       recordID: undefined,
       module: undefined,
       page: undefined,
+      values: undefined,
+      refRecord: undefined,
+      edit: false,
     }
   },
 
@@ -75,81 +83,151 @@ export default {
     ...mapGetters({
       getModuleByID: 'module/getByID',
       getPageByID: 'page/getByID',
+      recordPaginationUsable: 'ui/recordPaginationUsable',
+      modalPreviousPages: 'ui/modalPreviousPages',
     }),
+
+    uniqueID () {
+      const { recordPageID, recordID, edit = false } = this.$route.query
+      const isEdit = typeof edit === 'string' ? edit === 'true' : Boolean(edit)
+      return [recordPageID, recordID, isEdit]
+    },
   },
 
   watch: {
-    '$route.query.recordID': {
+    uniqueID: {
       immediate: true,
-      handler (recordID, oldRecordID) {
-        const { recordPageID } = this.$route.query
+      handler (value = [], oldValue = []) {
+        const [recordPageID, recordID, edit] = value
+        const [oldRecordPageID] = oldValue
 
-        if (!recordID) {
-          this.showModal = false
+        if (!recordPageID) {
+          this.setDefaultValues()
+          this.clearModalPreviousPage()
+        }
+
+        if (recordPageID !== oldRecordPageID) {
+          // If the page changed we need to clear the record pagination since its not relevant anymore
+          if (this.recordPaginationUsable) {
+            this.setRecordPaginationUsable(false)
+          } else {
+            this.clearRecordIDs()
+          }
+        }
+
+        if (!recordPageID) {
           return
         }
 
-        if (this.showModal && (recordID !== oldRecordID)) {
-          this.showModal = false
-
-          setTimeout(() => {
-            this.$router.push({
-              query: {
-                ...this.$route.query,
-                recordID,
-                recordPageID,
-              },
-            })
-          }, 300)
-
-          return
+        if (recordID !== this.recordID || recordPageID !== (this.page || {}).pageID || edit !== this.edit) {
+          this.loadRecord({ recordID, recordPageID, edit })
         }
-
-        setTimeout(() => {
-          this.loadModal({ recordID, recordPageID })
-        }, 100)
       },
     },
   },
 
-  created () {
-    this.$root.$on('show-record-modal', ({ recordID, recordPageID }) => {
-      this.$router.push({
-        query: {
-          ...this.$route.query,
-          recordID,
-          recordPageID,
-        },
-      })
-    })
+  mounted () {
+    this.$root.$on('show-record-modal', this.loadRecord)
+    this.$root.$on('refetch-records', this.refetchRecords)
   },
 
   beforeDestroy () {
-    this.$root.$off('show-record-modal')
+    this.destroyEvents()
+    this.setDefaultValues()
   },
 
   methods: {
+    ...mapActions({
+      setRecordPaginationUsable: 'ui/setRecordPaginationUsable',
+      clearRecordIDs: 'ui/clearRecordIDs',
+      pushModalPreviousPage: 'ui/pushModalPreviousPage',
+      clearModalPreviousPage: 'ui/clearModalPreviousPage',
+    }),
+
+    loadRecord ({ recordID, recordPageID, values, refRecord, edit = this.edit, pushModalPreviousPage = true }) {
+      if (!recordID && !recordPageID) {
+        this.onHidden()
+        return
+      }
+
+      this.recordID = recordID
+      this.values = values
+      this.refRecord = refRecord
+      this.edit = edit || !recordID || recordID === NoID
+
+      this.loadModal({ recordID, recordPageID })
+
+      // Push the previous modal view page to the modal route history stack on the store so we can go back to it
+      if (pushModalPreviousPage) {
+        this.pushModalPreviousPage({ recordID, recordPageID, edit })
+      }
+
+      setTimeout(() => {
+        this.$router.push({
+          query: {
+            ...this.$route.query,
+            recordID,
+            recordPageID,
+            edit,
+          },
+        })
+      })
+    },
+
     loadModal ({ recordID, recordPageID }) {
       if (recordID && recordPageID) {
         this.recordID = recordID
-        this.page = this.getPageByID(recordPageID)
 
-        if (this.page) {
+        if (!this.page || this.page.pageID !== recordPageID) {
+          this.page = this.getPageByID(recordPageID)
+        }
+
+        if (this.page && (!this.module || this.module.moduleID !== this.page.moduleID)) {
           this.module = this.getModuleByID(this.page.moduleID)
+        }
+
+        if (this.page && this.module) {
           this.showModal = true
         }
       }
     },
 
-    hideModal () {
-      this.$router.push({
-        query: {
-          ...this.$route.query,
-          recordID: undefined,
-          moduleID: undefined,
-          recordPageID: undefined,
-        },
+    onHidden () {
+      this.setDefaultValues()
+
+      setTimeout(() => {
+        if (this.recordID === undefined && this.page === undefined) {
+          this.$router.replace({
+            query: {
+              ...this.$route.query,
+              recordID: undefined,
+              moduleID: undefined,
+              recordPageID: undefined,
+              edit: undefined,
+            },
+          })
+        }
       })
+    },
+
+    refetchRecords () {
+      this.$root.$emit('refetch-record-blocks')
+    },
+
+    setDefaultValues () {
+      this.showModal = false
+      this.edit = false
+      this.recordID = undefined
+      this.module = undefined
+      this.page = undefined
+      this.values = undefined
+      this.refRecord = undefined
+      this.clearModalPreviousPage()
+    },
+
+    destroyEvents () {
+      this.$root.$off('show-record-modal', this.loadRecord)
+      this.$root.$off('refetch-records', this.refetchRecords)
     },
   },
 }
@@ -163,5 +241,17 @@ export default {
 
 .position-initial {
   position: initial;
+}
+
+#record-modal {
+  .modal-header {
+    h5 {
+      min-height: 27px;
+    }
+  }
+
+  .modal-body {
+    background-color: var(--body-bg);
+  }
 }
 </style>

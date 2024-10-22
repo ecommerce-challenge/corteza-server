@@ -4,6 +4,10 @@ export default [
     ref: 'swimlane',
   },
   {
+    kind: 'visual',
+    ref: 'content',
+  },
+  {
     kind: 'hr',
   },
   {

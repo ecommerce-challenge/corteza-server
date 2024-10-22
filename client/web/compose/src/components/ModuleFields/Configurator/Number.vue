@@ -3,10 +3,11 @@
     <b-row>
       <b-col
         cols="12"
-        sm="6"
+        lg="6"
       >
         <b-form-group
           :label="$t('kind.number.displayType.label')"
+          label-class="text-primary"
         >
           <b-form-radio-group
             v-model="f.options.display"
@@ -19,20 +20,21 @@
 
       <b-col
         cols="12"
-        sm="6"
+        lg="6"
       >
-        <label class="d-block mb-3">
-          {{ $t('kind.number.precisionLabel') }} ({{ f.options.precision }})
-        </label>
-        <b-form-input
-          v-model="f.options.precision"
-          :placeholder="$t('kind.number.precisionPlaceholder')"
-          type="range"
-          min="0"
-          max="6"
-          size="lg"
-          class="mt-1 mb-2"
-        />
+        <b-form-group
+          v-b-tooltip.hover="{ title: hasData ? $t('not-configurable') : $t('kind.number.precisionTooltip'), container: '#body' }"
+          :label="`${$t('kind.number.precisionLabel')} ${(f.options.precision)}`"
+          label-class="mb-2 text-primary"
+        >
+          <b-form-input
+            v-model="f.options.precision"
+            :disabled="hasData"
+            type="range"
+            min="0"
+            max="6"
+          />
+        </b-form-group>
       </b-col>
     </b-row>
 
@@ -42,28 +44,30 @@
       <template v-if="f.options.display === 'number'">
         <b-col
           cols="12"
-          sm="6"
+          lg="6"
         >
           <b-form-group
             :label="$t('kind.number.prefixLabel')"
+            label-class="text-primary"
           >
             <b-form-input
               v-model="f.options.prefix"
-              :placeholder="$t('kind.number.prefixPlaceholder')"
+              placeholder="USD/mo"
             />
           </b-form-group>
         </b-col>
 
         <b-col
           cols="12"
-          sm="6"
+          lg="6"
         >
           <b-form-group
             :label="$t('kind.number.suffixLabel')"
+            label-class="text-primary"
           >
             <b-form-input
               v-model="f.options.suffix"
-              :placeholder="$t('kind.number.suffixPlaceholder')"
+              placeholder="$"
             />
           </b-form-group>
         </b-col>
@@ -72,14 +76,33 @@
       <template v-if="f.options.display === 'number'">
         <b-col
           cols="12"
-          sm="6"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('kind.number.presetFormats.label')"
+            label-class="text-primary"
+            :description="formattedOptionsDescription"
+            style="white-space: pre-line;"
+          >
+            <b-form-select
+              v-model="f.options.presetFormat"
+              :options="formatOptions"
+            />
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
         >
           <b-form-group
             :label="$t('kind.number.formatLabel')"
+            label-class="text-primary"
           >
             <b-form-input
               v-model="f.options.format"
-              :placeholder="$t('kind.number.formatPlaceholder')"
+              :disabled="f.options.presetFormat !== 'custom'"
+              placeholder="0.00"
             />
           </b-form-group>
         </b-col>
@@ -90,20 +113,33 @@
           <b-form-group
             v-if="f.options.display === 'number'"
             :label="$t('kind.number.examplesLabel')"
+            label-class="text-primary"
           >
-            <table
-              style="width: 100%;"
-            >
+            <b-table-simple class="w-100 table-sm">
+              <thead>
+                <tr>
+                  <th id="example-input">
+                    {{ $t('kind.number.exampleInput') }}
+                  </th>
+                  <th id="example-format">
+                    {{ $t('kind.number.exampleFormat') }}
+                  </th>
+                  <th id="example-result">
+                    {{ $t('kind.number.exampleResult') }}
+                  </th>
+                </tr>
+              </thead>
+
               <tr>
-                <th>{{ $t('kind.number.exampleInput') }}</th>
-                <th>{{ $t('kind.number.exampleFormat') }}</th>
-                <th>{{ $t('kind.number.exampleResult') }}</th>
+                <td>1000.234</td>
+                <td>0,0.00</td>
+                <td>1,000.23</td>
               </tr>
 
               <tr>
-                <td>10000.234</td>
-                <td>$0.00</td>
-                <td>$10000.23</td>
+                <td>1000.234</td>
+                <td>0,0</td>
+                <td>1,000</td>
               </tr>
 
               <tr>
@@ -113,9 +149,9 @@
               </tr>
 
               <tr>
-                <td>1</td>
-                <td>0%</td>
-                <td>100%</td>
+                <td>100</td>
+                <td>0o</td>
+                <td>100th</td>
               </tr>
 
               <tr>
@@ -123,7 +159,7 @@
                 <td>00:00:00</td>
                 <td>0:03:58</td>
               </tr>
-            </table>
+            </b-table-simple>
           </b-form-group>
         </b-col>
       </template>
@@ -131,10 +167,11 @@
       <template v-if="f.options.display === 'progress'">
         <b-col
           cols="12"
-          sm="6"
+          lg="6"
         >
           <b-form-group
             :label="$t('kind.number.progress.minimumValue')"
+            label-class="text-primary"
           >
             <b-form-input
               v-model="f.options.min"
@@ -146,10 +183,11 @@
 
         <b-col
           cols="12"
-          sm="6"
+          lg="6"
         >
           <b-form-group
             :label="$t('kind.number.progress.maximumValue')"
+            label-class="text-primary"
           >
             <b-form-input
               v-model="f.options.max"
@@ -161,10 +199,11 @@
 
         <b-col
           cols="12"
-          sm="6"
+          lg="6"
         >
           <b-form-group
             :label="$t('kind.number.progress.variants.default')"
+            label-class="text-primary"
           >
             <b-form-select
               v-model="f.options.variant"
@@ -224,7 +263,7 @@
           <b-form-group>
             <template #label>
               <div
-                class="d-flex align-items-center"
+                class="d-flex align-items-center text-primary"
               >
                 {{ $t('kind.number.progress.thresholds.label') }}
                 <b-button
@@ -286,6 +325,7 @@
 
     <b-form-group
       :label=" $t('kind.number.liveExample')"
+      label-class="text-primary"
       class="mb-0 w-100"
     >
       <b-row
@@ -293,7 +333,7 @@
       >
         <b-col
           cols="12"
-          sm="6"
+          lg="6"
         >
           <b-form-input
             v-model="liveExample"
@@ -304,7 +344,7 @@
 
         <b-col
           cols="12"
-          sm="6"
+          lg="6"
         >
           <field-viewer
             value-only
@@ -359,13 +399,24 @@ export default {
         record: undefined,
         errors: new validator.Validated(),
       },
+
+      formatOptions: [
+        { value: 'custom', text: this.$t('kind.number.presetFormats.options.custom') },
+        { value: 'accounting', text: this.$t('kind.number.presetFormats.options.accounting') },
+      ],
     }
+  },
+
+  computed: {
+    formattedOptionsDescription () {
+      return this.$t(`kind.number.presetFormats.description.${this.f.options.presetFormat}`)
+    },
   },
 
   watch: {
     'field.options.display': {
       handler (display) {
-        this.liveExample = display === 'number' ? 123.45679 : 33
+        this.liveExample = display === 'number' ? 1234.56789 : 33.45679
       },
     },
 
@@ -396,7 +447,11 @@ export default {
     this.mock.field.apply({ name: 'mockField' })
     this.mock.module = new compose.Module({ fields: [this.mock.field] }, this.namespace)
     this.mock.record = new compose.Record(this.mock.module, { })
-    this.liveExample = this.field.options.display === 'number' ? 123.45679 : 33.45679
+    this.liveExample = this.field.options.display === 'number' ? 1234.56789 : 33.45679
+  },
+
+  beforeDestroy () {
+    this.setDefaultValues()
   },
 
   methods: {
@@ -408,6 +463,14 @@ export default {
       if (index > -1) {
         this.field.options.thresholds.splice(index, 1)
       }
+    },
+
+    setDefaultValues () {
+      this.liveExample = undefined
+      this.displayOptions = []
+      this.variants = []
+      this.mock = {}
+      this.formatOptions = []
     },
   },
 }

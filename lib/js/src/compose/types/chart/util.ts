@@ -1,3 +1,6 @@
+import numeral from 'numeral'
+import * as fmt from '../../../formatting'
+
 export const rgbaRegex = /^rgba\((\d+),.*?(\d+),.*?(\d+),.*?(\d*\.?\d*)\)$/
 
 const ln = (n: number) => Math.round(n < 0 ? 255 + n : (n > 255) ? n - 255 : n)
@@ -8,9 +11,11 @@ export enum ChartType {
   pie = 'pie',
   bar = 'bar',
   line = 'line',
-  doughnut='doughnut',
+  doughnut = 'doughnut',
   funnel = 'funnel',
   gauge = 'gauge',
+  radar = 'radar',
+  scatter = 'scatter',
 }
 
 export interface TemporalDataPoint {
@@ -22,6 +27,26 @@ export interface KV {
   [_: string]: any;
 }
 
+export interface FormatData {
+  format?: string,
+  prefix?: string,
+  suffix?: string,
+  presetFormat?: string,
+}
+
+export interface Tooltip {
+  formatting?: string;
+  labelsNextToPartition?: boolean;
+}
+
+export interface TooltipParams {
+  seriesName?: string;
+  name?: string;
+  value?: string | number;
+  percent?: string | number;
+  marker?: string;
+}
+
 export interface Dimension {
   meta?: KV;
   conditions: object;
@@ -29,8 +54,9 @@ export interface Dimension {
   modifier?: string;
   default?: string;
   skipMissing?: boolean;
+  timeLabels?: boolean;
   autoSkip?: boolean;
-  rotateLabel?: string;
+  rotateLabel?: number;
 }
 
 export interface Metric {
@@ -45,6 +71,8 @@ export interface Metric {
   modifier?: string;
   fx?: string;
   backgroundColor?: string;
+  symbol?: string;
+  formatting: FormatData;
   [_: string]: any;
 }
 
@@ -56,7 +84,9 @@ export interface YAxis {
   labelPosition?: string;
   min?: string;
   max?: string;
-  rotateLabel?: string;
+  rotateLabel?: number;
+  horizontal?: boolean;
+  formatting: FormatData;
 }
 
 export interface ChartOffset {
@@ -84,11 +114,6 @@ export interface Legend {
   position?: Position;
 }
 
-export interface Tooltip {
-  formatting?: string;
-  labelsNextToPartition?: boolean;
-}
-
 export interface Report {
   moduleID?: string|null;
   filter?: string|null;
@@ -100,10 +125,16 @@ export interface Report {
   offset?: ChartOffset;
 }
 
+export interface ChartToolbox {
+  saveAsImage: boolean;
+  timeline: string;
+}
+
 export interface ChartConfig {
   reports?: Array<Report>;
   colorScheme?: string;
   noAnimation?: boolean;
+  toolbox?: ChartToolbox;
 }
 
 export const aggregateFunctions = [
@@ -133,7 +164,6 @@ interface DimensionFunction {
   text: string;
   value: string;
   convert: (f: string) => string;
-  time: boolean | object;
 }
 
 export class DimensionFunctions<T> extends Array<T> {
@@ -160,42 +190,36 @@ dimensionFunctions.push(...[
     text: 'none',
     value: '(no grouping / buckets)',
     convert: (f: string) => f,
-    time: false,
   },
 
   {
     text: 'date',
     value: 'DATE',
     convert: (f: string) => `DATE(${f})`,
-    time: { unit: 'day', minUnit: 'day', round: true },
   },
 
   {
     text: 'week',
     value: 'WEEK',
     convert: (f: string) => `WEEK(${f})`,
-    time: { unit: 'week', minUnit: 'week', round: true, isoWeekday: true },
   },
 
   {
     text: 'month',
     value: 'MONTH',
     convert: (f: string) => `DATE_FORMAT(${f}, '%Y-%m-01')`,
-    time: { unit: 'month', minUnit: 'month', round: true },
   },
 
   {
     text: 'quarter',
     value: 'QUARTER',
     convert: (f: string) => `QUARTER(${f})`,
-    time: { unit: 'quarter', minUnit: 'quarter', round: true },
   },
 
   {
     text: 'year',
     value: 'YEAR',
     convert: (f: string) => `DATE_FORMAT(${f}, '%Y-01-01')`,
-    time: { unit: 'year', minUnit: 'year', round: true },
   },
 ])
 
@@ -234,8 +258,60 @@ dimensionFunctions.convert = d => dimensionFunctions.lookup(d).convert(d.field)
 export const isRadialChart = ({ type }: KV) => type === 'doughnut' || type === 'pie'
 export const hasRelativeDisplay = ({ type }: KV) => isRadialChart({ type })
 
-// Makes a standarised alias from modifier or dimension report option
-export const makeAlias = ({ alias, aggregate, modifier, field }: Metric) => alias || `${aggregate || modifier || 'none'}_${field}`.toLocaleLowerCase()
+// Makes a standardized alias from modifier or dimension report option
+export const makeAlias = ({ alias, aggregate, modifier, field }: Partial<Metric>) => alias || `${aggregate || modifier || 'none'}_${field}`.toLocaleLowerCase()
+
+export function formatChartValue (value: string | number, formatting?: FormatData): string {
+  let n: number | string = 0 || ''
+  // if value contains alphabetic chars parseFloat() will return NaN
+  // and n will equal 0
+  const containsAlphabeticChars = isNaN(Number(value))
+  let result = ''
+
+  if (!containsAlphabeticChars) {
+    switch (typeof value) {
+      case 'string':
+        n = parseFloat(value)
+        break
+      case 'number':
+        n = value
+        break
+      default:
+        n = 0
+    }
+
+    if (formatting?.format) {
+      result = numeral(n).format(formatting.format)
+    } else {
+      result = fmt.number(n)
+    }
+  }
+
+  if (formatting?.presetFormat === 'accounting') {
+    result = fmt.accountingNumber(Number(n))
+  }
+
+  return ` ${formatting?.prefix ?? ''} ${result || value} ${formatting?.suffix ?? ''}`
+}
+
+export function formatChartTooltip (tooltip: string, params: TooltipParams): string {
+  const { seriesName = '', name = '', value = '', percent = '' } = params
+
+  return tooltip
+    .replace('{a}', seriesName)
+    .replace('{b}', name)
+    .replace('{c}', value.toString())
+    .replace('{d}', percent.toString())
+}
+
+export function defFormatData (): FormatData {
+  return Object.assign({}, {
+    presetFormat: 'custom',
+    prefix: '',
+    suffix: '',
+    format: '',
+  })
+}
 
 const chartUtil = {
   dimensionFunctions,
@@ -248,4 +324,3 @@ const chartUtil = {
 export {
   chartUtil,
 }
-

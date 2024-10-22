@@ -1,105 +1,127 @@
 <template>
-  <b-table
-    id="expression-table"
-    fixed
-    borderless
-    hover
-    head-row-variant="secondary"
-    details-td-class="bg-white"
-    class="mb-4"
-    :items="items"
-    :fields="fields"
-    thead-tr-class="border-thick"
-    :tbody-tr-class="rowClass"
-    @row-clicked="item => $set(item, '_showDetails', !item._showDetails)"
-  >
-    <template #cell(target)="{ value }">
-      <var>{{ value }}</var>
-    </template>
+  <div class="table-responsive">
+    <b-row class="header pl-4">
+      <b-col
+        v-for="(field, index) in fields"
+        :key="index"
+        :class="`py-2 ${field.thClass}`"
+      >
+        <label>{{ field.label }}</label>
+      </b-col>
+    </b-row>
 
-    <template #cell(type)="{ value }">
-      <var>{{ value }}</var>
-    </template>
-
-    <template #[`cell(${valueField})`]="{ value, item, index }">
+    <draggable
+      :list="items"
+      handle=".grab"
+      @end="$root.$emit('change-detected')"
+    >
       <div
-        class="d-flex justify-content-between align-items-center"
+        v-for="(item, index) in items"
+        :key="index"
       >
-        <div
-          class="text-truncate"
-          :class="{ 'w-75': item._showDetails}"
+        <b-row
+          class="d-flex justify-content-between align-items-center pointer expr-item"
+          no-gutters
+          @click="$set(item, '_showDetails', !item._showDetails)"
         >
-          <samp>{{ value }}</samp>
-        </div>
+          <div class="p-2 grab">
+            <font-awesome-icon
+              :icon="['fas', 'bars']"
+              class="text-secondary"
+            />
+          </div>
 
-        <b-button
-          v-if="item._showDetails"
-          variant="outline-danger"
-          class="position-absolute trash border-0"
-          @click="$emit('remove', index)"
-        >
-          <font-awesome-icon
-            :icon="['far', 'trash-alt']"
-          />
-        </b-button>
+          <b-col
+            v-for="(field, i) in fields"
+            :key="i"
+            class="text-truncate p-2"
+          >
+            <div
+              v-if="field.key === 'expr'"
+              class="d-flex justify-content-between align-items-center"
+            >
+              <samp class="text-truncate">{{ item[field.key] }}</samp>
+
+              <c-input-confirm
+                v-if="item._showDetails"
+                show-icon
+                @confirmed="$emit('remove', index)"
+              />
+            </div>
+
+            <var
+              v-else
+              class=""
+            >
+              {{ field.formatter ? field.formatter(item) : item[field.key] }}
+            </var>
+          </b-col>
+        </b-row>
+
+        <transition name="fade">
+          <div
+            v-if="item._showDetails"
+            class="mb-3 px-3"
+          >
+            <div class="arrow-up" />
+
+            <b-card
+              class="bg-light"
+              body-class="px-4 pb-3"
+            >
+              <b-form-group
+                label-class="text-primary"
+              >
+                <b-form-input
+                  v-model="item.target"
+                  placeholder="Target"
+                  @input="$root.$emit('change-detected')"
+                />
+              </b-form-group>
+
+              <b-form-group
+                label-class="text-primary"
+                :description="getTypeDescription(item.type)"
+              >
+                <c-input-select
+                  v-model="item.type"
+                  :options="types"
+                  :get-option-key="getOptionKey"
+                  :clearable="false"
+                  :filter="varFilter"
+                  append-to-body
+                  @input="$root.$emit('change-detected')"
+                />
+              </b-form-group>
+
+              <b-form-group
+                class="mb-0"
+              >
+                <expression-editor
+                  v-model="item[valueField]"
+                  lang="javascript"
+                  show-line-numbers
+                  @open="$emit('open-editor', index)"
+                  @input="$root.$emit('change-detected')"
+                />
+              </b-form-group>
+            </b-card>
+          </div>
+        </transition>
       </div>
-    </template>
-
-    <template #row-details="{ item, index }">
-      <div class="arrow-up" />
-
-      <b-card
-        class="bg-light"
-        body-class="px-4 pb-3"
-      >
-        <b-form-group
-          label-class="text-primary"
-        >
-          <b-form-input
-            v-model="item.target"
-            placeholder="Target"
-            @input="$root.$emit('change-detected')"
-          />
-        </b-form-group>
-
-        <b-form-group
-          label-class="text-primary"
-          :description="getTypeDescription(item.type)"
-        >
-          <vue-select
-            v-model="item.type"
-            :options="types"
-            :clearable="false"
-            :filter="varFilter"
-            @input="$root.$emit('change-detected')"
-          />
-        </b-form-group>
-
-        <b-form-group
-          class="mb-0"
-        >
-          <expression-editor
-            :value.sync="item[valueField]"
-            lang="javascript"
-            show-line-numbers
-            @open="$emit('open-editor', index)"
-            @input="$root.$emit('change-detected')"
-          />
-        </b-form-group>
-      </b-card>
-    </template>
-  </b-table>
+    </draggable>
+  </div>
 </template>
 
 <script>
 import ExpressionEditor from './ExpressionEditor.vue'
 import { objectSearchMaker } from '../lib/filter'
-import { VueSelect } from 'vue-select'
+import draggable from 'vuedraggable'
 
 export default {
   components: {
     ExpressionEditor,
-    VueSelect,
+    draggable,
   },
 
   props: {
@@ -127,10 +149,6 @@ export default {
   methods: {
     varFilter: objectSearchMaker('text'),
 
-    rowClass (item, type) {
-      return item._showDetails && type === 'row' ? 'border-thick' : 'border-thick-transparent'
-    },
-
     getTypeDescription (type) {
       // This will be moved to backend field type information
       const typeDescriptions = {
@@ -139,6 +157,32 @@ export default {
 
       return typeDescriptions[type]
     },
+
+    getOptionKey (type) {
+      return type
+    },
   },
 }
 </script>
+
+<style lang="scss" scoped>
+.header {
+  background-color: var(--light);
+
+  label {
+    margin: 0;
+  }
+}
+
+.table-responsive {
+  overflow: hidden;
+}
+
+.expr-item:hover {
+  background-color: var(--light);
+
+  .grab > * {
+    color: var(--secondary) !important;
+  }
+}
+</style>

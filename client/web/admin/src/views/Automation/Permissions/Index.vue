@@ -1,7 +1,7 @@
 <template>
   <b-container
     fluid
-    class="py-3"
+    class="d-flex flex-column h-100 pt-2 pb-3"
   >
     <c-content-header
       :title="$t('ui.title.automation')"
@@ -9,7 +9,6 @@
 
     <c-permission-list
       :roles="sortedRoles"
-      :all-roles="allRoles"
       :permissions="permissions"
       :role-permissions="rolePermissions"
       :can-grant="canGrant"
@@ -17,6 +16,7 @@
       :processing="permission.processing"
       :success="permission.success"
       component="automation"
+      class="flex-fill"
       @submit="onSubmit"
       @add="addRole"
       @hide="hideRole"

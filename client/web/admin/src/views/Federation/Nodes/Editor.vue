@@ -1,20 +1,17 @@
 <template>
   <b-container
-    class="py-3"
+    class="pt-2 pb-3"
   >
     <c-content-header
       :title="title"
     >
-      <b-button-group
+      <b-button
         v-if="nodeID"
+        variant="link"
+        @click="generate.modal = true"
       >
-        <b-button
-          variant="link"
-          @click="generate.modal = true"
-        >
-          {{ $t('generateUri') }}
-        </b-button>
-      </b-button-group>
+        {{ $t('generateUri') }}
+      </b-button>
     </c-content-header>
 
     <c-federation-editor-info
@@ -57,17 +54,13 @@
           placeholder="email@example.com"
         />
         <b-input-group-append>
-          <c-submit-button
-            button-class="px-4"
-            variant="outline-primary"
-            icon-variant="text-primary"
+          <c-button-submit
+            :disabled="!generate.url || !generate.email"
             :processing="generate.processing"
             :success="generate.success"
-            :disabled="!generate.url || !generate.email"
+            :text="$t('generate.sendEmail')"
             @submit="sendEmail()"
-          >
-            {{ $t('generate.sendEmail') }}
-          </c-submit-button>
+          />
         </b-input-group-append>
       </b-input-group>
 
@@ -105,18 +98,6 @@
         class="my-3"
       >
 
-      <b-button
-        variant="link"
-        size="sm"
-        :to="{}"
-        class="p-1"
-        @click="copyUrl()"
-      >
-        <font-awesome-icon
-          :icon="['far', 'copy']"
-          class="text-secondary pointer"
-        />
-      </b-button>
       <span
         class="text-break"
       >
@@ -130,7 +111,7 @@
 import { mapGetters } from 'vuex'
 import editorHelpers from 'corteza-webapp-admin/src/mixins/editorHelpers'
 import CFederationEditorInfo from 'corteza-webapp-admin/src/components/Federation/CFederationEditorInfo'
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
+import { cloneDeep, isEqual } from 'lodash'
 
 export default {
   i18nOptions: {
@@ -140,12 +121,19 @@ export default {
 
   components: {
     CFederationEditorInfo,
-    CSubmitButton,
   },
 
   mixins: [
     editorHelpers,
   ],
+
+  beforeRouteUpdate (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
+
+  beforeRouteLeave (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
 
   props: {
     nodeID: {
@@ -158,6 +146,7 @@ export default {
   data () {
     return {
       node: {},
+      initialNodeState: {},
 
       // Processing and success flags for each form
       info: {
@@ -201,7 +190,17 @@ export default {
           this.fetchNode()
           this.fetchGeneratedUrl()
         } else {
-          this.node = {}
+          this.node = {
+            name: '',
+            baseURL: '',
+            contact: '',
+          }
+
+          this.initialNodeState = {
+            name: '',
+            baseURL: '',
+            contact: '',
+          }
         }
       },
     },
@@ -214,6 +213,7 @@ export default {
       this.$FederationAPI.nodeRead({ nodeID: this.nodeID })
         .then(node => {
           this.node = node // new federation.Node(node)
+          this.initialNodeState = cloneDeep(node)
         })
         .catch(this.toastErrorHandler(this.$t('notification:federation.fetch.error')))
         .finally(() => {
@@ -250,6 +250,7 @@ export default {
         this.$FederationAPI.nodeUpdate(payload)
           .then(node => {
             this.node = node
+            this.initialNodeState = cloneDeep(node)
 
             this.animateSuccess('info')
             this.toastSuccess(this.$t('notification:federation.update.success'))
@@ -297,6 +298,8 @@ export default {
           .then(() => {
             this.fetchNode()
 
+            this.node.deletedAt = new Date()
+
             this.toastSuccess(this.$t('notification:federation.delete.success'))
             this.$router.push({ name: 'federation.nodes' })
           })
@@ -340,8 +343,15 @@ export default {
         })
     },
 
-    copyUrl () {
-      navigator.clipboard.writeText(this.generate.url)
+    checkUnsavedChanges (next, to) {
+      const isNewPage = this.$route.path.includes('/new') && to.name.includes('edit')
+      const { deletedAt } = this.node || {}
+
+      if (isNewPage || deletedAt) {
+        next(true)
+      } else if (!to.name.includes('edit')) {
+        next(!isEqual(this.node, this.initialNodeState) ? window.confirm(this.$t('general:editor.unsavedChanges')) : true)
+      }
     },
   },
 }

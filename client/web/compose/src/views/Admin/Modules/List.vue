@@ -1,159 +1,231 @@
 "<template>
-  <div class="py-3">
+  <b-container
+    fluid="xl"
+    class="d-flex flex-column py-3"
+  >
     <portal to="topbar-title">
       {{ $t('navigation.module') }}
     </portal>
 
-    <b-container fluid="xl">
-      <b-row>
-        <b-col>
-          <c-resource-list
-            data-test-id="table-modules-list"
-            :primary-key="primaryKey"
-            :filter="filter"
-            :sorting="sorting"
-            :pagination="pagination"
-            :fields="fields"
-            :items="items"
-            :translations="{
-              searchPlaceholder: $t('searchPlaceholder'),
-              notFound: $t('general:resourceList.notFound'),
-              noItems: $t('general:resourceList.noItems'),
-              loading: $t('general:label.loading'),
-              showingPagination: 'general:resourceList.pagination.showing',
-              singlePluralPagination: 'general:resourceList.pagination.single',
-              prevPagination: $t('general:resourceList.pagination.prev'),
-              nextPagination: $t('general:resourceList.pagination.next'),
-            }"
-            clickable
-            @search="filterList"
-            @row-clicked="handleRowClicked"
+    <c-resource-list
+      data-test-id="table-modules-list"
+      :primary-key="primaryKey"
+      :filter="filter"
+      :sorting="sorting"
+      :pagination="pagination"
+      :fields="fields"
+      :items="items"
+      :translations="{
+        searchPlaceholder: $t('searchPlaceholder'),
+        notFound: $t('general:resourceList.notFound'),
+        noItems: $t('general:resourceList.noItems'),
+        loading: $t('general:label.loading'),
+        showingPagination: 'general:resourceList.pagination.showing',
+        singlePluralPagination: 'general:resourceList.pagination.single',
+        prevPagination: $t('general:resourceList.pagination.prev'),
+        nextPagination: $t('general:resourceList.pagination.next'),
+        resourceSingle: $t('general:label.module.single'),
+        resourcePlural: $t('general:label.module.plural'),
+      }"
+      clickable
+      sticky-header
+      class="h-100 flex-fill"
+      @search="filterList"
+      @row-clicked="handleRowClicked"
+    >
+      <template #header>
+        <b-btn
+          v-if="namespace.canCreateModule"
+          data-test-id="button-create"
+          variant="primary"
+          size="lg"
+          :to="{ name: 'admin.modules.create' }"
+        >
+          {{ $t('createLabel') }}
+        </b-btn>
+
+        <import
+          v-if="namespace.canCreateModule"
+          :namespace="namespace"
+          type="module"
+          @importSuccessful="onImportSuccessful"
+        />
+
+        <export
+          v-if="namespace.canExportModules"
+          :list="modules"
+          type="module"
+        />
+
+        <b-dropdown
+          v-if="namespace.canGrant"
+          size="lg"
+          variant="light"
+          class="permissions-dropdown"
+        >
+          <template #button-content>
+            <font-awesome-icon :icon="['fas', 'lock']" />
+            <span>
+              {{ $t('general:label.permissions') }}
+            </span>
+          </template>
+
+          <b-dropdown-item>
+            <c-permissions-button
+              :resource="`corteza::compose:module/${namespace.namespaceID}/*`"
+              :button-label="$t('general:label.module.single')"
+              :show-button-icon="false"
+              button-variant="outline-light"
+              class="border-0 text-dark text-left w-100"
+            />
+          </b-dropdown-item>
+
+          <b-dropdown-item>
+            <c-permissions-button
+              :resource="`corteza::compose:module-field/${namespace.namespaceID}/*/*`"
+              :button-label="$t('general:label.field')"
+              :show-button-icon="false"
+              button-variant="outline-light"
+              class="border-0 text-dark text-left w-100"
+            />
+          </b-dropdown-item>
+
+          <b-dropdown-item>
+            <c-permissions-button
+              :resource="`corteza::compose:record/${namespace.namespaceID}/*/*`"
+              :button-label="$t('general:label.record')"
+              :show-button-icon="false"
+              button-variant="outline-light"
+              class="border-0 text-dark text-left w-100"
+            />
+          </b-dropdown-item>
+        </b-dropdown>
+      </template>
+
+      <template #actions="{ item: m }">
+        <related-pages
+          :namespace="namespace"
+          :module="m"
+          size="sm"
+          boundary="scrollParent"
+          class="d-inline-block"
+        />
+
+        <b-dropdown
+          v-if="m.canGrant"
+          data-test-id="dropdown-permissions"
+          size="sm"
+          variant="extra-light"
+          :title="$t('permissions:resources.compose.module.tooltip')"
+          class="permissions-dropdown ml-2"
+        >
+          <template #button-content>
+            <font-awesome-icon :icon="['fas', 'lock']" />
+          </template>
+
+          <b-dropdown-item>
+            <c-permissions-button
+              :title="m.name || m.handle || m.moduleID"
+              :target="m.name || m.handle || m.moduleID"
+              :resource="`corteza::compose:module/${namespace.namespaceID}/${m.moduleID}`"
+              :button-label="$t('general:label.module.single')"
+              :show-button-icon="false"
+              button-variant="outline-light"
+              class="border-0 text-dark text-left w-100"
+            />
+          </b-dropdown-item>
+
+          <b-dropdown-item>
+            <c-permissions-button
+              :title="m.name || m.handle || m.moduleID"
+              :target="m.name || m.handle || m.moduleID"
+              :resource="`corteza::compose:module-field/${namespace.namespaceID}/${m.moduleID}/*`"
+              :button-label="$t('general:label.field')"
+              :show-button-icon="false"
+              all-specific
+              button-variant="outline-light"
+              class="border-0 text-dark text-left w-100"
+            />
+          </b-dropdown-item>
+
+          <b-dropdown-item>
+            <c-permissions-button
+              :title="m.name || m.handle || m.moduleID"
+              :target="m.name || m.handle || m.moduleID"
+              :resource="`corteza::compose:record/${namespace.namespaceID}/${m.moduleID}/*`"
+              :button-label="$t('general:label.record')"
+              :show-button-icon="false"
+              all-specific
+              button-variant="outline-light"
+              class="border-0 text-dark text-left w-100"
+            />
+          </b-dropdown-item>
+        </b-dropdown>
+
+        <b-dropdown
+          variant="outline-extra-light"
+          toggle-class="d-flex align-items-center justify-content-center text-primary border-0 py-2 ml-2"
+          no-caret
+          dropleft
+          lazy
+          menu-class="m-0"
+        >
+          <template #button-content>
+            <font-awesome-icon
+              :icon="['fas', 'ellipsis-v']"
+            />
+          </template>
+
+          <b-dropdown-item
+            data-test-id="button-all-records"
+            :to="{name: 'admin.modules.record.list', params: { moduleID: m.moduleID }}"
           >
-            <template #header>
-              <div class="flex-grow-1">
-                <div
-                  class="wrap-with-vertical-gutters"
-                >
-                  <b-btn
-                    v-if="namespace.canCreateModule"
-                    data-test-id="button-create"
-                    variant="primary"
-                    size="lg"
-                    class="mr-1 float-left"
-                    :to="{ name: 'admin.modules.create' }"
-                  >
-                    {{ $t('createLabel') }}
-                  </b-btn>
+            <font-awesome-icon
+              :icon="['fas', 'columns']"
+              class="text-primary"
+            />
+            {{ $t('allRecords.label') }}
+          </b-dropdown-item>
 
-                  <import
-                    v-if="namespace.canCreateModule"
-                    :namespace="namespace"
-                    type="module"
-                    class="mr-1 float-left"
-                    @importSuccessful="onImportSuccessful"
-                  />
+          <c-input-confirm
+            v-if="m.canDeleteModule"
+            :text="$t('list.delete')"
+            show-icon
+            borderless
+            variant="link"
+            size="md"
+            button-class="dropdown-item text-decoration-none text-dark regular-font rounded-0"
+            icon-class="text-danger"
+            class="w-100"
+            @confirmed="handleDelete(m)"
+          />
+        </b-dropdown>
+      </template>
 
-                  <export
-                    :list="modules"
-                    type="module"
-                    class="mr-1 float-left"
-                  />
+      <template #name="{ item: m }">
+        <div
+          class="d-flex align-items-center"
+        >
+          {{ m.name }}
+          <h5
+            class="ml-2 mb-0"
+          >
+            <b-badge
+              v-if="Object.keys(m.labels || {}).includes('federation')"
+              pill
+              variant="primary"
+            >
+              {{ $t('federated') }}
+            </b-badge>
+          </h5>
+        </div>
+      </template>
 
-                  <b-dropdown
-                    v-if="namespace.canGrant"
-                    size="lg"
-                    variant="light"
-                    class="permissions-dropdown mr-1"
-                  >
-                    <template #button-content>
-                      <font-awesome-icon :icon="['fas', 'lock']" />
-                      <span>
-                        {{ $t('general:label.permissions') }}
-                      </span>
-                    </template>
-
-                    <b-dropdown-item>
-                      <c-permissions-button
-                        :resource="`corteza::compose:module/${namespace.namespaceID}/*`"
-                        :button-label="$t('general:label.module')"
-                        :show-button-icon="false"
-                        button-variant="white text-left w-100"
-                      />
-                    </b-dropdown-item>
-
-                    <b-dropdown-item>
-                      <c-permissions-button
-                        :resource="`corteza::compose:module-field/${namespace.namespaceID}/*/*`"
-                        :button-label="$t('general:label.field')"
-                        :show-button-icon="false"
-                        button-variant="white text-left w-100"
-                      />
-                    </b-dropdown-item>
-
-                    <b-dropdown-item>
-                      <c-permissions-button
-                        :resource="`corteza::compose:record/${namespace.namespaceID}/*/*`"
-                        :button-label="$t('general:label.record')"
-                        :show-button-icon="false"
-                        button-variant="white text-left w-100"
-                      />
-                    </b-dropdown-item>
-                  </b-dropdown>
-                </div>
-              </div>
-            </template>
-
-            <template #actions="{ item: m }">
-              <related-pages
-                :namespace="namespace"
-                :module="m"
-              />
-              <b-button
-                data-test-id="button-all-records"
-                variant="link"
-                :to="{name: 'admin.modules.record.list', params: { moduleID: m.moduleID }}"
-                class="text-dark text-decoration-none"
-              >
-                {{ $t('allRecords.label') }}
-              </b-button>
-              <c-permissions-button
-                v-if="m.canGrant"
-                :title="m.name || m.handle || m.moduleID"
-                :target="m.name || m.handle || m.moduleID"
-                :resource="`corteza::compose:module/${m.namespaceID}/${m.moduleID}`"
-                :tooltip="$t('permissions:resources.compose.module.tooltip')"
-                class="btn px-2"
-                link
-              />
-            </template>
-
-            <template #name="{ item: m }">
-              <div
-                class="d-flex align-items-center"
-              >
-                {{ m.name }}
-                <h5
-                  class="ml-2 mb-0"
-                >
-                  <b-badge
-                    v-if="Object.keys(m.labels || {}).includes('federation')"
-                    pill
-                    variant="primary"
-                  >
-                    {{ $t('federated') }}
-                  </b-badge>
-                </h5>
-              </div>
-            </template>
-
-            <template #changedAt="{ item }">
-              {{ (item.deletedAt || item.updatedAt || item.createdAt) | locFullDateTime }}
-            </template>
-          </c-resource-list>
-        </b-col>
-      </b-row>
-    </b-container>
-  </div>
+      <template #changedAt="{ item }">
+        {{ (item.deletedAt || item.updatedAt || item.createdAt) | locFullDateTime }}
+      </template>
+    </c-resource-list>
+  </b-container>
 </template>
 <script>
 import { mapGetters, mapActions } from 'vuex'
@@ -233,7 +305,7 @@ export default {
         {
           key: 'actions',
           label: '',
-          tdClass: 'text-right text-nowrap',
+          tdClass: 'text-right text-nowrap actions',
         },
       ]
     },
@@ -246,6 +318,8 @@ export default {
   methods: {
     ...mapActions({
       createPage: 'page/create',
+      deletePage: 'page/delete',
+      deleteModule: 'module/delete',
     }),
 
     handleRowClicked ({ moduleID, canUpdateModule, canDeleteModule }) {
@@ -282,14 +356,19 @@ export default {
       this.filterList()
       this.toastSuccess(this.$t('notification:general.import.successful'))
     },
+
+    handleDelete (module) {
+      this.deleteModule(module).then(() => {
+        const moduleRecordPage = this.pages.find(p => p.moduleID === module.moduleID)
+        if (moduleRecordPage) {
+          return this.deletePage({ ...moduleRecordPage, strategy: 'rebase' })
+        }
+      }).catch(this.toastErrorHandler(this.$t('notification:module.deleteFailed')))
+        .finally(() => {
+          this.toastSuccess(this.$t('notification:module.deleted'))
+          this.filterList()
+        })
+    },
   },
 }
 </script>
-
-<style lang="scss">
-.permissions-dropdown {
-  .dropdown-item {
-    padding: 0;
-  }
-}
-</style>

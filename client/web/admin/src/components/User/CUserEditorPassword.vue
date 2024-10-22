@@ -1,86 +1,91 @@
 <template>
   <b-card
     data-test-id="card-user-password"
+    header-class="border-bottom"
+    footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
     class="shadow-sm"
-    header-bg-variant="white"
-    footer-bg-variant="white"
   >
-    <b-form
-      @submit.prevent="onPasswordSubmit"
-    >
-      <b-form-group
-        :label="$t('new')"
-        label-cols="2"
-        :description="getPasswordWarning"
-      >
-        <b-form-input
-          v-model="password"
-          data-test-id="input-new-password"
-          :state="passwordState"
-          autocomplete="new-password"
-          required
-          type="password"
-        />
-      </b-form-group>
-
-      <b-form-group
-        :label="$t('confirm')"
-        label-cols="2"
-        :description="getConfirmPasswordWarning"
-        class="mb-0"
-      >
-        <b-form-input
-          v-model="confirmPassword"
-          data-test-id="input-confirm-password"
-          type="password"
-          autocomplete="new-password"
-          required
-          :disabled="!passwordState"
-          :state="confirmPasswordState"
-        />
-      </b-form-group>
-    </b-form>
-
     <template #header>
-      <h3
+      <h4
         data-test-id="card-title"
         class="m-0"
       >
         {{ $t('title') }}
-      </h3>
+      </h4>
     </template>
 
+    <b-form
+      @submit.prevent="onPasswordSubmit"
+    >
+      <b-row>
+        <b-col cols="12">
+          <b-form-group
+            :label="$t('new')"
+            :description="getPasswordWarning"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="password"
+              data-test-id="input-new-password"
+              :state="passwordState"
+              autocomplete="new-password"
+              required
+              type="password"
+            />
+          </b-form-group>
+        </b-col>
+
+        <b-col cols="12">
+          <b-form-group
+            :label="$t('confirm')"
+            :description="getConfirmPasswordWarning"
+            label-class="text-primary"
+            class="mb-0"
+          >
+            <b-form-input
+              v-model="confirmPassword"
+              data-test-id="input-confirm-password"
+              type="password"
+              autocomplete="new-password"
+              required
+              :disabled="!passwordState"
+              :state="confirmPasswordState"
+            />
+          </b-form-group>
+        </b-col>
+      </b-row>
+    </b-form>
+
     <template #footer>
-      <confirmation-toggle
+      <c-input-confirm
         data-test-id="button-remove-password"
-        class="ml-1"
-        cta-class="light"
+        variant="light"
+        size="md"
         @confirmed="$emit('submit')"
       >
         {{ $t('removePassword') }}
-      </confirmation-toggle>
-
-      <c-submit-button
-        class="float-right"
-        :processing="processing"
-        :success="success"
-        :disabled="!passwordState || !confirmPasswordState"
-        @submit="onPasswordSubmit"
-      />
+      </c-input-confirm>
 
       <c-corredor-manual-buttons
         ui-page="user/editor"
         ui-slot="passwordFooter"
-        default-variant="secondary"
+        default-variant="light"
         @click="dispatchCortezaSystemEvent($event)"
+      />
+
+      <c-button-submit
+        :disabled="!passwordState || !confirmPasswordState"
+        :processing="processing"
+        :success="success"
+        :text="$t('admin:general.label.submit')"
+        class="ml-auto"
+        @submit="onPasswordSubmit"
       />
     </template>
   </b-card>
 </template>
 
 <script>
-import ConfirmationToggle from 'corteza-webapp-admin/src/components/ConfirmationToggle'
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
 
 export default {
   name: 'CUserEditorPassword',
@@ -88,11 +93,6 @@ export default {
   i18nOptions: {
     namespaces: 'system.users',
     keyPrefix: 'editor.password',
-  },
-
-  components: {
-    ConfirmationToggle,
-    CSubmitButton,
   },
 
   props: {

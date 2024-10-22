@@ -1,11 +1,10 @@
 <template>
-  <div>
+  <div class="h-100">
     <b-card
-      class="shadow h-100"
       header-class="p-0"
       body-class="overflow-auto p-0"
-      header-bg-variant="white"
-      footer-bg-variant="white"
+      footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
+      class="shadow h-100"
     >
       <template
         v-if="loaded && canGrant"
@@ -22,8 +21,6 @@
           >
             <small>
               {{ $t('ui.click-on-cell-to-allow') }}
-              <br>
-              {{ $t('ui.alt-click-to-deny') }}
             </small>
           </b-col>
           <b-col
@@ -93,7 +90,7 @@
           :key="type"
         >
           <b-row
-            class="bg-light border-bottom text-primary"
+            class="bg-light border-bottom text-primary sticky-top"
             align-v="stretch"
             no-gutters
           >
@@ -142,7 +139,7 @@
             <b-col
               v-for="role in roles"
               :key="role.ID"
-              :title="getRuleTooltip(checkRule(role.ID, permissions[type].any, operation, 'unknown-context'), !!role.userID)"
+              v-b-tooltip.noninteractive.hover="{ title: getRuleTooltip(checkRule(role.ID, permissions[type].any, operation, 'unknown-context'), !!role.userID), container: '#body' }"
               class="d-flex align-items-center justify-content-center border-bottom border-left p-3 pointer active-cell h5 mb-0"
               :class="{
                 'not-allowed bg-extra-light': role.mode === 'eval',
@@ -181,14 +178,13 @@
         v-if="loaded && canGrant"
         #footer
       >
-        <c-submit-button
-          class="float-right"
+        <c-button-submit
           :processing="processing"
           :success="success"
+          :text="$t('ui.save')"
+          class="ml-auto"
           @submit="onSubmit"
-        >
-          {{ $t('ui.save') }}
-        </c-submit-button>
+        />
       </template>
     </b-card>
 
@@ -221,17 +217,13 @@
         label-class="text-primary"
         class="mb-0"
       >
-        <vue-select
-          key="roleID"
+        <c-input-role
           v-model="add.roleID"
           :data-test-id="`select-${add.mode}-roles`"
-          :options="availableRoles"
-          :multiple="add.mode === 'eval'"
-          label="name"
-          clearable
-          :disabled="add.mode === 'eval' && !!add.userID"
           :placeholder="$t('ui.add.role.placeholder')"
-          class="bg-white"
+          :visible="isRoleVisible"
+          :multiple="add.mode === 'eval'"
+          :disabled="add.mode === 'eval' && !!add.userID"
         />
       </b-form-group>
 
@@ -241,17 +233,14 @@
         label-class="text-primary"
         class="mt-3 mb-0"
       >
-        <vue-select
-          key="userID"
+        <c-input-select
           v-model="add.userID"
           :data-test-id="`select-${add.mode}-users`"
           :disabled="!!add.roleID.length"
           :options="userOptions"
           :get-option-label="getUserLabel"
-          label="name"
-          clearable
           :placeholder="$t('ui.add.user.placeholder')"
-          class="bg-white"
+          :filterable="false"
           @search="searchUsers"
         />
       </b-form-group>
@@ -260,9 +249,9 @@
 </template>
 
 <script>
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
-import { VueSelect } from 'vue-select'
 import _ from 'lodash'
+import { components } from '@cortezaproject/corteza-vue'
+const { CInputRole } = components
 
 export default {
   i18nOptions: {
@@ -270,17 +259,11 @@ export default {
   },
 
   components: {
-    CSubmitButton,
-    VueSelect,
+    CInputRole,
   },
 
   props: {
     roles: {
-      type: Array,
-      required: true,
-    },
-
-    allRoles: {
       type: Array,
       required: true,
     },
@@ -341,24 +324,12 @@ export default {
 
       newRole: null,
       permissionChanges: [],
+
+      fetchedUsers: {},
     }
   },
 
   computed: {
-    editableRoles () {
-      return this.roles.filter(({ mode }) => mode !== 'eval').map(({ roleID }) => roleID.roleID)
-    },
-
-    availableRoles () {
-      if (this.add.mode === 'edit') {
-        return this.allRoles.filter(({ roleID, isBypass }) => !isBypass && !this.editableRoles.includes(roleID))
-      } else if (this.add.mode === 'eval') {
-        return this.allRoles
-      }
-
-      return []
-    },
-
     sortedPermissions () {
       return Object.keys(this.permissions).sort()
     },
@@ -393,6 +364,10 @@ export default {
     this.searchUsers('', () => {})
   },
 
+  beforeDestroy () {
+    this.setDefaultValues()
+  },
+
   methods: {
     checkRule (ID, res, op, access) {
       const key = `${op}@${res}`
@@ -425,18 +400,10 @@ export default {
         this.$set(this.permissionChanges.find(r => r.ID === ID).rules, key, access)
       }
 
-      if (event.altKey) {
-        if (access === 'deny') {
-          access = 'inherit'
-        } else {
-          access = 'deny'
-        }
+      if (access === 'allow') {
+        access = 'inherit'
       } else {
-        if (access === 'allow') {
-          access = 'inherit'
-        } else {
-          access = 'allow'
-        }
+        access = 'allow'
       }
 
       this.$set(this.rolePermissions.find(r => r.ID === ID).rules, key, access)
@@ -447,15 +414,27 @@ export default {
 
       this.$SystemAPI.userList({ query, limit: 15 })
         .then(({ set }) => {
-          this.userOptions = set.map(m => Object.freeze(m))
+          this.userOptions = set.reduce((acc, { userID, name, username, email }) => {
+            if (!this.fetchedUsers[userID]) {
+              this.fetchedUsers[userID] = name || username || email || `<@${userID}>`
+            }
+
+            acc.push(userID)
+
+            return acc
+          }, [])
         })
         .finally(() => {
           loading(false)
         })
     },
 
-    getUserLabel ({ userID, email, name, username }) {
-      return name || username || email || `<@${userID}>`
+    isRoleVisible ({ isBypass }) {
+      return this.add.mode === 'edit' || !isBypass
+    },
+
+    getUserLabel (userID) {
+      return this.fetchedUsers[userID]
     },
 
     getTranslation (resource, operation = '') {
@@ -482,7 +461,14 @@ export default {
     },
 
     onAdd () {
-      this.$emit('add', this.add)
+      let { userID } = this.add
+
+      if (userID) {
+        userID = { userID: this.add.userID, name: this.fetchedUsers[this.add.userID] }
+      }
+
+      this.$emit('add', { ...this.add, userID })
+
       this.add = {
         mode: 'edit',
         roleID: [],
@@ -492,6 +478,16 @@ export default {
 
     onHideRole (role) {
       this.$emit('hide', role)
+    },
+
+    setDefaultValues () {
+      this.add = {}
+      this.modeOptions = []
+      this.userOptions = []
+      this.evaluatedPermissions = undefined
+      this.newRole = null
+      this.permissionChanges = []
+      this.fetchedUsers = {}
     },
   },
 }
@@ -504,14 +500,14 @@ export default {
   cursor: not-allowed;
 }
 .active-cell:hover {
-  background-color: #F3F3F5;
+  background-color: var(--gray-200);
 }
 .rotate {
   transform: rotate(45deg);
 }
 .hide-role:hover {
   .rotate {
-    color: $dark !important;
+    color: var(--dark) !important;
   }
 }
 </style>
@@ -519,7 +515,7 @@ export default {
 <style lang="scss">
 .mode {
   .btn {
-    background-color: #E4E9EF;
+    background-color: var(--light);
     border: none;
   }
 

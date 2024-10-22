@@ -1,24 +1,18 @@
 <template>
-  <vue-select
-    key="name"
+  <c-input-select
     :value="value"
     :options="columns"
     :get-option-label="getColumnLabel"
+    :get-option-key="getOptionKey"
     :placeholder="$t('general:label.none')"
     :reduce="r => r.name"
     append-to-body
-    class="column-selector bg-white"
     v-on="$listeners"
   />
 </template>
 
 <script>
-import { VueSelect } from 'vue-select'
-
 export default {
-  components: {
-    VueSelect,
-  },
 
   props: {
     columns: {
@@ -35,6 +29,10 @@ export default {
   methods: {
     getColumnLabel ({ name, label }) {
       return `${label} (${name})`
+    },
+
+    getOptionKey ({ name }) {
+      return name
     },
   },
 }

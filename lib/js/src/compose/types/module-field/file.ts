@@ -6,10 +6,6 @@ const kind = 'File'
 export const modes = [
   // list of attachments, no preview
   'list',
-  // grid of icons
-  'grid',
-  // single (first) image/file, show preview
-  'single',
   // list of all images/files, show preview
   'gallery',
 ]
@@ -22,13 +18,16 @@ interface FileOptions extends Options {
   inline: boolean;
   hideFileName: boolean;
   mimetypes?: string;
-  height?: number;
-  width?: number;
-  maxHeight?: number;
-  maxWidth?: number;
-  borderRadius?: number;
-  margin?: number;
+  height?: string;
+  width?: string;
+  maxHeight?: string;
+  maxWidth?: string;
+  borderRadius?: string;
+  margin?: string;
   backgroundColor?: string;
+  clickToView?: boolean;
+  enableDownload?: boolean;
+  multiDelimiter: string;
 }
 
 const defaults = (): Readonly<FileOptions> => Object.freeze({
@@ -36,17 +35,20 @@ const defaults = (): Readonly<FileOptions> => Object.freeze({
   allowImages: true,
   allowDocuments: true,
   maxSize: 0,
-  mode: '\n',
+  mode: 'list',
   inline: true,
   hideFileName: false,
   mimetypes: '',
-  height: undefined,
-  width: undefined,
-  maxHeight: undefined,
-  maxWidth: undefined,
-  borderRadius: undefined,
-  margin: undefined,
-  backgroundColor: undefined,
+  height: '',
+  width: '',
+  maxHeight: '',
+  maxWidth: '',
+  borderRadius: '',
+  margin: 'auto',
+  backgroundColor: '#FFFFFF00',
+  clickToView: true,
+  enableDownload: true,
+  multiDelimiter: '\n',
 })
 
 export class ModuleFieldFile extends ModuleField {
@@ -63,9 +65,17 @@ export class ModuleFieldFile extends ModuleField {
     if (!o) return
     super.applyOptions(o)
 
-    Apply(this.options, o, Number, 'maxSize', 'height', 'width', 'maxHeight', 'maxWidth', 'borderRadius', 'margin')
-    Apply(this.options, o, Boolean, 'allowImages', 'allowDocuments', 'inline', 'hideFileName')
-    Apply(this.options, o, String, 'mimetypes', 'backgroundColor')
+    Apply(this.options, o, Number, 'maxSize')
+    Apply(this.options, o, Boolean, 'allowImages', 'allowDocuments', 'inline', 'hideFileName', 'clickToView', 'enableDownload')
+    Apply(this.options, o, String, 'mimetypes', 'height', 'width', 'maxHeight', 'maxWidth', 'borderRadius', 'margin', 'backgroundColor')
+
+    // Legacy
+    if (o.mode === 'single') {
+      o.mode = 'gallery'
+    } else if (o.mode === 'grid') {
+      o.mode = 'list'
+    }
+
     ApplyWhitelisted(this.options, o, modes, 'mode')
   }
 }

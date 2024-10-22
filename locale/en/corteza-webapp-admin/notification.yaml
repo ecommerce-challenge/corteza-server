@@ -43,6 +43,15 @@ user:
     error: User suspension failed
   import:
     success: Users imported successfully
+  avatarUpload:
+    success: Avatar updated
+    error: Avatar upload failed
+  avatarSettings:
+    success: Avatar settings updated
+    error: Avatar settings update failed
+  avatarDelete:
+    success: Avatar deleted
+    error: Avatar delete failed
 role:
   fetch:
     error: Role fetch failed
@@ -259,6 +268,16 @@ settings:
     update:
       success: UI settings updated
       error: UI settings update failed
+  code-snippet:
+    fetch:
+      error: Code snippets fetch failed
+    update:
+      success: Code snippets updated, refresh the page to see the changes
+      error: Code snippets update failed
+    delete:
+      success: Code snippet deleted, refresh the page to see the changes
+      error: Code snippet delete failed
+
 permissions:
   fetch:
     error: Permissions fetch failed

@@ -1,8 +1,10 @@
 <template>
-  <div>
+  <div class="d-flex">
     <b-button
       data-test-id="button-import"
       variant="light"
+      size="lg"
+      class="flex-fill"
       @click="showModal=true"
     >
       {{ $t('import.buttonLabel') }}
@@ -12,8 +14,8 @@
       :visible="showModal"
       size="lg"
       :title="$t('import.title')"
+      centered
       hide-footer
-      body-class="p-0"
       @hide="onModalHide"
     >
       <keep-alive>

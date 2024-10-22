@@ -1,105 +1,74 @@
 <template>
   <b-card
-    class="shadow-sm"
     data-test-id="card-user-info"
-    header-bg-variant="white"
-    footer-bg-variant="white"
+    header-class="border-bottom"
+    footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
+    class="shadow-sm"
   >
     <b-form
       @submit.prevent="$emit('submit', user)"
     >
-      <b-form-group
-        :label="$t('email')"
-        label-cols="2"
-      >
-        <b-form-input
-          v-model="user.email"
-          data-test-id="input-email"
-          required
-          :state="emailState"
-          type="email"
-        />
-      </b-form-group>
+      <b-row>
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('email')"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="user.email"
+              data-test-id="input-email"
+              required
+              :state="emailState"
+              type="email"
+            />
+          </b-form-group>
+        </b-col>
 
-      <b-form-group
-        :label="$t('name')"
-        label-cols="2"
-      >
-        <b-form-input
-          v-model="user.name"
-          data-test-id="input-name"
-          required
-        />
-      </b-form-group>
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('name')"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="user.name"
+              data-test-id="input-name"
+              required
+            />
+          </b-form-group>
+        </b-col>
 
-      <b-form-group
-        :label="$t('handle')"
-        label-cols="2"
-        :class="{ 'mb-0': !user.userID }"
-      >
-        <b-form-input
-          v-model="user.handle"
-          data-test-id="input-handle"
-          :placeholder="$t('placeholder-handle')"
-          :state="handleState"
-        />
-        <b-form-invalid-feedback :state="handleState">
-          {{ $t('invalid-handle-characters') }}
-        </b-form-invalid-feedback>
-      </b-form-group>
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('handle')"
+            :class="{ 'mb-0': !user.userID }"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="user.handle"
+              data-test-id="input-handle"
+              :placeholder="$t('placeholder-handle')"
+              :state="handleState"
+            />
+            <b-form-invalid-feedback :state="handleState">
+              {{ $t('invalid-handle-characters') }}
+            </b-form-invalid-feedback>
+          </b-form-group>
+        </b-col>
+      </b-row>
 
-      <b-form-group
-        v-if="user.updatedAt"
-        :label="$t('updatedAt')"
-        label-cols="2"
-      >
-        <b-form-input
-          data-test-id="input-updated-at"
-          :value="user.updatedAt | locFullDateTime"
-          plaintext
-          disabled
-        />
-      </b-form-group>
-
-      <b-form-group
-        v-if="user.suspendedAt"
-        :label="$t('suspendedAt')"
-        label-cols="2"
-      >
-        <b-form-input
-          data-test-id="input-suspended-at"
-          :value="user.suspendedAt | locFullDateTime"
-          plaintext
-          disabled
-        />
-      </b-form-group>
-
-      <b-form-group
-        v-if="user.deletedAt"
-        :label="$t('deletedAt')"
-        label-cols="2"
-      >
-        <b-form-input
-          data-test-id="input-deleted-at"
-          :value="user.deletedAt | locFullDateTime"
-          plaintext
-          disabled
-        />
-      </b-form-group>
-
-      <b-form-group
-        v-if="user.createdAt"
-        :label="$t('createdAt')"
-        label-cols="2"
-        class="mb-0"
-      >
-        <b-form-input
-          data-test-id="input-created-at"
-          :value="user.createdAt | locFullDateTime"
-          plaintext
-          disabled
-        />
-      </b-form-group>
+      <c-system-fields
+        :id="user.userID"
+        :resource="user"
+      />
 
       <!--
         include hidden input to enable
@@ -113,53 +82,46 @@
     </b-form>
 
     <template #header>
-      <h3 class="m-0">
+      <h4 class="m-0">
         {{ $t('title') }}
-      </h3>
+      </h4>
     </template>
 
     <template #footer>
-      <c-submit-button
-        class="float-right"
-        :processing="processing"
-        :success="success"
-        :disabled="saveDisabled"
-        @submit="$emit('submit', user)"
-      />
-
-      <confirmation-toggle
+      <c-input-confirm
         v-if="!fresh && user.canDeleteUser"
         :data-test-id="deletedButtonStatusCypressId"
+        variant="danger"
+        size="md"
         @confirmed="$emit('delete')"
       >
         {{ getDeleteStatus }}
-      </confirmation-toggle>
+      </c-input-confirm>
 
-      <confirmation-toggle
+      <c-input-confirm
         v-if="!fresh"
         :data-test-id="suspendButtonStatusCypressId"
-        class="ml-1"
-        cta-class="light"
+        variant="light"
+        size="md"
         @confirmed="$emit('status')"
       >
         {{ getSuspendStatus }}
-      </confirmation-toggle>
+      </c-input-confirm>
 
-      <confirmation-toggle
+      <c-input-confirm
         v-if="!fresh"
         data-test-id="button-sessions-revoke"
         :disabled="user.userID === userID"
-        class="ml-1"
-        cta-class="secondary"
+        variant="light"
+        size="md"
         @confirmed="$emit('sessionsRevoke')"
       >
         {{ $t('revokeAllSession') }}
-      </confirmation-toggle>
+      </c-input-confirm>
 
       <b-button
         v-if="!fresh && !user.emailConfirmed"
         variant="light"
-        class="ml-1"
         @click="$emit('patch', '/emailConfirmed', true)"
       >
         {{ $t('confirmEmail') }}
@@ -169,9 +131,17 @@
         ui-page="user/editor"
         ui-slot="infoFooter"
         resource-type="system:user"
-        default-variant="secondary"
-        class="ml-2"
+        default-variant="light"
         @click="dispatchCortezaSystemUserEvent($event, { user })"
+      />
+
+      <c-button-submit
+        :disabled="saveDisabled"
+        :processing="processing"
+        :success="success"
+        :text="$t('admin:general.label.submit')"
+        class="ml-auto"
+        @submit="$emit('submit', user)"
       />
     </template>
   </b-card>
@@ -180,8 +150,7 @@
 <script>
 import { NoID } from '@cortezaproject/corteza-js'
 import { handle } from '@cortezaproject/corteza-vue'
-import ConfirmationToggle from 'corteza-webapp-admin/src/components/ConfirmationToggle'
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
+import { getSystemFields } from 'corteza-webapp-admin/src/lib/sysFields'
 
 export default {
   name: 'CUserEditorInfo',
@@ -189,11 +158,6 @@ export default {
   i18nOptions: {
     namespaces: 'system.users',
     keyPrefix: 'editor.info',
-  },
-
-  components: {
-    ConfirmationToggle,
-    CSubmitButton,
   },
 
   props: {
@@ -261,6 +225,10 @@ export default {
 
     suspendButtonStatusCypressId () {
       return `button-${this.getSuspendStatus.toLowerCase()}`
+    },
+
+    systemFields () {
+      return getSystemFields(this.role)
     },
   },
 }

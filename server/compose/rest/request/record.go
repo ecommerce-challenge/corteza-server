@@ -18,6 +18,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // dummy vars to prevent
@@ -317,6 +318,33 @@ type (
 		//
 		// Records
 		Records types.RecordBulkSet
+
+		// UpdatedAt POST parameter
+		//
+		// Last update (or creation) date
+		UpdatedAt *time.Time
+	}
+
+	RecordPatch struct {
+		// NamespaceID PATH parameter
+		//
+		// Namespace ID
+		NamespaceID uint64 `json:",string"`
+
+		// ModuleID PATH parameter
+		//
+		// Module ID
+		ModuleID uint64 `json:",string"`
+
+		// Values POST parameter
+		//
+		// Fields to update and their values
+		Values types.RecordValueSet
+
+		// Query POST parameter
+		//
+		// Search query for records to operate on
+		Query string
 	}
 
 	RecordBulkDelete struct {
@@ -330,15 +358,15 @@ type (
 		// Module ID
 		ModuleID uint64 `json:",string"`
 
-		// RecordIDs POST parameter
-		//
-		// IDs of records to delete
-		RecordIDs []string
-
 		// Truncate POST parameter
 		//
 		// Remove ALL records of a specified module (pending implementation)
 		Truncate bool
+
+		// Query POST parameter
+		//
+		// Search query for records to operate on
+		Query string
 	}
 
 	RecordDelete struct {
@@ -386,10 +414,10 @@ type (
 		// Module ID
 		ModuleID uint64 `json:",string"`
 
-		// RecordIDs POST parameter
+		// Query POST parameter
 		//
-		// IDs of records to undelete
-		RecordIDs []string
+		// Search query for records to operate on
+		Query string
 	}
 
 	RecordUpload struct {
@@ -1447,6 +1475,7 @@ func (r RecordUpdate) Auditable() map[string]interface{} {
 		"ownedBy":     r.OwnedBy,
 		"meta":        r.Meta,
 		"records":     r.Records,
+		"updatedAt":   r.UpdatedAt,
 	}
 }
 
@@ -1483,6 +1512,11 @@ func (r RecordUpdate) GetMeta() map[string]any {
 // Auditable returns all auditable/loggable parameters
 func (r RecordUpdate) GetRecords() types.RecordBulkSet {
 	return r.Records
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r RecordUpdate) GetUpdatedAt() *time.Time {
+	return r.UpdatedAt
 }
 
 // Fill processes request and fills internal variables
@@ -1525,6 +1559,12 @@ func (r *RecordUpdate) Fill(req *http.Request) (err error) {
 				}
 			}
 
+			if val, ok := req.MultipartForm.Value["updatedAt"]; ok && len(val) > 0 {
+				r.UpdatedAt, err = payload.ParseISODatePtrWithErr(val[0])
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -1567,6 +1607,13 @@ func (r *RecordUpdate) Fill(req *http.Request) (err error) {
 		//        return err
 		//    }
 		//}
+
+		if val, ok := req.Form["updatedAt"]; ok && len(val) > 0 {
+			r.UpdatedAt, err = payload.ParseISODatePtrWithErr(val[0])
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	{
@@ -1596,6 +1643,114 @@ func (r *RecordUpdate) Fill(req *http.Request) (err error) {
 	return err
 }
 
+// NewRecordPatch request
+func NewRecordPatch() *RecordPatch {
+	return &RecordPatch{}
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r RecordPatch) Auditable() map[string]interface{} {
+	return map[string]interface{}{
+		"namespaceID": r.NamespaceID,
+		"moduleID":    r.ModuleID,
+		"values":      r.Values,
+		"query":       r.Query,
+	}
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r RecordPatch) GetNamespaceID() uint64 {
+	return r.NamespaceID
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r RecordPatch) GetModuleID() uint64 {
+	return r.ModuleID
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r RecordPatch) GetValues() types.RecordValueSet {
+	return r.Values
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r RecordPatch) GetQuery() string {
+	return r.Query
+}
+
+// Fill processes request and fills internal variables
+func (r *RecordPatch) Fill(req *http.Request) (err error) {
+
+	if strings.HasPrefix(strings.ToLower(req.Header.Get("content-type")), "application/json") {
+		err = json.NewDecoder(req.Body).Decode(r)
+
+		switch {
+		case err == io.EOF:
+			err = nil
+		case err != nil:
+			return fmt.Errorf("error parsing http request body: %w", err)
+		}
+	}
+
+	{
+		// Caching 32MB to memory, the rest to disk
+		if err = req.ParseMultipartForm(32 << 20); err != nil && err != http.ErrNotMultipart {
+			return err
+		} else if err == nil {
+			// Multipart params
+
+			if val, ok := req.MultipartForm.Value["query"]; ok && len(val) > 0 {
+				r.Query, err = val[0], nil
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	{
+		if err = req.ParseForm(); err != nil {
+			return err
+		}
+
+		// POST params
+
+		//if val, ok := req.Form["values[]"]; ok && len(val) > 0  {
+		//    r.Values, err = types.RecordValueSet(val), nil
+		//    if err != nil {
+		//        return err
+		//    }
+		//}
+
+		if val, ok := req.Form["query"]; ok && len(val) > 0 {
+			r.Query, err = val[0], nil
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	{
+		var val string
+		// path params
+
+		val = chi.URLParam(req, "namespaceID")
+		r.NamespaceID, err = payload.ParseUint64(val), nil
+		if err != nil {
+			return err
+		}
+
+		val = chi.URLParam(req, "moduleID")
+		r.ModuleID, err = payload.ParseUint64(val), nil
+		if err != nil {
+			return err
+		}
+
+	}
+
+	return err
+}
+
 // NewRecordBulkDelete request
 func NewRecordBulkDelete() *RecordBulkDelete {
 	return &RecordBulkDelete{}
@@ -1606,8 +1761,8 @@ func (r RecordBulkDelete) Auditable() map[string]interface{} {
 	return map[string]interface{}{
 		"namespaceID": r.NamespaceID,
 		"moduleID":    r.ModuleID,
-		"recordIDs":   r.RecordIDs,
 		"truncate":    r.Truncate,
+		"query":       r.Query,
 	}
 }
 
@@ -1622,13 +1777,13 @@ func (r RecordBulkDelete) GetModuleID() uint64 {
 }
 
 // Auditable returns all auditable/loggable parameters
-func (r RecordBulkDelete) GetRecordIDs() []string {
-	return r.RecordIDs
+func (r RecordBulkDelete) GetTruncate() bool {
+	return r.Truncate
 }
 
 // Auditable returns all auditable/loggable parameters
-func (r RecordBulkDelete) GetTruncate() bool {
-	return r.Truncate
+func (r RecordBulkDelete) GetQuery() string {
+	return r.Query
 }
 
 // Fill processes request and fills internal variables
@@ -1658,6 +1813,13 @@ func (r *RecordBulkDelete) Fill(req *http.Request) (err error) {
 					return err
 				}
 			}
+
+			if val, ok := req.MultipartForm.Value["query"]; ok && len(val) > 0 {
+				r.Query, err = val[0], nil
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -1668,15 +1830,15 @@ func (r *RecordBulkDelete) Fill(req *http.Request) (err error) {
 
 		// POST params
 
-		//if val, ok := req.Form["recordIDs[]"]; ok && len(val) > 0  {
-		//    r.RecordIDs, err = val, nil
-		//    if err != nil {
-		//        return err
-		//    }
-		//}
-
 		if val, ok := req.Form["truncate"]; ok && len(val) > 0 {
 			r.Truncate, err = payload.ParseBool(val[0]), nil
+			if err != nil {
+				return err
+			}
+		}
+
+		if val, ok := req.Form["query"]; ok && len(val) > 0 {
+			r.Query, err = val[0], nil
 			if err != nil {
 				return err
 			}
@@ -1832,7 +1994,7 @@ func (r RecordBulkUndelete) Auditable() map[string]interface{} {
 	return map[string]interface{}{
 		"namespaceID": r.NamespaceID,
 		"moduleID":    r.ModuleID,
-		"recordIDs":   r.RecordIDs,
+		"query":       r.Query,
 	}
 }
 
@@ -1847,8 +2009,8 @@ func (r RecordBulkUndelete) GetModuleID() uint64 {
 }
 
 // Auditable returns all auditable/loggable parameters
-func (r RecordBulkUndelete) GetRecordIDs() []string {
-	return r.RecordIDs
+func (r RecordBulkUndelete) GetQuery() string {
+	return r.Query
 }
 
 // Fill processes request and fills internal variables
@@ -1872,6 +2034,12 @@ func (r *RecordBulkUndelete) Fill(req *http.Request) (err error) {
 		} else if err == nil {
 			// Multipart params
 
+			if val, ok := req.MultipartForm.Value["query"]; ok && len(val) > 0 {
+				r.Query, err = val[0], nil
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -1882,12 +2050,12 @@ func (r *RecordBulkUndelete) Fill(req *http.Request) (err error) {
 
 		// POST params
 
-		//if val, ok := req.Form["recordIDs[]"]; ok && len(val) > 0  {
-		//    r.RecordIDs, err = val, nil
-		//    if err != nil {
-		//        return err
-		//    }
-		//}
+		if val, ok := req.Form["query"]; ok && len(val) > 0 {
+			r.Query, err = val[0], nil
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	{

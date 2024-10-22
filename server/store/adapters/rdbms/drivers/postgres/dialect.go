@@ -61,6 +61,49 @@ func (d postgresDialect) JsonExtractUnquote(ident exp.Expression, pp ...any) (ex
 	return DeepIdentJSON(false, ident, pp...), nil
 }
 
+func (d postgresDialect) AggregateBase(t drivers.TableCodec, groupBy []dal.AggregateAttr, out []dal.AggregateAttr) (slct *goqu.SelectDataset) {
+	var (
+		cols = t.Columns()
+
+		// working around a bug inside goqu lib that adds
+		// * to the list of columns to be selected
+		// even if we clear the columns first
+		q = d.GOQU().
+			From(t.Ident())
+	)
+
+	// When dealing with multi values, we need to make a cross join with every element in the array
+	// to achieve the same functionality as we had before
+	for _, g := range groupBy {
+		// Special handling for multi value fields
+		if g.MultiValue {
+			// Only straight up columns can be multi value so we can freely use RawExpr
+			colName := g.RawExpr
+			xpr, err := t.AttributeExpressionQuoted(colName)
+			if err != nil {
+				q = q.SetError(err)
+				return q
+			}
+
+			q = q.From(
+				t.Ident(),
+				goqu.Func("JSONB_ARRAY_ELEMENTS_TEXT", xpr).As(colName),
+			)
+		}
+	}
+
+	if len(cols) == 0 {
+		return q.SetError(fmt.Errorf("can not create SELECT without columns"))
+	}
+
+	q = q.Select(t.Ident().Col(cols[0].Name()))
+	for _, col := range cols[1:] {
+		q = q.SelectAppend(t.Ident().Col(col.Name()))
+	}
+
+	return q
+}
+
 // JsonArrayContains prepares postgresql compatible comparison of value and JSON array
 //
 // literal value = multi-value field / plain
@@ -105,6 +148,18 @@ func (postgresDialect) AttributeCast(attr *dal.Attribute, val exp.Expression) (e
 	}
 
 	return
+}
+
+func (postgresDialect) AttributeExpression(attr *dal.Attribute, modelIdent string, ident string) (expr exp.Expression, err error) {
+	identExpr := exp.NewIdentifierExpression("", modelIdent, ident)
+
+	// truncate timestamp data type to second mark precision
+	if attr.Type.Type() == dal.AttributeTypeTimestamp {
+		return exp.NewLiteralExpression("date_trunc(?, ?)", "second", identExpr), nil
+	}
+
+	// using column directly
+	return exp.NewLiteralExpression("?", identExpr), nil
 }
 
 func (postgresDialect) AttributeToColumn(attr *dal.Attribute) (col *ddl.Column, err error) {
@@ -214,16 +269,104 @@ func (postgresDialect) AttributeToColumn(attr *dal.Attribute) (col *ddl.Column, 
 	return
 }
 
+func (postgresDialect) ColumnFits(target, assert *ddl.Column) bool {
+	targetType, targetName, targetMeta := ddl.ParseColumnTypes(target)
+	assertType, assertName, assertMeta := ddl.ParseColumnTypes(assert)
+
+	// If everything matches up perfectly use that
+	if assertType == targetType {
+		return true
+	}
+
+	// See if we can guess it
+	// [the type of the target column][what types fit the target col. type]
+	matches := map[string]map[string]bool{
+		"numeric": {
+			"text":    true,
+			"varchar": true,
+			"bigint":  true,
+			// @note this isn't entirely correct, but record revision lapsus made us
+			"integer": true,
+		},
+		"integer": {
+			"text":    true,
+			"varchar": true,
+			"bigint":  true,
+			"numeric": true,
+		},
+		"timestamp": {
+			"text":    true,
+			"varchar": true,
+
+			"timestamptz": true,
+		},
+		"timestamptz": {
+			"text":    true,
+			"varchar": true,
+		},
+		"time": {
+			"text":    true,
+			"varchar": true,
+
+			"timetz": true,
+		},
+		"timetz": {
+			"text":    true,
+			"varchar": true,
+		},
+		"date": {
+			"text":    true,
+			"varchar": true,
+		},
+		"text": {},
+		"varchar": {
+			"text": true,
+		},
+		"jsonb": {},
+		"bytea": {},
+		"boolean": {
+			"numeric": true,
+		},
+		"uuid": {
+			"text":    true,
+			"varchar": true,
+		},
+	}
+
+	baseMatch := assertName == targetName || matches[assertName][targetName]
+
+	// Special cases
+	switch {
+	case assertName == "varchar" && targetName == "varchar":
+		// Check varchar size
+		for i := len(assertMeta); i < 1; i++ {
+			assertMeta = append(assertMeta, "0")
+		}
+		for i := len(targetMeta); i < 1; i++ {
+			targetMeta = append(targetMeta, "0")
+		}
+
+		return baseMatch && cast.ToInt(assertMeta[0]) <= cast.ToInt(targetMeta[0])
+
+	case assertName == "numeric" && targetName == "numeric":
+		// Check numeric size and precision
+		for i := len(assertMeta); i < 2; i++ {
+			assertMeta = append(assertMeta, "0")
+		}
+		for i := len(targetMeta); i < 2; i++ {
+			targetMeta = append(targetMeta, "0")
+		}
+
+		return baseMatch && cast.ToInt(assertMeta[0]) <= cast.ToInt(targetMeta[0]) && cast.ToInt(assertMeta[1]) <= cast.ToInt(targetMeta[1])
+	}
+
+	return baseMatch
+}
+
 func (d postgresDialect) ExprHandler(n *ql.ASTNode, args ...exp.Expression) (expr exp.Expression, err error) {
 	switch ref := strings.ToLower(n.Ref); ref {
 	case "concat":
-		// need to force text type on all arguments
-		aa := make([]any, len(args))
-		for a := range args {
-			aa[a] = exp.NewCastExpression(exp.NewLiteralExpression("?", args[a]), "TEXT")
-		}
-
-		return exp.NewSQLFunctionExpression("CONCAT", aa...), nil
+		return castColumnDataToText("CONCAT", args...)
 
 	case "in":
 		return drivers.OpHandlerIn(d, n, args...)
@@ -231,6 +374,22 @@ func (d postgresDialect) ExprHandler(n *ql.ASTNode, args ...exp.Expression) (exp
 	case "nin":
 		return drivers.OpHandlerNotIn(d, n, args...)
 
+	case "like", "nlike":
+		if dalType, ok := n.Args[0].Meta["dal.Attribute"].(*dal.Attribute); ok {
+			col, err := d.AttributeToColumn(dalType)
+			if err != nil {
+				return nil, err
+			}
+
+			// if the type is id (numeric) data type, then cast it to text
+			if col.Type.Name == "NUMERIC" {
+				op := "LIKE"
+				if ref == "nlike" {
+					op = "NOT LIKE"
+				}
+				return castColumnDataToText(op, args...)
+			}
+		}
 	}
 
 	return ref2exp.RefHandler(n, args...)
@@ -255,4 +414,14 @@ func (d postgresDialect) ValHandler(n *ql.ASTNode) (out exp.Expression, err erro
 
 func (d postgresDialect) OrderedExpression(expr exp.Expression, dir exp.SortDirection, nst exp.NullSortType) exp.OrderedExpression {
 	return exp.NewOrderedExpression(expr, dir, nst)
+}
+
+// castColumnDataToText converts column data to text.
+func castColumnDataToText(op string, args ...exp.Expression) (expr exp.Expression, err error) {
+	aa := make([]any, len(args))
+	for a := range args {
+		aa[a] = exp.NewCastExpression(exp.NewLiteralExpression("?", args[a]), "TEXT")
+	}
+
+	return exp.NewSQLFunctionExpression(op, aa...), nil
 }

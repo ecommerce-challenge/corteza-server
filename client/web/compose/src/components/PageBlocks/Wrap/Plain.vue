@@ -1,55 +1,64 @@
 <template>
   <div class="h-100">
     <div
-      class="card bg-transparent h-100"
-      :class="blockClass"
+      :id="blockID"
+      class="d-flex flex-column card bg-transparent h-100 overflow-hidden position-static"
+      :class="[blockClass, cardClass, customCSSClass]"
     >
       <div
         v-if="showHeader"
-        :class="`card-header bg-transparent border-0 text-nowrap px-3 text-${block.style.variants.headerText}`"
+        :class="`card-header border-bottom bg-transparent text-nowrap pl-3 pr-2 text-${block.style.variants.headerText} ${headerClass}`"
       >
         <div
           v-if="!headerSet"
+          class="d-flex flex-column gap-1"
         >
           <div
+            v-if="blockTitle || showOptions"
             class="d-flex"
           >
-            <h5
+            <h4
+              v-if="blockTitle"
+              :title="blockTitle"
               class="text-truncate mb-0"
             >
-              {{ block.title }}
+              {{ blockTitle }}
 
               <slot name="title-badge" />
-            </h5>
+            </h4>
 
-            <div
+            <b-button-group
               v-if="showOptions"
+              size="sm"
               class="ml-auto"
             >
-              <font-awesome-icon
+              <b-button
                 v-if="block.options.showRefresh"
-                :icon="['fa', 'sync']"
-                class="h6 text-secondary"
-                role="button"
+                v-b-tooltip.noninteractive.hover="{ title: $t('general.label.refresh'), container: '#body' }"
+                variant="outline-extra-light"
+                class="d-flex align-items-center text-secondary d-print-none border-0"
                 @click="$emit('refreshBlock')"
-              />
+              >
+                <font-awesome-icon :icon="['fa', 'sync']" />
+              </b-button>
 
-              <font-awesome-icon
-                v-if="block.options.magnifyOption"
-                :icon="['fas', isBlockOpened ? 'times' : 'search-plus']"
-                :title="$t(isBlockOpened ? '' : 'general.label.magnify')"
-                class="h6 text-secondary ml-2"
-                role="button"
-                @click="$root.$emit('magnify-page-block', isBlockOpened ? undefined : block.blockID)"
-              />
-            </div>
+              <b-button
+                v-if="block.options.magnifyOption || isBlockMagnified"
+                v-b-tooltip.noninteractive.hover="{ title: isBlockMagnified ? '' : $t('general.label.magnify'), container: '#body' }"
+                variant="outline-extra-light"
+                class="d-flex align-items-center text-secondary d-print-none border-0"
+                @click="$root.$emit('magnify-page-block', isBlockMagnified ? undefined : magnifyParams)"
+              >
+                <font-awesome-icon :icon="['fas', isBlockMagnified ? 'times' : 'search-plus']" />
+              </b-button>
+            </b-button-group>
           </div>
 
           <b-card-text
-            v-if="block.description"
-            class="text-dark text-wrap mt-1"
+            v-if="blockDescription"
+            class="text-dark text-wrap"
           >
-            {{ block.description }}
+            {{ blockDescription }}
           </b-card-text>
         </div>
 
@@ -61,7 +70,6 @@
 
       <div
         v-if="toolbarSet"
-        class="overflow-hidden"
       >
         <slot
           name="toolbar"
@@ -69,8 +77,8 @@
       </div>
 
       <div
-        class="card-body p-0"
-        :class="{ 'overflow-auto': scrollableBody }"
+        class="card-body p-0 flex-fill"
+        :class="{ 'overflow-auto': scrollableBody, bodyClass }"
         style="flex-shrink: 10;"
       >
         <slot
@@ -80,7 +88,7 @@
 
       <b-card-footer
         v-if="footerSet"
-        class="card-footer bg-transparent p-0 overflow-hidden border-top"
+        class="card-footer bg-transparent p-0 border-top"
       >
         <slot
           name="footer"

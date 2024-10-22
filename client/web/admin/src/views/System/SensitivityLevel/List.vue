@@ -1,23 +1,10 @@
 <template>
   <b-container
-    class="py-3"
+    fluid="xl"
+    class="d-flex flex-column flex-fill pt-2 pb-3"
   >
-    <c-content-header
-      :title="$t('title')"
-    >
-      <span
-        class="text-nowrap"
-      >
-        <b-button
-          v-if="canCreate"
-          variant="primary"
-          class="mr-2"
-          :to="{ name: 'system.sensitivityLevel.new' }"
-        >
-          {{ $t('new') }}
-        </b-button>
-      </span>
-    </c-content-header>
+    <c-content-header :title="$t('title')" />
+
     <c-resource-list
       :primary-key="primaryKey"
       :filter="filter"
@@ -34,10 +21,29 @@
         singlePluralPagination: 'admin:general.pagination.single',
         prevPagination: $t('admin:general.pagination.prev'),
         nextPagination: $t('admin:general.pagination.next'),
+        resourceSingle: $t('general:label.sensitivity_level.single'),
+        resourcePlural: $t('general:label.sensitivity_level.plural'),
       }"
+      clickable
+      sticky-header
       hide-search
+      hide-per-page-option
+      class="custom-resource-list-height flex-fill"
+      @row-clicked="handleRowClicked"
     >
       <template #header>
+        <b-button
+          v-if="canCreate"
+          data-test-id="button-new-sens-lvl"
+          variant="primary"
+          size="lg"
+          :to="{ name: 'system.sensitivityLevel.new' }"
+        >
+          {{ $t('new') }}
+        </b-button>
+      </template>
+
+      <template #toolbar>
         <c-resource-list-status-filter
           v-model="filter.deleted"
           :label="$t('filterForm.deleted.label')"
@@ -48,16 +54,34 @@
         />
       </template>
 
-      <template #actions="{ item }">
-        <b-button
-          size="sm"
-          variant="link"
-          :to="{ name: editRoute, params: { [primaryKey]: item[primaryKey] } }"
+      <template #actions="{ item: s }">
+        <b-dropdown
+          variant="outline-extra-light"
+          toggle-class="d-flex align-items-center justify-content-center text-primary border-0 py-2"
+          no-caret
+          dropleft
+          lazy
+          menu-class="m-0"
         >
-          <font-awesome-icon
-            :icon="['fas', 'pen']"
+          <template #button-content>
+            <font-awesome-icon
+              :icon="['fas', 'ellipsis-v']"
+            />
+          </template>
+
+          <c-input-confirm
+            :text="getActionText(s)"
+            show-icon
+            :icon="getActionIcon(s)"
+            borderless
+            variant="link"
+            size="md"
+            button-class="dropdown-item text-decoration-none text-dark regular-font rounded-0"
+            icon-class="text-danger"
+            class="w-100"
+            @confirmed="handleDelete(s)"
           />
-        </b-button>
+        </b-dropdown>
       </template>
     </c-resource-list>
   </b-container>
@@ -107,16 +131,14 @@ export default {
         },
         {
           key: 'level',
-          sortable: true,
         },
         {
           key: 'createdAt',
-          sortable: true,
           formatter: (v) => moment(v).fromNow(),
         },
         {
           key: 'actions',
-          tdClass: 'text-right',
+          class: 'actions',
         },
       ].map(c => ({
         ...c,
@@ -139,6 +161,14 @@ export default {
   methods: {
     items () {
       return this.procListResults(this.$SystemAPI.dalSensitivityLevelList(this.encodeListParams()))
+    },
+
+    handleDelete (sensitivityLevel) {
+      this.handleItemDelete({
+        resource: sensitivityLevel,
+        resourceName: 'dalSensitivityLevel',
+        locale: 'sensitivityLevel',
+      })
     },
   },
 }

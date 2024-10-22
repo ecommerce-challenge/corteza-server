@@ -640,6 +640,108 @@ func AttachmentErrFailedToProcessImage(mm ...*attachmentActionProps) *errors.Err
 	return e
 }
 
+// AttachmentErrInvalidAvatarFileType returns "system:attachment.invalidAvatarFileType" as *errors.Error
+//
+//
+// This function is auto-generated.
+//
+func AttachmentErrInvalidAvatarFileType(mm ...*attachmentActionProps) *errors.Error {
+	var p = &attachmentActionProps{}
+	if len(mm) > 0 {
+		p = mm[0]
+	}
+
+	var e = errors.New(
+		errors.KindInternal,
+
+		p.Format("invalid file type only JPEG and PNG are allowed", nil),
+
+		errors.Meta("type", "invalidAvatarFileType"),
+		errors.Meta("resource", "system:attachment"),
+
+		errors.Meta(attachmentPropsMetaKey{}, p),
+
+		// translation namespace & key
+		errors.Meta(locale.ErrorMetaNamespace{}, "system"),
+		errors.Meta(locale.ErrorMetaKey{}, "attachment.errors.invalidAvatarFileType"),
+
+		errors.StackSkip(1),
+	)
+
+	if len(mm) > 0 {
+	}
+
+	return e
+}
+
+// AttachmentErrInvalidAvatarFileSize returns "system:attachment.invalidAvatarFileSize" as *errors.Error
+//
+//
+// This function is auto-generated.
+//
+func AttachmentErrInvalidAvatarFileSize(mm ...*attachmentActionProps) *errors.Error {
+	var p = &attachmentActionProps{}
+	if len(mm) > 0 {
+		p = mm[0]
+	}
+
+	var e = errors.New(
+		errors.KindInternal,
+
+		p.Format("file size is too large", nil),
+
+		errors.Meta("type", "invalidAvatarFileSize"),
+		errors.Meta("resource", "system:attachment"),
+
+		errors.Meta(attachmentPropsMetaKey{}, p),
+
+		// translation namespace & key
+		errors.Meta(locale.ErrorMetaNamespace{}, "system"),
+		errors.Meta(locale.ErrorMetaKey{}, "attachment.errors.invalidAvatarFileSize"),
+
+		errors.StackSkip(1),
+	)
+
+	if len(mm) > 0 {
+	}
+
+	return e
+}
+
+// AttachmentErrInvalidAvatarGenerateFontFile returns "system:attachment.invalidAvatarGenerateFontFile" as *errors.Error
+//
+//
+// This function is auto-generated.
+//
+func AttachmentErrInvalidAvatarGenerateFontFile(mm ...*attachmentActionProps) *errors.Error {
+	var p = &attachmentActionProps{}
+	if len(mm) > 0 {
+		p = mm[0]
+	}
+
+	var e = errors.New(
+		errors.KindInternal,
+
+		p.Format("failed to generate avatar initial, font file configuration is invalid", nil),
+
+		errors.Meta("type", "invalidAvatarGenerateFontFile"),
+		errors.Meta("resource", "system:attachment"),
+
+		errors.Meta(attachmentPropsMetaKey{}, p),
+
+		// translation namespace & key
+		errors.Meta(locale.ErrorMetaNamespace{}, "system"),
+		errors.Meta(locale.ErrorMetaKey{}, "attachment.errors.invalidAvatarGenerateFontFile"),
+
+		errors.StackSkip(1),
+	)
+
+	if len(mm) > 0 {
+	}
+
+	return e
+}
+
 // *********************************************************************************************************************
 // *********************************************************************************************************************
 

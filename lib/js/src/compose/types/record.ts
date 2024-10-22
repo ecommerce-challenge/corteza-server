@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/ban-ts-ignore */
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import { AreObjectsOf, IsOf } from '../../guards'
 import { Apply, CortezaID, ISO8601Date, NoID } from '../../cast'
 import { Module } from './module'
@@ -49,7 +49,7 @@ type RecordCtorCombo = Record | Module | PartialRecord | ValueCombo
  * For something to be useful module (for a Record), it needs to contain fields
  */
 function isModule (m?: unknown): m is Module {
-  return m && IsOf<Module>(m, 'fields') && Array.isArray(m.fields) && m.fields.length > 0
+  return !!m && IsOf<Module>(m, 'fields') && Array.isArray(m.fields) && m.fields.length > 0
 }
 
 function isRawValue (v: unknown): v is RawValue {
@@ -89,6 +89,7 @@ export class Record {
   public canSearchRevision = false;
   public canGrant = false;
 
+  // @ts-ignore
   private [fieldIndex]: Map<string, FieldIndex>
   private [propModule]?: Module
   private [cleanValues]: Values = {}
@@ -116,7 +117,7 @@ export class Record {
   }
 
   clone (): Record {
-    return new Record(JSON.parse(JSON.stringify(this)))
+    return new Record(this.module, JSON.parse(JSON.stringify(this)))
   }
 
   /**
@@ -421,6 +422,11 @@ export class Record {
     this.values[name] = value
   }
 
+  public serialize (): Partial<Record> {
+    const { toJSON, ...values } = this.values
+    return { ...this, values }
+  }
+
   /**
    * Returns resource ID
    */
@@ -440,5 +446,29 @@ export class Record {
    */
   get labels (): object {
     return this.meta
+  }
+
+  get properties (): string[] {
+    return [
+      'recordID',
+      'moduleID',
+      'namespaceID',
+      'revision',
+      'meta',
+      'createdAt',
+      'updatedAt',
+      'deletedAt',
+      'ownedBy',
+      'createdBy',
+      'updatedBy',
+      'deletedBy',
+      'canUpdateRecord',
+      'canReadRecord',
+      'canDeleteRecord',
+      'canUndeleteRecord',
+      'canManageOwnerOnRecord',
+      'canSearchRevision',
+      'canGrant',
+    ]
   }
 }

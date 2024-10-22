@@ -40,7 +40,7 @@ type (
 	dalConnManager interface {
 		ReplaceConnection(context.Context, *dal.ConnectionWrap, bool) error
 		RemoveConnection(context.Context, uint64) error
-		SearchConnectionIssues(uint64) []error
+		SearchConnectionIssues(uint64) []dal.Issue
 	}
 )
 
@@ -136,6 +136,11 @@ func (svc *dalConnection) Update(ctx context.Context, upd *types.DalConnection) 
 
 		if !svc.ac.CanUpdateDalConnection(ctx, old) {
 			return DalConnectionErrNotAllowedToUpdate(cProps)
+		}
+
+		// Test if stale (update has an older version of data)
+		if isStale(upd.UpdatedAt, old.UpdatedAt, old.CreatedAt) {
+			return DalConnectionErrStaleData()
 		}
 
 		upd.UpdatedAt = now()
@@ -299,15 +304,9 @@ func (svc *dalConnection) procDal(ctx context.Context, c *types.DalConnection) {
 		return
 	}
 
-	ii := svc.dal.SearchConnectionIssues(c.ID)
-	if len(ii) == 0 {
+	c.Issues = svc.dal.SearchConnectionIssues(c.ID)
+	if len(c.Issues) == 0 {
 		c.Issues = nil
-		return
-	}
-
-	c.Issues = make([]string, len(ii))
-	for i, err := range ii {
-		c.Issues[i] = err.Error()
 	}
 }
 

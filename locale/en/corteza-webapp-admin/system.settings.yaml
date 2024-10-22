@@ -27,6 +27,15 @@ editor:
         split-credentials-check:
           description: 'Split login into two steps: collect the email input first and show the input for the password on the 2nd screen. Automatically forward user to external identity provider when user does not have his password set and there is only one IdP present'
           label: Enable split-credentials check
+      profile-avatar:
+        enabled: Profile avatar enabled
+      send-user-invite-email:
+        title: Invite email
+        enabled: Send invite email on user creation
+        description: When enabled, this configuration sends an invite email to a newly created user via the CLI
+        expires:
+          label: Valid for
+          description: How long will the invite token be valid before it expires
     mail:
       title: Authentication email sender mail
       from-address: Sender's address
@@ -53,6 +62,7 @@ editor:
 
     table:
       header:
+        enabled: Enabled
         provider: Provider
         info: Issuer, client ID
 
@@ -113,6 +123,7 @@ editor:
 
 
     security:
+      title: Security
       prohibited-roles:
         description: Roles from this list will be removed from security context when authenticates with this provider
         label: Prohibited roles
@@ -124,13 +135,13 @@ editor:
         label: Permitted roles
 
   bgScreen:
-      title: Auth Background Screen
+    title: Auth background screen
 
-      image:
-        uploader:
-          title: Background Image
-          instructions: Click or drop background image here to upload
-          uploading: Uploading auth background image
+    image:
+      uploader:
+        label: Background image
+        instructions: Click or drop background image here to upload
+        uploading: Uploading auth background image
 
-        editor:
-          title: Styles editor
+      editor:
+        label: Custom CSS

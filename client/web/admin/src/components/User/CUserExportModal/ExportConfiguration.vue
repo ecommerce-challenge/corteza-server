@@ -1,9 +1,5 @@
 <template>
-  <b-card
-    header-bg-variant="white"
-    footer-bg-variant="white"
-    body-class="pb-0"
-  >
+  <div>
     <b-form-group>
       <b-form-checkbox
         v-model="inclRoleMembership"
@@ -16,10 +12,11 @@
     </b-form-group>
 
     <b-form-group
+      :description="!inclRoleMembership
+        ? $t('export.membershipRequiredLabel')
+        : ''
+      "
       class="mb-0"
-      :description="!inclRoleMembership ?
-        $t('export.membershipRequiredLabel') :
-        ''"
     >
       <b-form-checkbox
         v-model="inclRoles"
@@ -35,14 +32,14 @@
     <div slot="footer">
       <b-button
         data-test-id="button-export"
-        variant="dark"
+        variant="primary"
         class="float-right"
         @click="nextStep"
       >
         {{ $t('export.export') }}
       </b-button>
     </div>
-  </b-card>
+  </div>
 </template>
 
 <script>

@@ -13,6 +13,9 @@ namespace: {
 				sortable: true,
 				goType: "string"
 				dal: {}
+				envoy: {
+					identifier: true
+				}
 			}
 			enabled: {
 				goType: "bool"
@@ -21,6 +24,8 @@ namespace: {
 			meta: {
 				goType: "types.NamespaceMeta"
 				dal: { type: "JSON", defaultEmptyObject: true }
+				omitSetter: true
+				omitGetter: true
 			}
 			name: {
 				sortable: true
@@ -43,7 +48,7 @@ namespace: {
 
 	filter: {
 		struct: {
-			namespace_id: { goType: "[]uint64", ident: "namespaceID" }
+			namespace_id: { goType: "[]uint64", ident: "namespaceID", storeIdent: "id" }
 			slug: { goType: "string" }
 			name: { goType: "string" }
 			deleted: { goType: "filter.State", storeIdent: "deleted_at" }
@@ -54,16 +59,32 @@ namespace: {
 		byNilState: ["deleted"]
 	}
 
+	envoy: {
+		scoped: true
+		yaml: {
+			supportMappedInput: true
+			mappedField: "Slug"
+			identKeyAlias: ["namespaces", "ns"]
+		}
+		store: {
+			handleField: "Slug"
+			extendedFilterBuilder: true
+		}
+	}
+
 	rbac: {
 		operations: {
 			"read": {}
 			"update": {}
 			"delete": {}
+			"export": description:         "Access to export the entire namespace"
 			"manage": description:         "Access to namespace admin panel"
 			"module.create": description:  "Create module on namespace"
 			"modules.search": description: "List, search or filter module on namespace"
+			"modules.export": description: "Export modules on namespace"
 			"chart.create": description:   "Create chart on namespace"
 			"charts.search": description:  "List, search or filter chart on namespace"
+			"charts.export": description:  "Export charts on namespace"
 			"page.create": description:    "Create page on namespace"
 			"pages.search": description:   "List, search or filter pages on namespace"
 		}

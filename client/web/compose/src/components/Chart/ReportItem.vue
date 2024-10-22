@@ -1,14 +1,14 @@
 <template>
   <tr class="w-100 d-inline-block">
     <td
-      v-b-tooltip.hover
+      v-b-tooltip.noninteractive.hover
       class="handle align-middle w-100 d-inline-block"
       :class="{ 'cursor-grab': !fixed }"
     >
       <font-awesome-icon
         v-if="!fixed"
         :icon="['fas', 'bars']"
-        class="text-light mr-1"
+        class="text-secondary mr-1"
       />
       <slot
         name="report-label"
@@ -21,13 +21,12 @@
       >
         <font-awesome-icon :icon="['far', 'edit']" />
       </b-btn>
-      <b-btn
-        variant="link"
-        class="float-right text-danger p-0"
-        @click="$emit('remove', report)"
-      >
-        <font-awesome-icon :icon="['far', 'trash-alt']" />
-      </b-btn>
+
+      <c-input-confirm
+        show-icon
+        class="float-right"
+        @confirmed="$emit('remove', report)"
+      />
     </td>
   </tr>
 </template>

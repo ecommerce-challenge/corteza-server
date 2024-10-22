@@ -1,16 +1,15 @@
 <template>
   <b-card
     class="shadow-sm"
+    header-class="border-bottom"
     body-class="p-0"
-    header-bg-variant="white"
-    footer-bg-variant="white"
   >
     <template
       #header
     >
-      <h3 class="m-0">
+      <h4 class="mb-0">
         {{ $t('title') }}
-      </h3>
+      </h4>
     </template>
 
     <c-resource-list
@@ -30,15 +29,22 @@
         singlePluralPagination: 'admin:general.pagination.single',
         prevPagination: $t('admin:general.pagination.prev'),
         nextPagination: $t('admin:general.pagination.next'),
+        resourceSingle: $t('general:label.route.single'),
+        resourcePlural: $t('general:label.route.plural')
+
       }"
-      class="h-100"
+      clickable
+      card-header-class="rounded-0"
+      class="h-100 bg-transparent"
       @search="filterList"
+      @row-clicked="handleRowClicked"
     >
       <template #header>
         <b-button
           v-if="canCreate"
           data-test-id="button-add"
           variant="primary"
+          size="lg"
           :to="{ name: 'system.apigw.new' }"
         >
           {{ $t('new') }}
@@ -47,8 +53,8 @@
         <b-button
           v-if="$Settings.get('apigw.profiler.enabled', false)"
           data-test-id="button-profiler"
-          class="ml-1"
           variant="info"
+          size="lg"
           :to="{ name: 'system.apigw.profiler' }"
         >
           {{ $t('profiler') }}
@@ -58,25 +64,12 @@
           v-if="canGrant"
           data-test-id="button-permissions"
           resource="corteza::system:apigw-route/*"
-          button-variant="light"
-          class="ml-1"
-        >
-          <font-awesome-icon :icon="['fas', 'lock']" />
-          {{ $t('permissions') }}
-        </c-permissions-button>
+          :button-label="$t('permissions')"
+          size="lg"
+        />
+      </template>
 
-        <b-dropdown
-          v-if="false"
-          variant="link"
-          right
-          menu-class="shadow-sm"
-          :text="$t('export')"
-        >
-          <b-dropdown-item-button variant="link">
-            {{ $t('yaml') }}
-          </b-dropdown-item-button>
-        </b-dropdown>
-
+      <template #toolbar>
         <c-resource-list-status-filter
           v-model="filter.deleted"
           data-test-id="filter-deleted-routes"
@@ -84,28 +77,64 @@
           :excluded-label="$t('filterForm.excluded.label')"
           :inclusive-label="$t('filterForm.inclusive.label')"
           :exclusive-label="$t('filterForm.exclusive.label')"
-          class="mt-3"
           @change="filterList"
         />
       </template>
 
-      <template #actions="{ item }">
-        <b-button
-          size="sm"
-          variant="link"
-          :to="{ name: editRoute, params: { [primaryKey]: item[primaryKey] } }"
+      <template #actions="{ item: r }">
+        <b-dropdown
+          v-if="(areActionsVisible({ resource: r, conditions: ['canDeleteApigwRoute', 'canGrant'] }))"
+          boundary="viewport"
+          variant="outline-extra-light"
+          toggle-class="d-flex align-items-center justify-content-center text-primary border-0 py-2"
+          no-caret
+          dropleft
+          lazy
+          menu-class="m-0"
         >
-          <font-awesome-icon
-            :icon="['fas', 'pen']"
+          <template #button-content>
+            <font-awesome-icon
+              :icon="['fas', 'ellipsis-v']"
+            />
+          </template>
+
+          <b-dropdown-item
+            v-if="r.routeID && canGrant"
+            link-class="p-0"
+          >
+            <c-permissions-button
+              :title="r.endpoint || r.routeID"
+              :target="r.endpoint || r.routeID"
+              :resource="`corteza::system:apigw-route/${r.routeID}`"
+              button-variant="link dropdown-item text-decoration-none text-dark regular-font rounded-0"
+            >
+              <font-awesome-icon :icon="['fas', 'lock']" />
+
+              {{ $t('permissions') }}
+            </c-permissions-button>
+          </b-dropdown-item>
+
+          <c-input-confirm
+            v-if="r.canDeleteApigwRoute"
+            :text="getActionText(r)"
+            show-icon
+            :icon="getActionIcon(r)"
+            borderless
+            variant="link"
+            size="md"
+            button-class="dropdown-item text-decoration-none text-dark regular-font rounded-0"
+            icon-class="text-danger"
+            class="w-100"
+            @confirmed="handleDelete(r)"
           />
-        </b-button>
+        </b-dropdown>
       </template>
     </c-resource-list>
   </b-card>
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
+import { mapGetters, mapActions } from 'vuex'
 import listHelpers from 'corteza-webapp-admin/src/mixins/listHelpers'
 import moment from 'moment'
 import { components } from '@cortezaproject/corteza-vue'
@@ -160,8 +189,7 @@ export default {
         },
         {
           key: 'actions',
-          label: '',
-          tdClass: 'text-right',
+          class: 'actions',
         },
       ].map(c => ({
         ...c,
@@ -186,9 +214,30 @@ export default {
   },
 
   methods: {
+    ...mapActions({
+      incLoader: 'ui/incLoader',
+      decLoader: 'ui/decLoader',
+    }),
+
     items () {
       return this.procListResults(this.$SystemAPI.apigwRouteList(this.encodeListParams()))
+    },
+
+    handleDelete (route) {
+      this.handleItemDelete({
+        resource: route,
+        resourceName: 'apigwRoute',
+        locale: 'gateway',
+      })
     },
   },
 }
 </script>
+
+<style lang="scss">
+.route-list {
+  .card-header {
+    border-radius: 0;
+  }
+}
+</style>

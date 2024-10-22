@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/cortezaproject/corteza/server/auth/request"
+	"github.com/cortezaproject/corteza/server/pkg/logger"
 	"github.com/cortezaproject/corteza/server/system/service"
 	"github.com/cortezaproject/corteza/server/system/types"
 	"go.uber.org/zap"
@@ -40,9 +41,19 @@ func (h *AuthHandlers) signupProc(req *request.AuthReq) error {
 			h.Log.Info(
 				"signup successful",
 				zap.String("email", newUser.Email),
-				zap.Uint64s("roles", newUser.Roles()),
+				logger.Uint64s("roles", newUser.Roles()),
 			)
-			req.RedirectTo = GetLinks().Profile
+
+			// redirect to the webapp base path
+			req.RedirectTo = WebappBasePath
+
+			// if the client is nil, redirect to the profile
+			// else check if the client is trusted
+			if req.Client == nil {
+				req.RedirectTo = GetLinks().Profile
+			} else if !req.Client.Trusted {
+				req.RedirectTo = GetLinks().OAuth2AuthorizeClient
+			}
 
 			req.AuthUser = request.NewAuthUser(h.Settings, newUser, false)
 
@@ -114,7 +125,12 @@ func (h *AuthHandlers) confirmEmail(req *request.AuthReq) (err error) {
 				Text: t("signup.alerts.email-confirmed-logged-in"),
 			})
 
-			req.RedirectTo = GetLinks().Profile
+			// redirect to the webapp base path
+			req.RedirectTo = WebappBasePath
+
+			if req.Client != nil && !req.Client.Trusted {
+				req.RedirectTo = GetLinks().OAuth2AuthorizeClient
+			}
 
 			req.AuthUser = request.NewAuthUser(h.Settings, user, false)
 

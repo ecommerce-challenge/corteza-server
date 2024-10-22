@@ -1,23 +1,14 @@
 <template>
-  <a
-    v-if="link"
-    data-test-id="link-permissions"
-    class="pointer"
-    :title="tooltip"
-    @click="onClick"
-  >
-    <font-awesome-icon :icon="['fas', 'lock']" />
-  </a>
   <b-button
-    v-else
     data-test-id="button-permissions"
     :title="tooltip"
     :variant="buttonVariant"
+    :size="size"
     @click="onClick"
   >
     <slot>
       <font-awesome-icon v-if="showButtonIcon" :icon="['fas', 'lock']" />
-      <span v-if="buttonLabel">
+      <span v-if="buttonLabel" class="permissions-button-label">
         {{ buttonLabel }}
       </span>
     </slot>
@@ -32,13 +23,14 @@ library.add(faLock)
 
 export default {
   props: {
-    link: {
-      type: Boolean,
+    size: {
+      type: String,
+      default: 'md',
     },
 
     buttonVariant: {
       type: String,
-      default: undefined,
+      default: 'light',
     },
 
     resource: {
@@ -96,8 +88,3 @@ export default {
   },
 }
 </script>
-<style lang="scss" scoped>
-.pointer {
-  cursor: pointer;
-}
-</style>

@@ -1,10 +1,9 @@
 <template>
   <c-translator-button
     v-if="canManageResourceTranslations && resourceTranslationsEnabled"
-    button-variant="light"
-    v-bind="$props"
+    v-bind="{ ...$attrs, ...$props }"
     :size="size"
-    :title="$t('tooltip')"
+    :tooltip="$t('tooltip')"
     :resource="resource"
     :fetcher="fetcher"
     :updater="updater"
@@ -121,11 +120,13 @@ export default {
             let tr
             tr = find('meta.bool.true.label')
             if (tr !== undefined) {
+              // eslint-disable-next-line vue/no-side-effects-in-computed-properties
               this.field.options.trueLabel = tr.message
             }
 
             tr = find('meta.bool.false.label')
             if (tr !== undefined) {
+              // eslint-disable-next-line vue/no-side-effects-in-computed-properties
               this.field.options.falseLabel = tr.message
             }
           })

@@ -4,7 +4,7 @@
       class="mb-3"
     >
       <h5 class="text-primary mb-2">
-        {{ $t('display-element:chart.configurator.general') }}
+        {{ $t('chart.configurator.general') }}
       </h5>
 
       <b-row
@@ -12,10 +12,10 @@
       >
         <b-col
           cols="12"
-          sm="6"
+          lg="6"
         >
           <b-form-group
-            :label="$t('display-element:chart.configurator.type')"
+            :label="$t('chart.configurator.type')"
             label-class="text-primary"
           >
             <b-form-select
@@ -28,10 +28,10 @@
 
         <b-col
           cols="12"
-          sm="6"
+          lg="6"
         >
           <b-form-group
-            :label="$t('display-element:chart.configurator.chart-title')"
+            :label="$t('chart.configurator.chart-title')"
             label-class="text-primary"
           >
             <b-form-input
@@ -42,24 +42,19 @@
 
         <b-col
           cols="12"
-          sm="6"
+          lg="6"
         >
           <b-form-group
-            :label="$t('display-element:chart.configurator.color-scheme')"
+            :label="$t('chart.configurator.color-scheme')"
             label-class="text-primary"
             class="mb-0"
           >
-            <vue-select
+            <c-input-select
               v-model="options.colorScheme"
               :options="colorSchemes"
+              :get-option-key="getOptionKey"
               :reduce="cs => cs.value"
               :placeholder="$t('general:label.default')"
-              label="label"
-              option-text="label"
-              option-value="value"
-              clearable
-              class="mw-100"
-              style="min-width: 100%;"
             >
               <template #option="option">
                 <p
@@ -67,6 +62,7 @@
                 >
                   {{ option.label }}
                 </p>
+
                 <div
                   v-for="(color, index) in option.colors"
                   :key="`${option.value}-${index}`"
@@ -74,7 +70,7 @@
                   class="d-inline-block color-box mr-1 mb-1"
                 />
               </template>
-            </vue-select>
+            </c-input-select>
 
             <template
               v-if="currentColorScheme"
@@ -91,7 +87,7 @@
 
         <b-col
           cols="12"
-          sm="6"
+          lg="6"
           class="d-flex flex-column justify-content-center"
         >
           <b-form-checkbox
@@ -101,7 +97,7 @@
             switch
             class="mt-3 pt-2"
           >
-            {{ $t('display-element:chart.configurator.animation.enabled') }}
+            {{ $t('chart.configurator.animation.enabled') }}
           </b-form-checkbox>
         </b-col>
       </b-row>
@@ -113,12 +109,12 @@
       class="mb-3"
     >
       <h5 class="text-primary mb-2">
-        {{ $t('display-element:chart.configurator.data') }}
+        {{ $t('chart.configurator.data') }}
       </h5>
 
       <b-form-group
         v-if="options.labelColumn !== undefined"
-        :label="$t('display-element:chart.configurator.label-column')"
+        :label="$t('chart.configurator.label-column')"
         label-class="text-primary"
       >
         <column-selector
@@ -130,15 +126,75 @@
 
       <b-form-group
         v-if="options.dataColumns && columns.length"
-        :label="$t('display-element:chart.configurator.data-columns')"
+        :label="$t('chart.configurator.data-columns')"
         label-class="text-primary"
       >
         <column-picker
           :all-items="dataColumns"
-          :selected-items.sync="options.dataColumns"
+          :selected-items="options.dataColumns"
           class="d-flex flex-column"
+          @update:selected-items="updateDataColumns"
         />
       </b-form-group>
+
+      <div
+        v-if="['bar', 'line'].includes(options.type)"
+      >
+        <hr>
+
+        <h5 class="text-primary mb-2">
+          {{ $t('chart.configurator.metrics.label') }}
+        </h5>
+
+        <b-form-group
+          v-if="options.dataColumns && options.dataColumns.length"
+          label-class="text-primary"
+        >
+          <c-form-table-wrapper
+            v-for="(column, index) in metricColumns"
+            :key="index"
+            hide-add-button
+            class="mb-3"
+          >
+            <h6 class="mb-3">
+              {{ column.label }}
+            </h6>
+
+            <b-row>
+              <b-col
+                cols="12"
+                md="6"
+              >
+                <b-form-group
+                  :label="$t('chart.configurator.metrics.label-field.label')"
+                  label-class="text-primary"
+                  class="mb-0"
+                >
+                  <b-form-input
+                    v-model="column.label"
+                  />
+                </b-form-group>
+              </b-col>
+
+              <b-col
+                cols="12"
+                md="6"
+              >
+                <b-form-group
+                  :label="$t('chart.configurator.metrics.stack.label')"
+                  :description="$t('chart.configurator.metrics.stack.description')"
+                  label-class="text-primary"
+                  class="mb-0"
+                >
+                  <b-form-input
+                    v-model="column.stack"
+                  />
+                </b-form-group>
+              </b-col>
+            </b-row>
+          </c-form-table-wrapper>
+        </b-form-group>
+      </div>
 
       <div
         v-if="['bar', 'line'].includes(options.type)"
@@ -149,12 +205,12 @@
           class="mb-3"
         >
           <h5 class="text-primary mb-2">
-            {{ $t('display-element:chart.configurator.x-axis.name') }}
+            {{ $t('chart.configurator.x-axis.name') }}
           </h5>
           <b-row>
             <b-col>
               <b-form-group
-                :label="$t('display-element:chart.configurator.x-axis.label')"
+                :label="$t('chart.configurator.x-axis.label')"
                 label-class="text-primary"
               >
                 <b-form-input
@@ -164,7 +220,7 @@
             </b-col>
             <b-col>
               <b-form-group
-                :label="$t('display-element:chart.configurator.x-axis.type')"
+                :label="$t('chart.configurator.x-axis.type')"
                 label-class="text-primary"
               >
                 <b-form-select
@@ -175,7 +231,7 @@
                     <b-form-select-option
                       value=""
                     >
-                      {{ $t('display-element:chart.configurator.default') }}
+                      {{ $t('chart.configurator.default') }}
                     </b-form-select-option>
                   </template>
                 </b-form-select>
@@ -186,7 +242,7 @@
           <b-row>
             <b-col>
               <b-form-group
-                :label="$t('display-element:chart.configurator.default-value')"
+                :label="$t('chart.configurator.default-value')"
                 label-class="text-primary"
                 class="mb-1"
               >
@@ -201,12 +257,12 @@
                 v-model="options.xAxis.skipMissing"
                 class="mb-3"
               >
-                {{ $t('display-element:chart.configurator.skip-missing-values') }}
+                {{ $t('chart.configurator.skip-missing-values') }}
               </b-form-checkbox>
             </b-col>
             <b-col>
               <b-form-group
-                :label="$t('display-element:chart.configurator.x-axis.labelRotation.label')"
+                :label="$t('chart.configurator.x-axis.labelRotation.label')"
                 label-class="text-primary"
                 class="mb-1"
               >
@@ -224,12 +280,12 @@
 
         <div>
           <h5 class="text-primary mb-2">
-            {{ $t('display-element:chart.configurator.y-axis.name') }}
+            {{ $t('chart.configurator.y-axis.name') }}
           </h5>
           <b-row>
             <b-col>
               <b-form-group
-                :label="$t('display-element:chart.configurator.y-axis.label')"
+                :label="$t('chart.configurator.y-axis.label')"
                 label-class="text-primary"
               >
                 <b-form-input
@@ -239,7 +295,7 @@
             </b-col>
             <b-col>
               <b-form-group
-                :label="$t('display-element:chart.configurator.y-axis.labelPosition.label')"
+                :label="$t('chart.configurator.y-axis.labelPosition.label')"
                 label-class="text-primary"
               >
                 <b-form-select
@@ -250,7 +306,7 @@
             </b-col>
             <b-col>
               <b-form-group
-                :label="$t('display-element:chart.configurator.y-axis.labelRotation.label')"
+                :label="$t('chart.configurator.y-axis.labelRotation.label')"
                 label-class="text-primary"
                 class="mb-1"
               >
@@ -266,7 +322,7 @@
           <b-row>
             <b-col>
               <b-form-group
-                :label="$t('display-element:chart.configurator.value.min')"
+                :label="$t('chart.configurator.value.min')"
                 label-class="text-primary"
               >
                 <b-form-input
@@ -278,7 +334,7 @@
             </b-col>
             <b-col>
               <b-form-group
-                :label="$t('display-element:chart.configurator.value.max')"
+                :label="$t('chart.configurator.value.max')"
                 label-class="text-primary"
               >
                 <b-form-input
@@ -289,7 +345,7 @@
             </b-col>
             <b-col>
               <b-form-group
-                :label="$t('display-element:chart.configurator.step-size')"
+                :label="$t('chart.configurator.step-size')"
                 label-class="text-primary"
               >
                 <b-form-input
@@ -307,13 +363,13 @@
                   value="logarithmic"
                   unchecked-value="linear"
                 >
-                  {{ $t('display-element:chart.configurator.logarithmic-scale') }}
+                  {{ $t('chart.configurator.logarithmic-scale') }}
                 </b-form-checkbox>
 
                 <b-form-checkbox
                   v-model="options.yAxis.beginAtZero"
                 >
-                  {{ $t('display-element:chart.configurator.begin-axis-at-zero') }}
+                  {{ $t('chart.configurator.begin-axis-at-zero') }}
                 </b-form-checkbox>
 
                 <b-form-checkbox
@@ -321,7 +377,7 @@
                   value="right"
                   unchecked-value="left"
                 >
-                  {{ $t('display-element:chart.configurator.place-axis-on-right-side') }}
+                  {{ $t('chart.configurator.place-axis-on-right-side') }}
                 </b-form-checkbox>
               </b-form-group>
             </b-col>
@@ -333,23 +389,23 @@
 
       <div>
         <h5 class="text-primary mb-2">
-          {{ $t('display-element:chart.configurator.legend.name') }}
+          {{ $t('chart.configurator.legend.name') }}
         </h5>
 
         <b-form-checkbox
           v-model="options.legend.hide"
           class="mb-3"
         >
-          {{ $t('display-element:chart.configurator.legend.hide') }}
+          {{ $t('chart.configurator.legend.hide') }}
         </b-form-checkbox>
 
         <b-row v-if="!options.legend.hide">
           <b-col
             cols="12"
-            sm="6"
+            lg="6"
           >
             <b-form-group
-              :label="$t('display-element:chart.configurator.legend.align.label')"
+              :label="$t('chart.configurator.legend.align.label')"
               label-class="text-primary"
               class="mb-1"
             >
@@ -363,10 +419,10 @@
 
           <b-col
             cols="12"
-            sm="6"
+            lg="6"
           >
             <b-form-group
-              :label="$t('display-element:chart.configurator.legend.orientation.label')"
+              :label="$t('chart.configurator.legend.orientation.label')"
               label-class="text-primary"
               class="mb-1"
             >
@@ -379,25 +435,25 @@
 
           <b-col
             cols="12"
-            sm="6"
+            lg="6"
           >
             <b-form-checkbox
               v-model="options.legend.position.default"
               :class="{ 'mb-3': !options.legend.position.default }"
             >
-              {{ $t('display-element:chart.configurator.legend.position.default') }}
+              {{ $t('chart.configurator.legend.position.default') }}
             </b-form-checkbox>
           </b-col>
 
           <b-col
             cols="12"
-            sm="6"
+            lg="6"
           >
             <b-form-checkbox
               v-model="options.legend.scrollable"
               :disabled="options.legend.orientation !== 'horizontal'"
             >
-              {{ $t('display-element:chart.configurator.legend.scrollable') }}
+              {{ $t('chart.configurator.legend.scrollable') }}
             </b-form-checkbox>
           </b-col>
 
@@ -406,11 +462,11 @@
           >
             <b-col
               cols="12"
-              sm="6"
+              lg="6"
               xl="3"
             >
               <b-form-group
-                :label="$t('display-element:chart.configurator.legend.position.top')"
+                :label="$t('chart.configurator.legend.position.top')"
                 label-class="text-primary"
               >
                 <b-input
@@ -421,11 +477,11 @@
 
             <b-col
               cols="12"
-              sm="6"
+              lg="6"
               xl="3"
             >
               <b-form-group
-                :label="$t('display-element:chart.configurator.legend.position.right')"
+                :label="$t('chart.configurator.legend.position.right')"
                 label-class="text-primary"
               >
                 <b-input
@@ -436,11 +492,11 @@
 
             <b-col
               cols="12"
-              sm="6"
+              lg="6"
               xl="3"
             >
               <b-form-group
-                :label="$t('display-element:chart.configurator.legend.position.bottom')"
+                :label="$t('chart.configurator.legend.position.bottom')"
                 label-class="text-primary"
               >
                 <b-input
@@ -451,11 +507,11 @@
 
             <b-col
               cols="12"
-              sm="6"
+              lg="6"
               xl="3"
             >
               <b-form-group
-                :label="$t('display-element:chart.configurator.legend.position.left')"
+                :label="$t('chart.configurator.legend.position.left')"
                 label-class="text-primary"
               >
                 <b-input
@@ -465,7 +521,7 @@
             </b-col>
 
             <b-col>
-              <small>{{ $t('display-element:chart.configurator.position-description') }}</small>
+              <small>{{ $t('chart.configurator.position-description') }}</small>
             </b-col>
           </template>
         </b-row>
@@ -475,7 +531,7 @@
 
       <div>
         <h5 class="text-primary mb-2">
-          {{ $t('display-element:chart.configurator.tooltips.name') }}
+          {{ $t('chart.configurator.tooltips.name') }}
         </h5>
 
         <b-row>
@@ -483,7 +539,7 @@
             <b-form-checkbox
               v-model="options.tooltips.showAlways"
             >
-              {{ $t('display-element:chart.configurator.tooltips.show.always') }}
+              {{ $t('chart.configurator.tooltips.show.always') }}
             </b-form-checkbox>
           </b-col>
         </b-row>
@@ -493,24 +549,24 @@
 
       <div class="mb-2">
         <h5 class="text-primary mb-2">
-          {{ $t('display-element:chart.configurator.offset.name') }}
+          {{ $t('chart.configurator.offset.name') }}
         </h5>
 
         <b-form-checkbox
           v-model="options.offset.default"
           class="mb-3"
         >
-          {{ $t('display-element:chart.configurator.offset.default') }}
+          {{ $t('chart.configurator.offset.default') }}
         </b-form-checkbox>
 
         <b-row v-if="!options.offset.default">
           <b-col
             cols="12"
-            sm="6"
+            lg="6"
             xl="3"
           >
             <b-form-group
-              :label="$t('display-element:chart.configurator.offset.top')"
+              :label="$t('chart.configurator.offset.top')"
               label-class="text-primary"
             >
               <b-input
@@ -521,11 +577,11 @@
 
           <b-col
             cols="12"
-            sm="6"
+            lg="6"
             xl="3"
           >
             <b-form-group
-              :label="$t('display-element:chart.configurator.offset.right')"
+              :label="$t('chart.configurator.offset.right')"
               label-class="text-primary"
             >
               <b-input
@@ -536,11 +592,11 @@
 
           <b-col
             cols="12"
-            sm="6"
+            lg="6"
             xl="3"
           >
             <b-form-group
-              :label="$t('display-element:chart.configurator.offset.bottom')"
+              :label="$t('chart.configurator.offset.bottom')"
               label-class="text-primary"
             >
               <b-input
@@ -551,11 +607,11 @@
 
           <b-col
             cols="12"
-            sm="6"
+            lg="6"
             xl="3"
           >
             <b-form-group
-              :label="$t('display-element:chart.configurator.offset.left')"
+              :label="$t('chart.configurator.offset.left')"
               label-class="text-primary"
             >
               <b-input
@@ -567,7 +623,7 @@
           <b-col
             cols="12"
           >
-            <small>{{ $t('display-element:chart.configurator.position-description') }}</small>
+            <small>{{ $t('chart.configurator.position-description') }}</small>
           </b-col>
         </b-row>
       </div>
@@ -579,13 +635,17 @@
 import base from './base'
 import ColumnSelector from 'corteza-webapp-reporter/src/components/Common/ColumnSelector.vue'
 import ColumnPicker from 'corteza-webapp-reporter/src/components/Common/ColumnPicker'
-import VueSelect from 'vue-select'
 import { reporter, shared } from '@cortezaproject/corteza-js'
 const { colorschemes } = shared
 
 export default {
+  i18nOptions: {
+    namespaces: 'display-element',
+  },
+
+  name: 'ChartConfigurator',
+
   components: {
-    VueSelect,
     ColumnSelector,
     ColumnPicker,
   },
@@ -608,20 +668,20 @@ export default {
       ],
 
       axisLabelPositions: [
-        { value: 'end', text: this.$t('display-element:chart.configurator.y-axis.labelPosition.top') },
-        { value: 'center', text: this.$t('display-element:chart.configurator.y-axis.labelPosition.center') },
-        { value: 'start', text: this.$t('display-element:chart.configurator.y-axis.labelPosition.bottom') },
+        { value: 'end', text: this.$t('chart.configurator.y-axis.labelPosition.top') },
+        { value: 'center', text: this.$t('chart.configurator.y-axis.labelPosition.center') },
+        { value: 'start', text: this.$t('chart.configurator.y-axis.labelPosition.bottom') },
       ],
 
       orientations: [
-        { value: 'horizontal', text: this.$t('display-element:chart.configurator.legend.orientation.horizontal') },
-        { value: 'vertical', text: this.$t('display-element:chart.configurator.legend.orientation.vertical') },
+        { value: 'horizontal', text: this.$t('chart.configurator.legend.orientation.horizontal') },
+        { value: 'vertical', text: this.$t('chart.configurator.legend.orientation.vertical') },
       ],
 
       alignments: [
-        { value: 'left', text: this.$t('display-element:chart.configurator.legend.align.left') },
-        { value: 'center', text: this.$t('display-element:chart.configurator.legend.align.center') },
-        { value: 'right', text: this.$t('display-element:chart.configurator.legend.align.right') },
+        { value: 'left', text: this.$t('chart.configurator.legend.align.left') },
+        { value: 'center', text: this.$t('chart.configurator.legend.align.center') },
+        { value: 'right', text: this.$t('chart.configurator.legend.align.right') },
       ],
     }
   },
@@ -633,14 +693,14 @@ export default {
 
     chartTypes () {
       const types = [
-        { value: 'bar', text: this.$t('display-element:chart.configurator.types.bar') },
-        { value: 'line', text: this.$t('display-element:chart.configurator.types.line') },
-        { value: 'pie', text: this.$t('display-element:chart.configurator.types.pie') },
-        { value: 'doughnut', text: this.$t('display-element:chart.configurator.types.doughnut') },
+        { value: 'bar', text: this.$t('chart.configurator.types.bar') },
+        { value: 'line', text: this.$t('chart.configurator.types.line') },
+        { value: 'pie', text: this.$t('chart.configurator.types.pie') },
+        { value: 'doughnut', text: this.$t('chart.configurator.types.doughnut') },
       ]
 
       if (this.datasource && this.datasource.step.aggregate) {
-        types.push({ value: 'funnel', text: this.$t('display-element:chart.configurator.types.funnel') })
+        types.push({ value: 'funnel', text: this.$t('chart.configurator.types.funnel') })
       }
 
       return types
@@ -648,18 +708,18 @@ export default {
 
     AxisTypes () {
       return [
-        { value: 'time', text: this.$t('display-element:chart.configurator.time.label') },
+        { value: 'time', text: this.$t('chart.configurator.time.label') },
         { value: 'category', text: 'Category' },
       ]
     },
 
     timeUnits () {
       return [
-        { value: 'day', text: this.$t('display-element:chart.configurator.time.unit.types.date') },
-        { value: 'week', text: this.$t('display-element:chart.configurator.time.unit.types.week') },
-        { value: 'month', text: this.$t('display-element:chart.configurator.time.unit.types.month') },
-        { value: 'quarter', text: this.$t('display-element:chart.configurator.time.unit.types.quarter') },
-        { value: 'year', text: this.$t('display-element:chart.configurator.time.unit.types.year') },
+        { value: 'day', text: this.$t('chart.configurator.time.unit.types.date') },
+        { value: 'week', text: this.$t('chart.configurator.time.unit.types.week') },
+        { value: 'month', text: this.$t('chart.configurator.time.unit.types.month') },
+        { value: 'quarter', text: this.$t('chart.configurator.time.unit.types.quarter') },
+        { value: 'year', text: this.$t('chart.configurator.time.unit.types.year') },
       ]
     },
 
@@ -676,6 +736,10 @@ export default {
 
     currentColorScheme () {
       return this.colorSchemes.find(({ value }) => value === this.options.colorScheme)
+    },
+
+    metricColumns () {
+      return this.options.dataColumns
     },
   },
 
@@ -706,12 +770,27 @@ export default {
   },
 
   methods: {
+    updateDataColumns (columns) {
+      let result = columns.map((c) => this.dataColumns.find(({ name }) => name === c))
+
+      result.forEach((c, idx) => {
+        const initialCol = this.options.dataColumns.find(({ name }) => name === c.name)
+        if (initialCol) result[idx] = initialCol
+      })
+
+      this.options.dataColumns = result
+    },
+
     setColorscheme (colorscheme) {
       this.options.colorScheme = (colorscheme || {}).value || ''
     },
 
     typeChanged (type) {
       this.options = reporter.ChartOptionsMaker({ ...this.options, type })
+    },
+
+    getOptionKey ({ value }) {
+      return value
     },
   },
 }

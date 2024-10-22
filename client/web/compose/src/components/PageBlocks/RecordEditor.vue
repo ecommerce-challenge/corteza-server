@@ -1,6 +1,7 @@
 <template>
   <wrap
     v-bind="$props"
+    card-class="position-static"
     v-on="$listeners"
   >
     <div
@@ -9,63 +10,80 @@
     >
       <b-spinner />
     </div>
+
     <div
       v-else-if="module"
-      class="px-3"
+      ref="fieldContainer"
+      class="mt-3"
+      :class="fieldLayoutClass"
     >
-      <div
-        v-for="field in fields"
-        :key="field.id"
-        class="mt-3"
-      >
-        <field-editor
-          v-if="isFieldEditable(field)"
-          v-bind="{ ...$props, errors: fieldErrors(field.name) }"
-          class="field"
-          :field="field"
-        />
+      <template v-for="field in fields">
         <div
-          v-else
+          v-if="canDisplay(field)"
+          :key="field.id"
+          :class="columnWrapClass"
+          :style="fieldWidth"
         >
-          <label
-            class="text-primary mb-0"
-            :class="{ 'mb-0': !!(field.options.description || {}).view || false }"
-          >
-            {{ field.label || field.name }}
-            <hint
-              :id="field.fieldID"
-              :text="((field.options.hint || {}).view || '')"
-              class="d-inline-block"
-            />
-          </label>
+          <field-editor
+            v-if="isFieldEditable(field)"
+            v-bind="{ ...$props, errors: fieldErrors(field.name) }"
+            :horizontal="horizontal"
+            :field="field"
+            :extra-options="options"
+            @change="onFieldChange(field)"
+          />
 
-          <small
-            class="text-muted"
-          >
-            {{ (field.options.description || {}).view }}
-          </small>
-
-          <div
-            v-if="field.canReadRecordValue"
-            class="value"
-          >
-            <field-viewer
-              :field="field"
-              v-bind="{ ...$props, errors: fieldErrors(field.name) }"
-              value-only
-            />
-          </div>
-          <div
+          <b-form-group
             v-else
+            :label-cols-md="horizontal && '5'"
+            :label-cols-xl="horizontal && '4'"
+            :content-cols-md="horizontal && '7'"
+            :content-cols-xl="horizontal && '8'"
           >
-            <i
-              class="text-primary"
+            <template #label>
+              <div
+                class="d-flex align-items-center text-primary mb-0"
+              >
+                <span
+                  class="d-flex"
+                >
+                  {{ field.label || field.name }}
+                </span>
+
+                <c-hint :tooltip="((field.options.hint || {}).view || '')" />
+              </div>
+
+              <div
+                class="small text-muted"
+                :class="{ 'mb-1': !!(field.options.description || {}).view }"
+              >
+                {{ (field.options.description || {}).view }}
+              </div>
+            </template>
+
+            <div
+              v-if="field.canReadRecordValue"
+              class="value align-self-center"
             >
-              {{ $t('field.noPermission') }}
-            </i>
-          </div>
+              <field-viewer
+                :field="field"
+                v-bind="{ ...$props, errors: fieldErrors(field.name) }"
+                value-only
+              />
+            </div>
+
+            <div
+              v-else
+            >
+              <i
+                class="text-muted"
+              >
+                {{ $t('field.noPermission') }}
+              </i>
+            </div>
+          </b-form-group>
         </div>
-      </div>
+      </template>
     </div>
   </wrap>
 </template>
@@ -73,9 +91,12 @@
 import { validator, NoID } from '@cortezaproject/corteza-js'
 import base from './base'
 import users from 'corteza-webapp-compose/src/mixins/users'
+import records from 'corteza-webapp-compose/src/mixins/records'
 import FieldEditor from 'corteza-webapp-compose/src/components/ModuleFields/Editor'
 import FieldViewer from 'corteza-webapp-compose/src/components/ModuleFields/Viewer'
-import Hint from 'corteza-webapp-compose/src/components/Common/Hint.vue'
+import conditionalFields from 'corteza-webapp-compose/src/mixins/conditionalFields'
+import recordLayout from 'corteza-webapp-compose/src/mixins/recordLayout'
+import { debounce } from 'lodash'
 
 export default {
   i18nOptions: {
@@ -85,13 +106,15 @@ export default {
   components: {
     FieldEditor,
     FieldViewer,
-    Hint,
   },
 
   extends: base,
 
   mixins: [
     users,
+    records,
+    conditionalFields,
+    recordLayout,
   ],
 
   props: {
@@ -110,8 +133,8 @@ export default {
       }
 
       if (!this.options.fields || this.options.fields.length === 0) {
-        // No fields defined in the options, show all (buy system)
-        return this.module.fields.slice().sort((a, b) => a.label.localeCompare(b.label))
+        // No fields defined in the options, show all (but system)
+        return this.module.fields
       }
 
       // Show filtered & ordered list of fields
@@ -121,13 +144,39 @@ export default {
       })
     },
 
+    fieldLayoutClass () {
+      const classes = {
+        default: 'd-flex flex-column px-3',
+        noWrap: 'd-flex gap-2 pl-3',
+        wrap: 'row no-gutters',
+      }
+
+      return classes[this.options.recordFieldLayoutOption]
+    },
+
+    fieldWidth () {
+      if (this.options.recordFieldLayoutOption !== 'noWrap') {
+        return {}
+      }
+
+      return { 'min-width': '20rem' }
+    },
+
     errorID () {
       const { recordID = NoID } = this.record || {}
       return recordID === NoID ? 'parent:0' : recordID
     },
 
     processing () {
-      return !this.record
+      return !this.record || this.evaluating
+    },
+
+    horizontal () {
+      return this.block.options.horizontalFieldLayoutEnabled
+    },
+
+    isNew () {
+      return this.record && this.record.recordID === NoID
     },
   },
 
@@ -135,11 +184,48 @@ export default {
     'record.recordID': {
       immediate: true,
       handler (recordID) {
-        if (recordID && recordID !== NoID) {
-          this.fetchUsers(this.fields, [this.record])
+        if (!recordID) return
+
+        let resolutions = []
+
+        if (recordID !== NoID) {
+          resolutions = [
+            this.fetchUsers(this.fields, [this.record]),
+            this.fetchRecords(this.namespace.namespaceID, this.fields, [this.record]),
+          ]
+        }
+
+        this.evaluating = true
+
+        Promise.all([
+          ...resolutions,
+          this.evaluateExpressions(),
+        ]).finally(() => {
+          setTimeout(() => {
+            this.evaluating = false
+          }, 300)
+        })
+      },
+    },
+
+    processing: {
+      handler (newVal) {
+        if (this.options.recordFieldLayoutOption !== 'wrap') return
+
+        if (!newVal && this.module) {
+          this.$nextTick(() => {
+            this.initializeResizeObserver(this.$refs.fieldContainer)
+          })
+        } else if (this.resizeObserver) {
+          this.resizeObserver.unobserve(this.$refs.fieldContainer)
+          this.columnWrapClass = ''
         }
       },
     },
+  },
+
+  beforeDestroy () {
+    this.destroyEvents(this.$refs.fieldContainer)
   },
 
   methods: {
@@ -158,36 +244,20 @@ export default {
         .filterByMeta('id', this.errorID)
     },
 
-    isFieldEditable (field) {
-      if (!field) {
-        return false
-      }
+    onFieldChange: debounce(function (field) {
+      this.evaluateExpressions()
 
-      const { canCreateOwnedRecord } = this.module || {}
-      const { createdAt, canManageOwnerOnRecord } = this.record || {}
-      const { name, canUpdateRecordValue, isSystem, expressions = {} } = field || {}
-
-      if (!canUpdateRecordValue) {
-        return false
-      }
-
-      if (isSystem) {
-        // Make ownedBy field editable if correct permissions
-        if (name === 'ownedBy') {
-          // If not created we check module permissions, otherwise the canManageOwnerOnRecord
-          return createdAt ? canManageOwnerOnRecord : canCreateOwnedRecord
-        }
-
-        return false
-      }
-
-      return !expressions.value
-    },
+      this.$root.$emit('record-field-change', {
+        fieldName: field.name,
+      })
+    }, 500),
   },
 }
 </script>
-<style lang="scss">
-.value {
-  min-height: 1.2rem;
+
+<style scoped>
+.field-col > * {
+  margin-left: 1rem;
+  margin-right: 1rem;
 }
 </style>

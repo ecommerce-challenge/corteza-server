@@ -1,52 +1,53 @@
 package app
 
 import (
-	"context"
-	"crypto/tls"
-	"fmt"
-	"net/url"
-	"os"
-	"regexp"
-	"strings"
-	"time"
+    "context"
+    "crypto/tls"
+    "fmt"
+    "net/url"
+    "os"
+    "regexp"
+    "strings"
+    "time"
 
-	authService "github.com/cortezaproject/corteza/server/auth"
-	"github.com/cortezaproject/corteza/server/auth/saml"
-	authSettings "github.com/cortezaproject/corteza/server/auth/settings"
-	autService "github.com/cortezaproject/corteza/server/automation/service"
-	cmpService "github.com/cortezaproject/corteza/server/compose/service"
-	cmpEvent "github.com/cortezaproject/corteza/server/compose/service/event"
-	discoveryService "github.com/cortezaproject/corteza/server/discovery/service"
-	fedService "github.com/cortezaproject/corteza/server/federation/service"
-	"github.com/cortezaproject/corteza/server/pkg/actionlog"
-	"github.com/cortezaproject/corteza/server/pkg/apigw"
-	apigwTypes "github.com/cortezaproject/corteza/server/pkg/apigw/types"
-	"github.com/cortezaproject/corteza/server/pkg/auth"
-	"github.com/cortezaproject/corteza/server/pkg/corredor"
-	"github.com/cortezaproject/corteza/server/pkg/eventbus"
-	"github.com/cortezaproject/corteza/server/pkg/healthcheck"
-	"github.com/cortezaproject/corteza/server/pkg/http"
-	"github.com/cortezaproject/corteza/server/pkg/locale"
-	"github.com/cortezaproject/corteza/server/pkg/logger"
-	"github.com/cortezaproject/corteza/server/pkg/mail"
-	"github.com/cortezaproject/corteza/server/pkg/messagebus"
-	"github.com/cortezaproject/corteza/server/pkg/monitor"
-	"github.com/cortezaproject/corteza/server/pkg/options"
-	"github.com/cortezaproject/corteza/server/pkg/provision"
-	"github.com/cortezaproject/corteza/server/pkg/rbac"
-	"github.com/cortezaproject/corteza/server/pkg/scheduler"
-	"github.com/cortezaproject/corteza/server/pkg/sentry"
-	"github.com/cortezaproject/corteza/server/pkg/valuestore"
-	"github.com/cortezaproject/corteza/server/pkg/version"
-	"github.com/cortezaproject/corteza/server/pkg/websocket"
-	"github.com/cortezaproject/corteza/server/store"
-	"github.com/cortezaproject/corteza/server/system/service"
-	sysService "github.com/cortezaproject/corteza/server/system/service"
-	sysEvent "github.com/cortezaproject/corteza/server/system/service/event"
-	"github.com/cortezaproject/corteza/server/system/types"
-	"github.com/lestrrat-go/jwx/jwt"
-	"go.uber.org/zap"
-	gomail "gopkg.in/mail.v2"
+    authService "github.com/cortezaproject/corteza/server/auth"
+    "github.com/cortezaproject/corteza/server/auth/saml"
+    authSettings "github.com/cortezaproject/corteza/server/auth/settings"
+    autService "github.com/cortezaproject/corteza/server/automation/service"
+    cmpService "github.com/cortezaproject/corteza/server/compose/service"
+    cmpEvent "github.com/cortezaproject/corteza/server/compose/service/event"
+    discoveryService "github.com/cortezaproject/corteza/server/discovery/service"
+    fedService "github.com/cortezaproject/corteza/server/federation/service"
+    "github.com/cortezaproject/corteza/server/pkg/actionlog"
+    "github.com/cortezaproject/corteza/server/pkg/apigw"
+    apigwTypes "github.com/cortezaproject/corteza/server/pkg/apigw/types"
+    "github.com/cortezaproject/corteza/server/pkg/auth"
+    "github.com/cortezaproject/corteza/server/pkg/corredor"
+    "github.com/cortezaproject/corteza/server/pkg/eventbus"
+    "github.com/cortezaproject/corteza/server/pkg/healthcheck"
+    "github.com/cortezaproject/corteza/server/pkg/http"
+    "github.com/cortezaproject/corteza/server/pkg/id"
+    "github.com/cortezaproject/corteza/server/pkg/locale"
+    "github.com/cortezaproject/corteza/server/pkg/logger"
+    "github.com/cortezaproject/corteza/server/pkg/mail"
+    "github.com/cortezaproject/corteza/server/pkg/messagebus"
+    "github.com/cortezaproject/corteza/server/pkg/monitor"
+    "github.com/cortezaproject/corteza/server/pkg/options"
+    "github.com/cortezaproject/corteza/server/pkg/provision"
+    "github.com/cortezaproject/corteza/server/pkg/rbac"
+    "github.com/cortezaproject/corteza/server/pkg/scheduler"
+    "github.com/cortezaproject/corteza/server/pkg/sentry"
+    "github.com/cortezaproject/corteza/server/pkg/valuestore"
+    "github.com/cortezaproject/corteza/server/pkg/version"
+    "github.com/cortezaproject/corteza/server/pkg/websocket"
+    "github.com/cortezaproject/corteza/server/store"
+    "github.com/cortezaproject/corteza/server/system/service"
+    sysService "github.com/cortezaproject/corteza/server/system/service"
+    sysEvent "github.com/cortezaproject/corteza/server/system/service/event"
+    "github.com/cortezaproject/corteza/server/system/types"
+    "github.com/lestrrat-go/jwx/jwt"
+    "go.uber.org/zap"
+    gomail "gopkg.in/mail.v2"
 )
 
 const (
@@ -292,6 +293,14 @@ func (app *CortezaApp) InitServices(ctx context.Context) (err error) {
 		return nil
 	}
 
+	// @todo place this somewhere better
+	id.Init(ctx)
+
+	err = app.initEnvoy(ctx, app.Log)
+	if err != nil {
+		return
+	}
+
 	if err := app.Provision(ctx); err != nil {
 		return err
 	}
@@ -345,7 +354,7 @@ func (app *CortezaApp) InitServices(ctx context.Context) (err error) {
 			log = app.Log
 		}
 
-		//Initialize RBAC subsystem
+		// Initialize RBAC subsystem
 		ac := rbac.NewService(log, app.Store)
 
 		// and (re)load rules from the storage backend
@@ -365,16 +374,17 @@ func (app *CortezaApp) InitServices(ctx context.Context) (err error) {
 	// Note: this is a legacy approach, all services from all 3 apps
 	// will most likely be merged in the future
 	err = sysService.Initialize(ctx, app.Log, app.Store, app.WsServer, sysService.Config{
-		ActionLog: app.Opt.ActionLog,
-		Discovery: app.Opt.Discovery,
-		Storage:   app.Opt.ObjStore,
-		Template:  app.Opt.Template,
-		DB:        app.Opt.DB,
-		Auth:      app.Opt.Auth,
-		RBAC:      app.Opt.RBAC,
-		Limit:     app.Opt.Limit,
+		ActionLog:  app.Opt.ActionLog,
+		Discovery:  app.Opt.Discovery,
+		Storage:    app.Opt.ObjStore,
+		Template:   app.Opt.Template,
+		DB:         app.Opt.DB,
+		Auth:       app.Opt.Auth,
+		RBAC:       app.Opt.RBAC,
+		Limit:      app.Opt.Limit,
+		Attachment: app.Opt.Attachment,
+		Webapps:    app.Opt.Webapp,
 	})
-
 	if err != nil {
 		return
 	}
@@ -403,10 +413,11 @@ func (app *CortezaApp) InitServices(ctx context.Context) (err error) {
 	// Note: this is a legacy approach, all services from all 3 apps
 	// will most likely be merged in the future
 	err = cmpService.Initialize(ctx, app.Log, app.Store, cmpService.Config{
-		ActionLog:  app.Opt.ActionLog,
-		Discovery:  app.Opt.Discovery,
-		Storage:    app.Opt.ObjStore,
-		UserFinder: sysService.DefaultUser,
+		ActionLog:        app.Opt.ActionLog,
+		Discovery:        app.Opt.Discovery,
+		Storage:          app.Opt.ObjStore,
+		UserFinder:       sysService.DefaultUser,
+		SchemaAltManager: sysService.DefaultDalSchemaAlteration,
 	})
 
 	if err != nil {
@@ -446,7 +457,7 @@ func (app *CortezaApp) InitServices(ctx context.Context) (err error) {
 
 	// Initializing discovery
 	if app.Opt.Discovery.Enabled {
-		err = discoveryService.Initialize(ctx, app.Opt.Discovery, app.Store)
+		err = discoveryService.Initialize(ctx, app.Log, app.Opt.Discovery, app.Store)
 		if err != nil {
 			return fmt.Errorf("could not initialize discovery services: %w", err)
 		}
@@ -468,6 +479,8 @@ func (app *CortezaApp) Activate(ctx context.Context) (err error) {
 
 	ctx = actionlog.RequestOriginToContext(ctx, actionlog.RequestOrigin_APP_Activate)
 	defer sentry.Recover()
+
+	ctx = auth.SetIdentityToContext(ctx, auth.ServiceUser())
 
 	// Start scheduler
 	if app.Opt.Eventbus.SchedulerEnabled {
@@ -549,6 +562,12 @@ func (app *CortezaApp) Activate(ctx context.Context) (err error) {
 
 	app.AuthService.Watch(ctx)
 
+    updateSassInstallSettings(ctx, sysService.DefaultStylesheet.SassInstalled(), app.Log)
+	//Generate CSS for webapps
+    if err = sysService.DefaultStylesheet.GenerateCSS(sysService.CurrentSettings, app.Opt.Webapp.ScssDirPath, app.Log); err != nil {
+		return fmt.Errorf("could not generate css for webapps: %w", err)
+	}
+
 	// messagebus reloader and consumer listeners
 	if app.Opt.Messagebus.Enabled {
 
@@ -606,8 +625,8 @@ func (app *CortezaApp) initSystemEntities(ctx context.Context) (err error) {
 
 	app.Log.Debug(
 		"system entities set",
-		zap.Uint64s("users", uu.IDs()),
-		zap.Uint64s("roles", rr.IDs()),
+		logger.Uint64s("users", uu.IDs()),
+		logger.Uint64s("roles", rr.IDs()),
 	)
 
 	return nil
@@ -622,6 +641,8 @@ func updateAuthSettings(svc authServicer, current *types.AppSettings) {
 		PasswordCreateEnabled:     current.Auth.Internal.PasswordCreate.Enabled,
 		SplitCredentialsCheck:     current.Auth.Internal.SplitCredentialsCheck,
 		ExternalEnabled:           current.Auth.External.Enabled,
+		ProfileAvatarEnabled:      current.Auth.Internal.ProfileAvatar.Enabled,
+		SendUserInviteEmail:       current.Auth.Internal.SendUserInviteEmail.Enabled,
 		MultiFactor: authSettings.MultiFactor{
 			TOTP: authSettings.TOTP{
 				Enabled:  current.Auth.MultiFactor.TOTP.Enabled,
@@ -861,7 +882,7 @@ func applySmtpOptionsToSettings(ctx context.Context, log *zap.Logger, opt option
 	// When settings for the SMTP servers are missing,
 	// we'll try to use one from the options (environmental vars)
 	s := &types.SettingValue{Name: "smtp.servers"}
-	err = s.SetValue([]*types.SmtpServers{optServer})
+	err = s.SetSetting([]*types.SmtpServers{optServer})
 
 	if err != nil {
 		return
@@ -922,7 +943,7 @@ func applyApigwOptionsToSettings(ctx context.Context, log *zap.Logger, opt optio
 func updateSetting(ctx context.Context, path string, val interface{}) (err error) {
 	s := &types.SettingValue{Name: path}
 
-	err = s.SetValue(val)
+	err = s.SetSetting(val)
 
 	if err != nil {
 		return
@@ -947,6 +968,14 @@ func updateSmtpSettings(log *zap.Logger, current *types.AppSettings) {
 	setupSmtpDialer(log, current.SMTP.Servers...)
 }
 
+func updateSassInstallSettings(ctx context.Context, sassInstalled bool, log *zap.Logger) {
+	// update dart-sass installed setting
+	err := updateSetting(ctx, "ui.studio.sass-installed", sassInstalled)
+	if err != nil {
+		log.Warn("failed to set ui.studio.sass-installed setting", zap.Error(err))
+	}
+}
+
 func setupSmtpDialer(log *zap.Logger, servers ...types.SmtpServers) {
 	if len(servers) == 0 {
 		log.Warn("no SMTP servers found, email sending will be disabled")
@@ -965,6 +994,7 @@ func setupSmtpDialer(log *zap.Logger, servers ...types.SmtpServers) {
 		zap.String("host", s.Host),
 		zap.Int("port", s.Port),
 		zap.String("user", s.User),
+		zap.String("from", s.From),
 		logger.Mask("pass", s.Pass),
 		zap.Bool("tsl-insecure", s.TlsInsecure),
 		zap.String("tls-server-name", s.TlsServerName),

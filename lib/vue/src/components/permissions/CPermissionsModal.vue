@@ -7,18 +7,14 @@
       :title="translatedTitle"
       lazy
       scrollable
-      :ok-disabled="submitDisabled"
-      :ok-title="labels.save"
-      :cancel-title="labels.cancel"
-      cancel-variant="light"
+      no-fade
       body-class="d-flex flex-column p-0"
       class="h-100 overflow-hidden"
       @hide="onHide"
-      @ok="onSubmit"
     >
       <b-row
         no-gutters
-        class="bg-extra-light border-bottom"
+        class="bg-light border-bottom"
       >
         <b-col
           lg="4"
@@ -36,7 +32,7 @@
       <b-row
         no-gutters
         align-v="stretch"
-        class="bg-extra-light"
+        class="bg-light"
       >
         <b-col
           lg="4"
@@ -47,15 +43,12 @@
             :label="labels.edit.label"
             label-class="text-primary"
           >
-            <vue-select
-              v-model="currentRole"
+            <c-input-role
               data-test-id="select-user-list-roles"
-              key="roleID"
-              label="name"
+              v-model="currentRoleID"
+              :visible="isRoleVisible"
               :clearable="false"
-              :options="roles"
-              append-to-body
-              class="h-100 bg-white"
+              preselect
               @input="onRoleChange"
             />
           </b-form-group>
@@ -73,10 +66,11 @@
             v-for="(n, index) in getEvalName(e)"
             :key="index"
             :title="n"
-            class="pointer text-center text-primary text-break mb-1"
+            class="pointer text-center text-primary mb-1"
           >
             {{ n }}
           </label>
+
           <font-awesome-icon
             :icon="['fas', 'plus']"
             class="text-secondary rotate mt-1"
@@ -90,7 +84,7 @@
           class="d-none d-lg-flex pointer border-bottom flex-column align-items-center justify-content-center overflow-hidden border-left p-3"
         >
           <label
-            class="pointer text-center text-primary text-break mb-1"
+            class="pointer text-center text-primary mb-1"
           >
             {{ labels.add.label }}
           </label>
@@ -107,6 +101,7 @@
         style="min-height: 50vh;"
       >
         <b-spinner />
+
         <div>
           {{ labels.loading }}
         </div>
@@ -124,11 +119,12 @@
             :rules.sync="rules"
           />
         </b-col>
+
         <b-col
           v-for="(e, i) in evaluate"
           :key="i"
           lg="2"
-          class="d-none d-lg-flex border-left p-3 bg-extra-light not-allowed"
+          class="d-none d-lg-flex border-left p-3 bg-light not-allowed"
         >
           <div
             class="d-flex flex-column align-items-center justify-content-between mt-4 w-100"
@@ -136,7 +132,7 @@
             <h5
               v-for="r in e.rules"
               :key="r.operation"
-              :title="getRuleTooltip(r.access === 'unknown-context', !!e.userID)"
+              v-b-tooltip.noninteractive.hover="{ title: getRuleTooltip(r.access === 'unknown-context', !!e.userID), container: '#body' }"
               class="text-center mb-1 mt-2 w-100"
             >
               <font-awesome-icon
@@ -144,11 +140,13 @@
                 :icon="['fas', 'question']"
                 class="text-secondary"
               />
+
               <font-awesome-icon
                 v-else-if="r.access === 'allow'"
                 :icon="['fas', 'check']"
                 class="text-success"
               />
+
               <font-awesome-icon
                 v-else
                 :icon="['fas', 'times']"
@@ -162,33 +160,43 @@
           class="d-none d-lg-block pt-4 border-left"
         />
       </b-row>
+
+      <template #modal-footer>
+        <b-button
+          data-test-id="button-cancel"
+          variant="light"
+          @click="onHide"
+        >
+          {{ labels.cancel }}
+        </b-button>
+
+        <c-button-submit
+          data-test-id="button-save"
+          :disabled="submitDisabled"
+          :processing="submitting"
+          :text="labels.save"
+          @submit="onSubmit"
+        />
+      </template>
     </b-modal>
 
     <b-modal
       id="permissions-modal-eval"
       :title="labels.add.title"
       centered
-      ok-only
-      :ok-title="labels.add.save"
-      :ok-disabled="!addEnabled"
-      @ok="onAddEval"
+      no-fade
     >
       <b-form-group
         :label="labels.add.role.label"
         label-class="text-primary"
         class="mb-0"
       >
-        <vue-select
+        <c-input-role
           data-test-id="select-role"
-          key="roleID"
-          v-model="add.roleID"
-          :options="roles"
-          label="name"
-          multiple
-          clearable
-          :disabled="!!add.userID"
           :placeholder="labels.add.role.placeholder"
-          class="bg-white"
+          v-model="add.roleID"
+          multiple
+          :disabled="!!add.userID"
         />
       </b-form-group>
 
@@ -197,26 +205,35 @@
         label-class="text-primary"
         class="mt-3 mb-0"
       >
-        <vue-select
+        <c-input-select
           data-test-id="select-user"
-          key="userID"
           v-model="add.userID"
           :disabled="!!add.roleID.length"
           :options="userOptions"
           :get-option-label="getUserLabel"
-          label="name"
-          clearable
+          :get-option-key="getOptionUserKey"
           :placeholder="labels.add.user.placeholder"
-          class="bg-white"
+          :filterable="false"
           @search="searchUsers"
         />
       </b-form-group>
+
+      <template #modal-footer>
+        <c-button-submit
+          data-test-id="button-save"
+          :disabled="!addEnabled"
+          :processing="processing"
+          :text="labels.add.save"
+          @submit="onAddEval"
+        />
+      </template>
     </b-modal>
   </div>
 </template>
 <script lang="js">
 import { modalOpenEventName, split } from './def.ts'
-import { VueSelect } from 'vue-select'
+import CInputSelect from '../input/CInputSelect.vue'
+import CInputRole from '../input/CInputRole.vue'
 import Rules from './form/Rules.vue'
 
 export default {
@@ -226,7 +243,8 @@ export default {
 
   components: {
     Rules,
-    VueSelect,
+    CInputSelect,
+    CInputRole,
   },
 
   props: {
@@ -240,6 +258,7 @@ export default {
   data () {
     return {
       processing: false,
+      submitting: false,
 
       backendComponentName: undefined,
 
@@ -256,13 +275,11 @@ export default {
       // List of rules for the current role
       rules: [],
 
-      // List of all available roles
-      roles: [],
-
-      // Current role object
-      currentRole: undefined,
+      currentRoleID: undefined,
 
       evaluate: [],
+
+      fetchedUsers: {},
 
       add: {
         roleID: [],
@@ -286,7 +303,7 @@ export default {
     },
 
     submitDisabled () {
-      return !this.dirty
+      return !this.dirty || this.processing || this.submitting
     },
 
     addEnabled () {
@@ -317,7 +334,18 @@ export default {
   mounted () {
     this.searchUsers('', () => {})
 
-    this.$root.$on(modalOpenEventName, ({ resource, title, target, allSpecific }) => {
+    this.$root.$on(modalOpenEventName, this.loadModal)
+  },
+
+  beforeDestroy () {
+    this.destroyEvents()
+    this.setDefaultValues()
+  },
+
+  methods: {
+    loadModal ({ resource, title, target, allSpecific }) {
+      this.processing = true
+
       this.resource = resource
       this.title = title
       this.target = target
@@ -327,105 +355,64 @@ export default {
       this.backendComponentName = resource.split(':')[2]
 
       this.fetchPermissions().then(() => {
-        if (!this.roles.length) {
-          return this.fetchRoles()
-        } else if (this.currentRole) {
-          const { roleID } = this.currentRole
-          this.processing = true
-  
-          return this.fetchRules(roleID).then(() => {
-            return Promise.all(this.evaluate.map(e => {
-              const { userID } = e.userID || {}
-              let { roleID = [] } = e
-              roleID = roleID.map(({ roleID }) => roleID)
-    
-              return this.evaluatePermissions({ roleID, userID }).then(rules => {
-                return {
-                  ...e,
-                  rules,
-                }
-              })
-            })).then(evaluate => {
-              this.evaluate = evaluate
-            })
-          })
+        if (this.currentRoleID) {
+          const { roleID } = this.currentRoleID
+          return this.reEvaluatePermissions(roleID)
         }
+      }).finally(() => {
+        this.processing = false
       })
-
-    })
-  },
-
-  destroyed () {
-    this.$root.$off(modalOpenEventName)
-  },
-
-  methods: {
-    onHide () {
-      this.clear()
     },
 
-    clear () {
+    onHide () {
       this.resource = undefined
       this.title = undefined
       this.target = undefined
     },
 
     onRoleChange ({ roleID }) {
-      this.fetchRules(roleID)
-    },
-
-    onSubmit () {
       this.processing = true
 
-      const rules = this.collectChangedRules()
-      const { roleID } = this.currentRole
-
-      this.api.permissionsUpdate({ roleID, rules }).then(() => {
-        this.fetchRules(roleID)
-      }).finally(() => {
+      this.fetchRules(roleID).finally(() => {
         this.processing = false
       })
     },
 
-    async fetchPermissions () {
-      this.processing = true
+    onSubmit () {
+      this.submitting = true
 
+      const rules = this.collectChangedRules()
+      const { roleID } = this.currentRoleID
+
+      this.api.permissionsUpdate({ roleID, rules }).then(() => {
+        this.reEvaluatePermissions(roleID)
+        this.toastSuccess(this.$t('permissions:ui.notification.save.success'))
+      }).catch(this.toastErrorHandler(this.$t('permissions:ui.notification.save.failed')))
+        .finally(() => {
+          setTimeout(() => {
+            this.submitting = false
+          }, 300)
+        })
+    },
+
+    async fetchPermissions () {
       // clean loaded rules
       this.rules = []
       this.permissions = []
 
       return this.api.permissionsList().then((pp) => {
         this.permissions = this.filterPermissions(pp)
-      }).finally(() => {
-        this.processing = false
       })
     },
 
     async fetchRules (roleID) {
-      this.processing = true
-
       return this.api.permissionsRead({ roleID, resource: this.resource }).then((rules) => {
         this.rules = this.normalizeRules(rules)
-      }).finally(() => {
-        this.processing = false
       })
     },
 
-    async fetchRoles () {
-      this.processing = true
-      // Roles are always fetched from $SystemAPI.
-      return this.$SystemAPI.roleList().then(({ set }) => {
-        this.roles = set
-          .filter(({ isBypass }) => !isBypass)
-          .sort((a, b) => a.roleID.localeCompare(b.roleID))
-
-        if (this.roles.length > 0) {
-          this.currentRole = this.roles[0]
-          this.onRoleChange(this.currentRole)
-        }
-      }).finally(() => {
-        this.processing = false
-      })
+    isRoleVisible ({ isBypass }) {
+      return !isBypass
     },
 
     async evaluatePermissions ({ resource = this.resource, roleID, userID }) {
@@ -438,24 +425,50 @@ export default {
         })
     },
 
+    async reEvaluatePermissions (roleID) {
+      return this.fetchRules(roleID).then(() => {
+        return Promise.all(this.evaluate.map(e => {
+          let { roleID = [], userID } = e
+          roleID = roleID.map(({ roleID }) => roleID)
+
+          return this.evaluatePermissions({ roleID, userID }).then(rules => {
+            return {
+              ...e,
+              rules,
+            }
+          })
+        })).then(evaluate => {
+          this.evaluate = evaluate
+        })
+      })
+    },
+
     searchUsers (query = '', loading) {
       loading(true)
 
       this.$SystemAPI.userList({ query, limit: 15 })
         .then(({ set }) => {
-          this.userOptions = set.map(m => Object.freeze(m))
+          this.userOptions = set.reduce((acc, { userID, name, username, email, handle }) => {
+            if (!this.fetchedUsers[userID]) {
+              this.fetchedUsers[userID] = name || username || email || `<@${userID}>`
+            }
+
+            acc.push(userID)
+
+            return acc
+          }, [])
         })
         .finally(() => {
           loading(false)
         })
     },
 
-    getUserLabel ({ userID, email, name, username }) {
-      return name || username || email || `<@${userID}>`
+    getUserLabel (userID) {
+      return this.fetchedUsers[userID]
     },
 
     onAddEval () {
-      const { userID } = this.add.userID || {}
+      const userID = this.add.userID || {}
       let { roleID = [] } = this.add
       roleID = roleID.map(({ roleID }) => roleID)
 
@@ -469,6 +482,8 @@ export default {
           roleID: [],
           userID: undefined,
         }
+
+        this.$bvModal.hide('permissions-modal-eval')
       })
     },
 
@@ -476,10 +491,9 @@ export default {
       this.evaluate.splice(i, 1)
     },
 
-    getEvalName ({ roleID, userID }) {
+    getEvalName ({ userID, roleID }) {
       if (userID) {
-        const { name, username, email, handle } = userID
-        return [name || username || email || handle || userID || '']
+        return [this.fetchedUsers[userID]]
       } else {
         return roleID.map(({ name }) => name)
       }
@@ -489,12 +503,12 @@ export default {
       const inherit = 'inherit'
 
       // merges roleRules (subset) with list of all permissions
-      const findCurrent = ({ resource, operation }) => {
+      const findCurrent = ({ operation }) => {
         if (!rr) {
           return inherit
         }
 
-        let { resolution, access = inherit } = (rr.find(r => r.resource === resource && r.operation === operation) || {})
+        let { resolution, access = inherit } = (rr.find(r => r.operation === operation) || {})
 
         if (resolution === 'unknown-context') {
           access = 'unknown-context'
@@ -558,6 +572,31 @@ export default {
 
       return this.$t(`permissions:ui.tooltip.unknown-context.${isUser ? 'user' : 'role'}`)
     },
+
+    getOptionRoleKey ({ roleID }) {
+      return roleID
+    },
+
+    setDefaultValues () {
+      this.processing = false
+      this.submitting = false
+      this.backendComponentName = undefined
+      this.resource = undefined
+      this.title = undefined
+      this.target = undefined
+      this.allSpecific = false
+      this.userOptions = []
+      this.permissions = []
+      this.rules = []
+      this.currentRoleID = undefined
+      this.evaluate = []
+      this.add = {}
+      this.fetchedUsers = {}
+    },
+
+    destroyEvents() {
+      this.$root.$off(modalOpenEventName)
+    },
   },
 }
 </script>
@@ -566,9 +605,7 @@ export default {
 .not-allowed {
   cursor: not-allowed;
 }
-.bg-extra-light {
-  background-color: #F3F5F7;
-}
+
 .pointer {
   cursor: pointer;
 }
@@ -578,20 +615,7 @@ export default {
 
 .hide-eval:hover {
   .rotate {
-    color: #162425 !important;
+    color: var(--primary) !important;
   }
-}
-</style>
-
-<style lang="scss">
-#permissions-modal, #permissions-modal-eval {
-  .v-select {
-    min-width: 100%;
-
-    .vs__selected-options {
-      flex-wrap: wrap;
-    }
-  }
-
 }
 </style>

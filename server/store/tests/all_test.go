@@ -68,11 +68,17 @@ func testAllGenerated(t *testing.T, s store.Storer) {
 	t.Run("composePage", func(t *testing.T) {
 		testComposePages(t, s)
 	})
+	t.Run("composePageLayout", func(t *testing.T) {
+		testComposePageLayouts(t, s)
+	})
 	t.Run("credential", func(t *testing.T) {
 		testCredentials(t, s)
 	})
 	t.Run("dalConnection", func(t *testing.T) {
 		testDalConnections(t, s)
+	})
+	t.Run("dalSchemaAlteration", func(t *testing.T) {
+		testDalSchemaAlterations(t, s)
 	})
 	t.Run("dalSensitivityLevel", func(t *testing.T) {
 		testDalSensitivityLevels(t, s)

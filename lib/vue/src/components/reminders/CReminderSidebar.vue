@@ -1,13 +1,13 @@
 <template>
   <b-sidebar
     v-model="isVisible"
-    header-class="d-flex align-items-center justify-content-between reminder-sidebar-header px-2 py-3 border-bottom"
-    body-class="bg-white px-2"
     :title="title"
+    header-class="d-flex align-items-center justify-content-between reminder-sidebar-header p-3 border-bottom"
+    body-class="d-flex flex-column overflow-hidden bg-white"
     :backdrop="isMobile"
     no-footer
     right
-    shadow
+    shadow="sm"
     no-close-on-route-change
     no-close-on-esc
   >
@@ -70,6 +70,6 @@ export default {
 <style lang="scss">
 .reminder-sidebar-header {
   height: 64px;
-  background-color: #F4F7FA;
+  background-color: var(--gray-200);
 }
 </style>

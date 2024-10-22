@@ -1,29 +1,29 @@
 package service
 
 import (
-	"context"
-	"errors"
-	"time"
+    "context"
+    "errors"
+    "github.com/bep/godartsass/v2"
+    "time"
 
-	"github.com/cortezaproject/corteza/server/pkg/dal"
-	"github.com/cortezaproject/corteza/server/pkg/discovery"
-	"github.com/cortezaproject/corteza/server/pkg/valuestore"
-
-	automationService "github.com/cortezaproject/corteza/server/automation/service"
-	"github.com/cortezaproject/corteza/server/pkg/actionlog"
-	"github.com/cortezaproject/corteza/server/pkg/eventbus"
-	"github.com/cortezaproject/corteza/server/pkg/healthcheck"
-	"github.com/cortezaproject/corteza/server/pkg/id"
-	"github.com/cortezaproject/corteza/server/pkg/logger"
-	"github.com/cortezaproject/corteza/server/pkg/objstore"
-	"github.com/cortezaproject/corteza/server/pkg/objstore/minio"
-	"github.com/cortezaproject/corteza/server/pkg/objstore/plain"
-	"github.com/cortezaproject/corteza/server/pkg/options"
-	"github.com/cortezaproject/corteza/server/pkg/rbac"
-	"github.com/cortezaproject/corteza/server/store"
-	"github.com/cortezaproject/corteza/server/system/automation"
-	"github.com/cortezaproject/corteza/server/system/types"
-	"go.uber.org/zap"
+    automationService "github.com/cortezaproject/corteza/server/automation/service"
+    discoveryService "github.com/cortezaproject/corteza/server/discovery/service"
+    "github.com/cortezaproject/corteza/server/pkg/actionlog"
+    "github.com/cortezaproject/corteza/server/pkg/dal"
+    "github.com/cortezaproject/corteza/server/pkg/eventbus"
+    "github.com/cortezaproject/corteza/server/pkg/healthcheck"
+    "github.com/cortezaproject/corteza/server/pkg/id"
+    "github.com/cortezaproject/corteza/server/pkg/logger"
+    "github.com/cortezaproject/corteza/server/pkg/objstore"
+    "github.com/cortezaproject/corteza/server/pkg/objstore/minio"
+    "github.com/cortezaproject/corteza/server/pkg/objstore/plain"
+    "github.com/cortezaproject/corteza/server/pkg/options"
+    "github.com/cortezaproject/corteza/server/pkg/rbac"
+    "github.com/cortezaproject/corteza/server/pkg/valuestore"
+    "github.com/cortezaproject/corteza/server/store"
+    "github.com/cortezaproject/corteza/server/system/automation"
+    "github.com/cortezaproject/corteza/server/system/types"
+    "go.uber.org/zap"
 )
 
 type (
@@ -32,14 +32,16 @@ type (
 	}
 
 	Config struct {
-		ActionLog options.ActionLogOpt
-		Discovery options.DiscoveryOpt
-		Storage   options.ObjectStoreOpt
-		DB        options.DBOpt
-		Template  options.TemplateOpt
-		Auth      options.AuthOpt
-		RBAC      options.RbacOpt
-		Limit     options.LimitOpt
+		ActionLog  options.ActionLogOpt
+		Discovery  options.DiscoveryOpt
+		Storage    options.ObjectStoreOpt
+		DB         options.DBOpt
+		Template   options.TemplateOpt
+		Auth       options.AuthOpt
+		RBAC       options.RbacOpt
+		Limit      options.LimitOpt
+		Attachment options.AttachmentOpt
+		Webapps    options.WebappOpt
 	}
 
 	eventDispatcher interface {
@@ -61,6 +63,8 @@ var (
 	// DefaultSettings controls system's settings
 	DefaultSettings *settings
 
+    DefaultStylesheet *stylesheet
+
 	// DefaultAccessControl Access control checking
 	DefaultAccessControl *accessControl
 
@@ -79,6 +83,7 @@ var (
 	DefaultCredentials         *credentials
 	DefaultDalConnection       *dalConnection
 	DefaultDalSensitivityLevel *dalSensitivityLevel
+	DefaultDalSchemaAlteration *dalSchemaAlteration
 	DefaultRole                *role
 	DefaultApplication         *application
 	DefaultReminder            ReminderService
@@ -92,6 +97,7 @@ var (
 	DefaultReport              *report
 	DefaultDataPrivacy         *dataPrivacy
 	DefaultSMTPChecker         *smtpConfigurationChecker
+	DefaultExpression          *expression
 
 	DefaultStatistics *statistics
 
@@ -139,9 +145,9 @@ func Initialize(ctx context.Context, log *zap.Logger, s store.Storer, ws websock
 			l = zap.NewNop()
 		}
 
-		DefaultResourceActivityLog := discovery.Service(l, c.Discovery, DefaultStore, eventbus.Service())
-		err = DefaultResourceActivityLog.InitResourceActivityLog(ctx, []string{
-			//(types.User{}).RbacResource(), // @todo user?? suppose to be system:user
+		DefaultResourceActivity := discoveryService.ResourceActivity(l, c.Discovery, DefaultStore, eventbus.Service())
+		err = DefaultResourceActivity.InitResourceActivityLog(ctx, []string{
+			// (types.User{}).RbacResource(), // @todo user?? suppose to be system:user
 			"system:user",
 		})
 		if err != nil {
@@ -149,16 +155,18 @@ func Initialize(ctx context.Context, log *zap.Logger, s store.Storer, ws websock
 		}
 	}
 
+    sassTranspiler := dartSassTranspiler(log)
+
 	DefaultAccessControl = AccessControl(s)
 
-	DefaultSettings = Settings(ctx, DefaultStore, DefaultLogger, DefaultAccessControl, DefaultActionlog, CurrentSettings)
+	DefaultSettings = Settings(ctx, DefaultStore, DefaultLogger, DefaultAccessControl, DefaultActionlog, CurrentSettings, c.Webapps)
+    DefaultStylesheet = Stylesheet(sassTranspiler, log)
 
 	DefaultDalConnection = Connection(ctx, dal.Service(), c.DB)
 
 	DefaultDalSensitivityLevel = SensitivityLevel(ctx, dal.Service())
-	if err != nil {
-		return
-	}
+
+	DefaultDalSchemaAlteration = DalSchemaAlteration(dal.Service())
 
 	if DefaultObjectStore == nil {
 		var (
@@ -191,18 +199,20 @@ func Initialize(ctx context.Context, log *zap.Logger, s store.Storer, ws websock
 				zap.Error(err))
 		}
 
+		hcd.Add(objstore.Healthcheck(DefaultObjectStore), "ObjectStore/System")
+
 		if err != nil {
 			return err
 		}
-	}
 
-	hcd.Add(objstore.Healthcheck(DefaultObjectStore), "ObjectStore/System")
+	}
 
 	DefaultRenderer = Renderer(c.Template)
 	DefaultResourceTranslation = ResourceTranslation()
 	DefaultAuthNotification = AuthNotification(CurrentSettings, DefaultRenderer, c.Auth)
 	DefaultAuth = Auth(AuthOptions{LimitUsers: c.Limit.SystemUsers})
 	DefaultAuthClient = AuthClient(DefaultStore, DefaultAccessControl, DefaultActionlog, eventbus.Service(), c.Auth)
+	DefaultAttachment = Attachment(DefaultObjectStore, c.Attachment, DefaultLogger)
 	DefaultUser = User(UserOptions{LimitUsers: c.Limit.SystemUsers})
 	DefaultCredentials = Credentials()
 	DefaultReport = Report(DefaultStore, DefaultAccessControl, DefaultActionlog, eventbus.Service())
@@ -211,13 +221,13 @@ func Initialize(ctx context.Context, log *zap.Logger, s store.Storer, ws websock
 	DefaultReminder = Reminder(ctx, DefaultLogger.Named("reminder"), ws)
 	DefaultSink = Sink()
 	DefaultStatistics = Statistics()
-	DefaultAttachment = Attachment(DefaultObjectStore)
 	DefaultQueue = Queue()
 	DefaultApigwRoute = Route()
 	DefaultApigwProfiler = Profiler()
 	DefaultApigwFilter = Filter()
 	DefaultDataPrivacy = DataPrivacy(DefaultStore, DefaultAccessControl, DefaultActionlog, eventbus.Service())
 	DefaultSMTPChecker = SmtpConfigurationChecker(CurrentSettings, DefaultRenderer, DefaultAccessControl, c.Auth)
+	DefaultExpression = Expression()
 
 	if err = initRoles(ctx, log.Named("rbac.roles"), c.RBAC, eventbus.Service(), rbac.Global()); err != nil {
 		return err
@@ -339,4 +349,17 @@ func isStale(new *time.Time, updatedAt *time.Time, createdAt time.Time) bool {
 	}
 
 	return new.Equal(createdAt)
+}
+
+func dartSassTranspiler(log *zap.Logger) *godartsass.Transpiler {
+    transpiler, err := godartsass.Start(godartsass.Options{
+        DartSassEmbeddedFilename: "sass",
+    })
+
+    if err != nil {
+        log.Warn("dart sass is not installed in your system", zap.Error(err))
+        return nil
+    }
+
+    return transpiler
 }

@@ -557,6 +557,66 @@ func UserActionDeleteAuthSessions(props ...*userActionProps) *userAction {
 	return a
 }
 
+// UserActionUploadAvatar returns "system:user.uploadAvatar" action
+//
+// This function is auto-generated.
+//
+func UserActionUploadAvatar(props ...*userActionProps) *userAction {
+	a := &userAction{
+		timestamp: time.Now(),
+		resource:  "system:user",
+		action:    "uploadAvatar",
+		log:       "uploaded avatar of {{user}}",
+		severity:  actionlog.Notice,
+	}
+
+	if len(props) > 0 {
+		a.props = props[0]
+	}
+
+	return a
+}
+
+// UserActionGenerateAvatar returns "system:user.generateAvatar" action
+//
+// This function is auto-generated.
+//
+func UserActionGenerateAvatar(props ...*userActionProps) *userAction {
+	a := &userAction{
+		timestamp: time.Now(),
+		resource:  "system:user",
+		action:    "generateAvatar",
+		log:       "generated avatar of {{user}}",
+		severity:  actionlog.Notice,
+	}
+
+	if len(props) > 0 {
+		a.props = props[0]
+	}
+
+	return a
+}
+
+// UserActionDeleteAvatar returns "system:user.deleteAvatar" action
+//
+// This function is auto-generated.
+//
+func UserActionDeleteAvatar(props ...*userActionProps) *userAction {
+	a := &userAction{
+		timestamp: time.Now(),
+		resource:  "system:user",
+		action:    "deleteAvatar",
+		log:       "deleted avatar of {{user}}",
+		severity:  actionlog.Notice,
+	}
+
+	if len(props) > 0 {
+		a.props = props[0]
+	}
+
+	return a
+}
+
 // *********************************************************************************************************************
 // *********************************************************************************************************************
 // Error constructors
@@ -723,6 +783,40 @@ func UserErrInvalidEmail(mm ...*userActionProps) *errors.Error {
 		// translation namespace & key
 		errors.Meta(locale.ErrorMetaNamespace{}, "system"),
 		errors.Meta(locale.ErrorMetaKey{}, "user.errors.invalidEmail"),
+
+		errors.StackSkip(1),
+	)
+
+	if len(mm) > 0 {
+	}
+
+	return e
+}
+
+// UserErrStaleData returns "system:user.staleData" as *errors.Error
+//
+//
+// This function is auto-generated.
+//
+func UserErrStaleData(mm ...*userActionProps) *errors.Error {
+	var p = &userActionProps{}
+	if len(mm) > 0 {
+		p = mm[0]
+	}
+
+	var e = errors.New(
+		errors.KindInternal,
+
+		p.Format("stale data", nil),
+
+		errors.Meta("type", "staleData"),
+		errors.Meta("resource", "system:user"),
+
+		errors.Meta(userPropsMetaKey{}, p),
+
+		// translation namespace & key
+		errors.Meta(locale.ErrorMetaNamespace{}, "system"),
+		errors.Meta(locale.ErrorMetaKey{}, "user.errors.staleData"),
 
 		errors.StackSkip(1),
 	)
@@ -1295,6 +1389,42 @@ func UserErrMaxUserLimitReached(mm ...*userActionProps) *errors.Error {
 		// translation namespace & key
 		errors.Meta(locale.ErrorMetaNamespace{}, "system"),
 		errors.Meta(locale.ErrorMetaKey{}, "user.errors.maxUserLimitReached"),
+
+		errors.StackSkip(1),
+	)
+
+	if len(mm) > 0 {
+	}
+
+	return e
+}
+
+// UserErrNotAllowedToDeleteAvatar returns "system:user.notAllowedToDeleteAvatar" as *errors.Error
+//
+//
+// This function is auto-generated.
+//
+func UserErrNotAllowedToDeleteAvatar(mm ...*userActionProps) *errors.Error {
+	var p = &userActionProps{}
+	if len(mm) > 0 {
+		p = mm[0]
+	}
+
+	var e = errors.New(
+		errors.KindInternal,
+
+		p.Format("not allowed to delete avatar for this user", nil),
+
+		errors.Meta("type", "notAllowedToDeleteAvatar"),
+		errors.Meta("resource", "system:user"),
+
+		// action log entry; no formatting, it will be applied inside recordAction fn.
+		errors.Meta(userLogMetaKey{}, "failed to delete {{user.handle}}'s avatar; insufficient permissions"),
+		errors.Meta(userPropsMetaKey{}, p),
+
+		// translation namespace & key
+		errors.Meta(locale.ErrorMetaNamespace{}, "system"),
+		errors.Meta(locale.ErrorMetaKey{}, "user.errors.notAllowedToDeleteAvatar"),
 
 		errors.StackSkip(1),
 	)

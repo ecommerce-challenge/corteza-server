@@ -24,6 +24,8 @@
         singlePluralPagination: 'general:resourceList.pagination.single',
         prevPagination: $t('general:resourceList.pagination.prev'),
         nextPagination: $t('general:resourceList.pagination.next'),
+        resourceSingle: $t('general:label.privacy_request.single'),
+        resourcePlural: $t('general:label.privacy_request.plural'),
       }"
       :is-item-selectable="isItemSelectable"
       selectable
@@ -38,39 +40,36 @@
           <c-input-confirm
             v-if="isDC"
             :disabled="processing || !selected.length"
-            :borderless="false"
+            :processing="processingApprove"
+            :text="$t('request.approve')"
             variant="primary"
             size="lg"
             size-confirm="lg"
             @confirmed="handleSelectedRequests(selected, 'approved')"
-          >
-            {{ $t('request.approve') }}
-          </c-input-confirm>
+          />
+
           <c-input-confirm
             v-if="isDC"
             :disabled="processing || !selected.length"
-            :borderless="false"
+            :processing="processingReject"
+            :text="$t('request.reject')"
             variant="danger"
             size="lg"
             size-confirm="lg"
-            class="ml-1"
             @confirmed="handleSelectedRequests(selected, 'rejected')"
-          >
-            {{ $t('request.reject') }}
-          </c-input-confirm>
+          />
         </template>
 
         <template v-else>
           <c-input-confirm
-            :borderless="false"
             :disabled="processing || !selected.length"
+            :processing="processingCancel"
+            :text="$t('request.cancel')"
             variant="light"
             size="lg"
             size-confirm="lg"
             @confirmed="handleSelectedRequests(selected, 'canceled')"
-          >
-            {{ $t('request.cancel') }}
-          </c-input-confirm>
+          />
 
           <!-- <b-button
             :disabled="processing"
@@ -124,6 +123,11 @@ export default {
 
   data () {
     return {
+      processing: false,
+      processingApprove: false,
+      processingReject: false,
+      processingCancel: false,
+
       isDC: null,
 
       users: {},
@@ -222,6 +226,14 @@ export default {
     handleSelectedRequests (selected, status) {
       this.processing = true
 
+      if (status === 'approved') {
+        this.processingApprove = true
+      } else if (status === 'rejected') {
+        this.processingReject = true
+      } else {
+        this.processingCancel = true
+      }
+
       Promise.all(selected.map(requestID => {
         return this.$SystemAPI.dataPrivacyRequestUpdateStatus({ requestID, status })
       }))
@@ -229,7 +241,15 @@ export default {
           this.$root.$emit('bv::refresh::table', 'resource-list')
         })
         .finally(() => {
-          this.processing = true
+          this.processing = false
+
+          if (status === 'approved') {
+            this.processingApprove = false
+          } else if (status === 'rejected') {
+            this.processingReject = false
+          } else {
+            this.processingCancel = false
+          }
         })
     },
 

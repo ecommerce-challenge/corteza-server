@@ -1,18 +1,24 @@
 <template>
   <b-tab :title="$t('comment.label')">
-    <b-form-group>
-      <label>{{ $t('general.module') }}</label>
-      <b-form-select
+    <b-form-group
+      label-class="text-primary"
+      :label="$t('general.module')"
+    >
+      <c-input-select
         v-model="options.moduleID"
-        :options="moduleOptions"
-        text-field="name"
-        value-field="moduleID"
+        :options="filterModulesByRecord"
+        label="name"
+        :reduce="m => m.moduleID"
+        :placeholder="$t('comment.module.placeholder')"
+        default-value="0"
         required
       />
     </b-form-group>
+
     <div v-if="selectedModule">
-      <b-form-group>
-        <label>{{ $t('field.selector.available') }}</label>
+      <b-form-group
+        :label="$t('field.selector.available')"
+      >
         <div class="d-flex">
           <div class="border fields w-100 p-2">
             <div
@@ -21,9 +27,12 @@
               class="field"
             >
               <span v-if="field.label">{{ field.label }} ({{ field.name }})</span>
+
               <span v-else>{{ field.name }}</span>
+
               <span class="small float-right">
                 <span v-if="field.isSystem">{{ $t('field.selector.systemField') }}</span>
+
                 <span v-else>{{ field.kind }}</span>
               </span>
             </div>
@@ -32,119 +41,124 @@
       </b-form-group>
 
       <b-form-group
-        horizontal
-        :label-cols="3"
-        breakpoint="md"
         :label="$t('recordList.record.prefilterLabel')"
+        label-class="text-primary"
       >
-        <b-form-textarea
+        <c-input-expression
           v-model.trim="options.filter"
-          :value="true"
+          height="3.688rem"
+          lang="javascript"
+          :suggestion-params="recordAutoCompleteParams"
           :placeholder="$t('recordList.record.prefilterPlaceholder')"
         />
-        <b-form-text>
-          <i18next
-            path="recordList.record.prefilterFootnote"
-            tag="label"
-          >
-            <code>${recordID}</code>
-            <code>${ownerID}</code>
-            <code>${userID}</code>
-          </i18next>
-        </b-form-text>
-      </b-form-group>
 
-      <b-form-group
-        horizontal
-        :label-cols="3"
-        breakpoint="md"
-        :label="$t('comment.titleField.label')"
-      >
-        <b-form-select v-model="options.titleField">
-          <option value="">
-            {{ $t('general.label.none') }}
-          </option>
-          <option
-            v-for="(field, index) in selectedModuleFieldsByType('String')"
-            :key="index"
-            :value="field.name"
-          >
-            {{ field.label || field.name }} ({{ field.kind }})
-          </option>
-        </b-form-select>
-        <b-form-text>{{ $t('comment.titleField.footnote') }}</b-form-text>
-      </b-form-group>
-
-      <b-form-group
-        horizontal
-        :label-cols="3"
-        breakpoint="md"
-        :label="$t('comment.contentField.label')"
-      >
-        <b-form-select v-model="options.contentField">
-          <option value="">
-            {{ $t('general.label.none') }}
-          </option>
-          <option
-            v-for="(field, index) in selectedModuleFieldsByType('String')"
-            :key="index"
-            :value="field.name"
-          >
-            {{ field.label || field.name }} ({{ field.kind }})
-          </option>
-        </b-form-select>
-        <b-form-text class="text-secondary small">
-          {{ $t('comment.contentField.footnote') }}
-        </b-form-text>
-      </b-form-group>
-      <b-form-group
-        horizontal
-        :label-cols="3"
-        breakpoint="md"
-        :label="$t('comment.referenceField.label')"
-      >
-        <b-form-select v-model="options.referenceField">
-          <option value="">
-            {{ $t('general.label.none') }}
-          </option>
-          <option
-            v-for="(field, index) in selectedModuleFieldsByType('Record')"
-            :key="index"
-            :value="field.name"
-          >
-            {{ field.label || field.name }} ({{ field.kind }})
-          </option>
-        </b-form-select>
-        <b-form-text class="text-secondary small">
-          {{ $t('comment.referenceField.footnote') }}
-        </b-form-text>
-      </b-form-group>
-    </div>
-    <b-form-group
-      horizontal
-      :label-cols="3"
-      breakpoint="md"
-      :label="$t('comment.sortDirection.label')"
-    >
-      <b-form-select v-model="options.sortDirection">
-        <option
-          v-for="(item, index) in sortDirections"
-          :key="index"
-          :value="item.value"
+        <i18next
+          path="recordList.record.prefilterFootnote"
+          tag="small"
+          class="text-muted"
         >
-          {{ item.label }}
-        </option>
-      </b-form-select>
-      <b-form-text class="text-secondary small">
-        {{ $t('comment.sortDirection.footnote') }}
-      </b-form-text>
-    </b-form-group>
+          <code>${record.values.fieldName}</code>
+          <code>${recordID}</code>
+          <code>${ownerID}</code>
+          <span><code>${userID}</code>, <code>${user.name}</code></span>
+        </i18next>
+      </b-form-group>
+
+      <b-row>
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('comment.titleField.label')"
+            label-class="text-primary"
+          >
+            <c-input-select
+              v-model="options.titleField"
+              :options="selectedModuleFieldsByType('String')"
+              :get-option-label="f => `${f.label || f.name} (${f.kind})`"
+              :reduce="f => f.name"
+              :placeholder="$t('general.label.none')"
+            />
+            <b-form-text>
+              {{ $t('comment.titleField.footnote') }}
+            </b-form-text>
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('comment.contentField.label')"
+            label-class="text-primary"
+          >
+            <c-input-select
+              v-model="options.contentField"
+              :options="selectedModuleFieldsByType('String')"
+              :get-option-label="f => `${f.label || f.name} (${f.kind})`"
+              :reduce="f => f.name"
+              :placeholder="$t('general.label.none')"
+            />
+            <b-form-text>
+              {{ $t('comment.contentField.footnote') }}
+            </b-form-text>
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('comment.referenceField.label')"
+            label-class="text-primary"
+          >
+            <c-input-select
+              v-model="options.referenceField"
+              :options="selectedModuleFieldsByType('Record')"
+              :get-option-label="f => `${f.label || f.name} (${f.kind})`"
+              :reduce="f => f.name"
+              :placeholder="$t('general.label.none')"
+            />
+            <b-form-text>
+              {{ $t('comment.referenceField.footnote') }}
+            </b-form-text>
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('comment.sortDirection.label')"
+            label-class="text-primary"
+          >
+            <c-input-select
+              v-model="options.sortDirection"
+              :options="sortDirections"
+              label="label"
+              :clearable="false"
+              :reduce="o => o.value"
+            />
+            <b-form-text>
+              {{ $t('comment.sortDirection.footnote') }}
+            </b-form-text>
+          </b-form-group>
+        </b-col>
+      </b-row>
+    </div>
   </b-tab>
 </template>
 <script>
 import { mapGetters } from 'vuex'
-import { NoID } from '@cortezaproject/corteza-js'
+import { components } from '@cortezaproject/corteza-vue'
+import autocomplete from 'corteza-webapp-compose/src/mixins/autocomplete.js'
 import base from './base'
+
+const { CInputExpression } = components
 
 export default {
   i18nOptions: {
@@ -153,24 +167,32 @@ export default {
 
   name: 'CommentConfigurator',
 
+  components: {
+    CInputExpression,
+  },
+
   extends: base,
+
+  mixins: [autocomplete],
+
   data () {
     return {
-      referenceList: [{ label: 'Record ID (recordID)', value: 'recordID' }, { label: 'Page ID (pageID)', value: 'pageID' }],
-      sortDirections: [{ label: this.$t('comment.sortDirection.asc'), value: 'asc' }, { label: this.$t('comment.sortDirection.desc'), value: 'desc' }],
+      referenceList: [
+        { label: 'Record ID (recordID)', value: 'recordID' },
+        { label: 'Page ID (pageID)', value: 'pageID' },
+      ],
+
+      sortDirections: [
+        { label: this.$t('comment.sortDirection.asc'), value: 'asc' },
+        { label: this.$t('comment.sortDirection.desc'), value: 'desc' },
+      ],
     }
   },
+
   computed: {
     ...mapGetters({
       modules: 'module/set',
     }),
-
-    moduleOptions () {
-      return [
-        { moduleID: NoID, name: this.$t('general.label.none') },
-        ...this.filterModulesByRecord,
-      ]
-    },
 
     filterModulesByRecord () {
       if (this.record) {
@@ -211,6 +233,10 @@ export default {
       }
       return []
     },
+
+    recordAutoCompleteParams () {
+      return this.processRecordAutoCompleteParams({ module: this.selectedModule, operators: true })
+    },
   },
 
   watch: {
@@ -236,6 +262,12 @@ export default {
       this.options.sortDirection = 'desc'
     }
   },
+
+  beforeDestroy () {
+    this.referenceList = []
+    this.sortDirections = []
+  },
+
   methods: {
     selectedModuleFieldsByType (type) {
       return (this.selectedModuleFields || []).filter((f) => {

@@ -2,10 +2,11 @@ editor:
   info:
     completedAt: Completed at
     createdAt: Created at
-    createdByUserID: Created by - ID
+    createdBy: Created by - ID
     createdByUserName: Created by - Name
     delete: Delete
     deletedAt: Deleted at
+    suspendedAt: Suspended at
     error: Error
     eventType: Event type
     id: ID
@@ -48,6 +49,8 @@ list:
       label: Started
     suspended:
       label: Suspended
+    canceled:
+      label: Canceled
   loading: Loading sessions
   numFound: '{{count}} session found'
   numFound_plural: '{{count}} sessions found'

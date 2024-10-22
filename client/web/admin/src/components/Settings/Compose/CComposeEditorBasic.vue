@@ -1,73 +1,134 @@
 <template>
   <b-card
+    header-class="border-bottom"
+    footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
     class="shadow-sm"
-    header-bg-variant="white"
-    footer-bg-variant="white"
   >
+    <template #header>
+      <h4 class="m-0">
+        {{ $t('title') }}
+      </h4>
+    </template>
+
     <b-form
       @submit.prevent="$emit('submit', basic)"
     >
-      <h5>{{ $t('attachments.page') }}</h5>
-      <b-form-group
-        :label="$t('attachments.max-size')"
-        label-cols="2"
-      >
-        <b-form-input
-          v-model="basic['compose.page.attachments.max-size']"
-          type="number"
-          number
-        />
-      </b-form-group>
-      <b-form-group
-        :label="$t('attachments.type.whitelist')"
-        :description="$t('attachments.type.description')"
-        label-cols="2"
-        class="mb-0"
-      >
-        <b-input-group>
-          <b-form-input v-model="pageAttachmentWhitelist" />
-        </b-input-group>
-      </b-form-group>
+      <div class="pb-3">
+        <h5>{{ $t('attachments.page') }}</h5>
 
-      <hr>
+        <b-row>
+          <b-col
+            cols="12"
+            lg="6"
+          >
+            <b-form-group
+              :label="$t('attachments.max-size')"
+              label-class="text-primary"
+            >
+              <b-form-input
+                v-model="basic['compose.page.attachments.max-size']"
+                type="number"
+                number
+              />
+            </b-form-group>
+          </b-col>
 
-      <h5>{{ $t('attachments.record') }}</h5>
-      <b-form-group
-        :label="$t('attachments.max-size')"
-        label-cols="2"
-      >
-        <b-input-group>
-          <b-form-input
-            v-model="basic['compose.record.attachments.max-size']"
-            type="number"
-            number
-          />
-        </b-input-group>
-      </b-form-group>
-      <b-form-group
-        :label="$t('attachments.type.whitelist')"
-        :description="$t('attachments.type.description')"
-        label-cols="2"
-        class="mb-0"
-      >
-        <b-input-group class="m-0">
-          <b-form-input v-model="recordAttachmentWhitelist" />
-        </b-input-group>
-      </b-form-group>
+          <b-col
+            cols="12"
+            lg="6"
+          >
+            <b-form-group
+              :label="$t('attachments.type.whitelist')"
+              :description="$t('attachments.type.description')"
+              label-class="text-primary"
+              class="mb-0"
+            >
+              <b-form-input v-model="pageAttachmentWhitelist" />
+            </b-form-group>
+          </b-col>
+        </b-row>
+      </div>
+
+      <div class="pb-3">
+        <h5>{{ $t('attachments.record') }}</h5>
+
+        <b-row>
+          <b-col
+            cols="12"
+            lg="6"
+          >
+            <b-form-group
+              :label="$t('attachments.max-size')"
+              label-class="text-primary"
+            >
+              <b-form-input
+                v-model="basic['compose.record.attachments.max-size']"
+                type="number"
+                number
+              />
+            </b-form-group>
+          </b-col>
+
+          <b-col
+            cols="12"
+            lg="6"
+          >
+            <b-form-group
+              :label="$t('attachments.type.whitelist')"
+              :description="$t('attachments.type.description')"
+              label-class="text-primary"
+              class="mb-0"
+            >
+              <b-form-input v-model="recordAttachmentWhitelist" />
+            </b-form-group>
+          </b-col>
+        </b-row>
+      </div>
+
+      <div>
+        <h5>{{ $t('attachments.icon') }}</h5>
+
+        <b-row>
+          <b-col
+            cols="12"
+            lg="6"
+          >
+            <b-form-group
+              :label="$t('attachments.max-size')"
+              label-class="text-primary"
+            >
+              <b-form-input
+                v-model="basic['compose.icon.attachments.max-size']"
+                type="number"
+                number
+              />
+            </b-form-group>
+          </b-col>
+
+          <b-col
+            cols="12"
+            lg="6"
+          >
+            <b-form-group
+              :label="$t('attachments.type.whitelist')"
+              :description="$t('attachments.type.description')"
+              label-class="text-primary"
+              class="mb-0"
+            >
+              <b-form-input v-model="iconAttachmentWhitelist" />
+            </b-form-group>
+          </b-col>
+        </b-row>
+      </div>
     </b-form>
 
-    <template #header>
-      <h3 class="m-0">
-        {{ $t('title') }}
-      </h3>
-    </template>
-
     <template #footer>
-      <c-submit-button
-        class="float-right"
-        :disabled="!canManage"
+      <c-button-submit
+        v-if="canManage"
         :processing="processing"
         :success="success"
+        :text="$t('admin:general.label.submit')"
+        class="ml-auto"
         @submit="$emit('submit', basic)"
       />
     </template>
@@ -75,7 +136,6 @@
 </template>
 
 <script>
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
 
 export default {
   name: 'CComposeEditorBasic',
@@ -83,10 +143,6 @@ export default {
   i18nOptions: {
     namespaces: 'compose.settings',
     keyPrefix: 'editor.basic',
-  },
-
-  components: {
-    CSubmitButton,
   },
 
   props: {
@@ -129,6 +185,16 @@ export default {
 
       set (value) {
         this.basic['compose.record.attachments.mimetypes'] = this.convertToExternal(value)
+      },
+    },
+
+    iconAttachmentWhitelist: {
+      get () {
+        return (this.basic['compose.icon.attachments.mimetypes'] || []).join(',')
+      },
+
+      set (value) {
+        this.basic['compose.icon.attachments.mimetypes'] = this.convertToExternal(value)
       },
     },
   },

@@ -5,6 +5,7 @@
         :sidebar-pinned="pinned"
         :settings="$Settings.get('ui.topbar', {})"
         :labels="{
+          appMenu: $t('navigation:appMenu'),
           helpForum: $t('navigation:help.forum'),
           helpDocumentation: $t('navigation:help.documentation'),
           helpFeedback: $t('navigation:help.feedback'),
@@ -13,6 +14,8 @@
           userSettingsProfile: $t('navigation:userSettings.profile'),
           userSettingsChangePassword: $t('navigation:userSettings.changePassword'),
           userSettingsLogout: $t('navigation:userSettings.logout'),
+          lightTheme: $t('general:themes.labels.light'),
+          darkTheme: $t('general:themes.labels.dark'),
         }"
       >
         <template #title>
@@ -58,7 +61,7 @@
       -->
       <template>
         <div
-          class="spacer"
+          class="sidebar-spacer d-print-none"
           :class="{
             'expanded': expanded && pinned,
           }"
@@ -66,7 +69,7 @@
       </template>
 
       <div
-        class="d-flex flex-column w-100"
+        class="d-flex flex-column w-100 pb-safari"
       >
         <router-view
           class="flex-grow-1 overflow-auto"
@@ -128,20 +131,12 @@ export default {
 }
 </script>
 
-<style lang="scss" scoped>
-.spacer {
-  min-width: 0;
-  -webkit-transition: min-width 0.2s ease-in-out;
-  -moz-transition: min-width 0.2s ease-in-out;
-  -o-transition: min-width 0.2s ease-in-out;
-  transition: min-width 0.2s ease-in-out;
-
-  &.expanded {
-    min-width: $sidebar-width;
-    -webkit-transition: min-width 0.2s ease-in-out;
-    -moz-transition: min-width 0.2s ease-in-out;
-    -o-transition: min-width 0.2s ease-in-out;
-    transition: min-width 0.2s ease-in-out;
+<style scoped>
+/* fixes bottom part of page being cut off */
+/* CSS specific to iOS devices */
+@supports (-webkit-touch-callout: none) {
+  .pb-safari {
+    padding-bottom: 5.5em;
   }
 }
 </style>

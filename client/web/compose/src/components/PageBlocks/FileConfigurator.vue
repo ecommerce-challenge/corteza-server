@@ -4,6 +4,7 @@
       horizontal
       :description="$t('kind.file.view.modeFootnote')"
       :label="$t('kind.file.view.modeLabel')"
+      label-class="text-primary"
     >
       <b-form-radio-group
         v-model="options.mode"
@@ -14,13 +15,28 @@
         :options="modes"
       />
     </b-form-group>
-    <b-form-checkbox
-      v-model="options.hideFileName"
-      :disabled="!currentPreviewMode"
-      class="mb-3"
-    >
-      {{ $t('kind.file.view.showName') }}
-    </b-form-checkbox>
+
+    <b-form-group>
+      <b-form-checkbox
+        v-if="enablePreviewStyling"
+        v-model="options.hideFileName"
+      >
+        {{ $t('kind.file.view.showName') }}
+      </b-form-checkbox>
+
+      <b-form-checkbox
+        v-model="options.clickToView"
+      >
+        {{ $t('kind.file.view.clickToView') }}
+      </b-form-checkbox>
+
+      <b-form-checkbox
+        v-model="options.enableDownload"
+      >
+        {{ $t('kind.file.view.enableDownload') }}
+      </b-form-checkbox>
+    </b-form-group>
+
     <uploader
       :endpoint="endpoint"
       :max-filesize="$s('compose.Page.Attachments.MaxSize', 100)"
@@ -36,149 +52,134 @@
       class="mt-2"
     />
 
-    <template v-if="currentPreviewMode">
+    <template v-if="enablePreviewStyling">
       <hr>
 
       <h5 class="mb-2">
         {{ $t('kind.file.view.previewStyle') }}
       </h5>
 
+      <small>{{ $t('kind.file.view.description' ) }}</small>
+
       <b-row
         align-v="center"
         class="mb-2 mt-2"
       >
         <b-col
-          sm="12"
-          md="6"
+          cols="12"
+          lg="6"
         >
           <b-form-group
             :label="$t('kind.file.view.height')"
+            label-class="text-primary"
           >
-            <b-input-group
-              :append="$t('kind.file.view.px')"
-            >
+            <b-input-group>
               <b-form-input
                 v-model="options.height"
-                type="number"
-                number
-                :placeholder="$t('kind.file.view.height')"
               />
             </b-input-group>
           </b-form-group>
         </b-col>
 
         <b-col
-          sm="12"
-          md="6"
+          cols="12"
+          lg="6"
         >
           <b-form-group
             :label="$t('kind.file.view.width')"
+            label-class="text-primary"
           >
-            <b-input-group
-              :append="$t('kind.file.view.px')"
-            >
+            <b-input-group>
               <b-form-input
                 v-model="options.width"
-                type="number"
-                number
-                :placeholder="$t('kind.file.view.width')"
               />
             </b-input-group>
           </b-form-group>
         </b-col>
 
         <b-col
-          sm="12"
-          md="6"
+          cols="12"
+          lg="6"
         >
           <b-form-group
             :label="$t('kind.file.view.maxHeight')"
+            label-class="text-primary"
           >
-            <b-input-group
-              :append="$t('kind.file.view.px')"
-            >
+            <b-input-group>
               <b-form-input
                 v-model="options.maxHeight"
-                type="number"
-                number
-                :placeholder="$t('kind.file.view.maxHeight')"
               />
             </b-input-group>
           </b-form-group>
         </b-col>
 
         <b-col
-          sm="12"
-          md="6"
+          cols="12"
+          lg="6"
         >
           <b-form-group
             :label="$t('kind.file.view.maxWidth')"
+            label-class="text-primary"
           >
-            <b-input-group
-              :append="$t('kind.file.view.px')"
-            >
+            <b-input-group>
               <b-form-input
                 v-model="options.maxWidth"
-                type="number"
-                number
-                :placeholder="$t('kind.file.view.maxWidth')"
               />
             </b-input-group>
           </b-form-group>
         </b-col>
 
         <b-col
-          sm="12"
-          md="6"
+          cols="12"
+          lg="6"
         >
           <b-form-group
             :label="$t('kind.file.view.borderRadius')"
+            label-class="text-primary"
           >
-            <b-input-group
-              :append="$t('kind.file.view.px')"
-            >
+            <b-input-group>
               <b-form-input
                 v-model="options.borderRadius"
-                type="number"
-                number
-                :placeholder="$t('kind.file.view.borderRadius')"
               />
             </b-input-group>
           </b-form-group>
         </b-col>
 
         <b-col
-          sm="12"
-          md="6"
-        >
-          <b-form-group
-            :label="$t('kind.file.view.background')"
-          >
-            <b-form-input
-              v-model="options.backgroundColor"
-              type="color"
-              debounce="300"
-            />
-          </b-form-group>
-        </b-col>
-
-        <b-col
-          sm="12"
-          md="6"
+          cols="12"
+          lg="6"
         >
           <b-form-group
             :label="$t('kind.file.view.margin')"
+            label-class="text-primary"
           >
-            <b-input-group
-              :append="$t('kind.file.view.px')"
-            >
+            <b-input-group>
               <b-form-input
                 v-model="options.margin"
-                type="number"
-                number
-                :placeholder="$t('kind.file.view.margin')"
               />
             </b-input-group>
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('kind.file.view.background')"
+            label-class="text-primary"
+          >
+            <c-input-color-picker
+              v-model="options.backgroundColor"
+              :translations="{
+                modalTitle: $t('kind.file.view.colorPicker'),
+                light: $t('general:themes.labels.light'),
+                dark: $t('general:themes.labels.dark'),
+                cancelBtnLabel: $t('general:label.cancel'),
+                saveBtnLabel: $t('general:label.saveAndClose')
+              }"
+              :theme-settings="themeSettings"
+            />
           </b-form-group>
         </b-col>
       </b-row>
@@ -189,6 +190,8 @@
 import base from './base'
 import Uploader from 'corteza-webapp-compose/src/components/Public/Page/Attachment/Uploader'
 import ListLoader from 'corteza-webapp-compose/src/components/Public/Page/Attachment/ListLoader'
+import { components } from '@cortezaproject/corteza-vue'
+const { CInputColorPicker } = components
 
 export default {
   i18nOptions: {
@@ -200,6 +203,7 @@ export default {
   components: {
     Uploader,
     ListLoader,
+    CInputColorPicker,
   },
 
   extends: base,
@@ -217,15 +221,17 @@ export default {
     modes () {
       return [
         { value: 'list', text: this.$t('kind.file.view.list') },
-        { value: 'grid', text: this.$t('kind.file.view.grid') },
-        { value: 'single', text: this.$t('kind.file.view.single') },
         { value: 'gallery', text: this.$t('kind.file.view.gallery') },
       ]
     },
 
-    currentPreviewMode () {
+    enablePreviewStyling () {
       const { mode } = this.options
-      return (mode === 'single') || (mode === 'gallery')
+      return mode === 'gallery'
+    },
+
+    themeSettings () {
+      return this.$Settings.get('ui.studio.themes', [])
     },
   },
 

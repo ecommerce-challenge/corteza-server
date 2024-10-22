@@ -7,7 +7,7 @@ block:
   save: Save Block
   title: Block title
   configuration: Block configuration
-datasource: 
+datasource:
   label: Datasource
   types:
     load:
@@ -59,7 +59,12 @@ tooltip:
   edit:
     report: Edit report
     block: Edit block
+  add:
+    displayElement: Add display element
+  delete:
+    block: Delete block
   configure-scenarios: Configure scenarios
+  unsavedChanges: Unsaved changes
 available-columns: Available columns
 selected-columns: Selected columns
 no-columns-found: No columns found
@@ -69,6 +74,7 @@ select-all: Select all
 unselect-all: Unselect all
 value: Value
 name: Name
+unsaved-changes: Unsaved changes will be lost. Do you wish to leave the page?
 filter:
   operators:
     like: Like

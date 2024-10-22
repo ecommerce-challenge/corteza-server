@@ -137,9 +137,9 @@ func (svc *authClient) Search(ctx context.Context, af types.AuthClientFilter) (a
 			//
 			// not the best solution but ATM it allows us to have at least
 			// some kind of control over who can see deleted authClients
-			//if !svc.ac.CanAccess(ctx) {
+			// if !svc.ac.CanAccess(ctx) {
 			//	return AuthClientErrNotAllowedToListAuthClients()
-			//}
+			// }
 		}
 
 		if len(af.Labels) > 0 {
@@ -187,7 +187,7 @@ func (svc *authClient) Create(ctx context.Context, new *types.AuthClient) (res *
 	)
 
 	err = func() (err error) {
-		if new.Meta.Name == "" {
+		if new.Meta == nil || new.Meta.Name == "" {
 			return AuthClientErrMissingName()
 		}
 
@@ -264,7 +264,7 @@ func (svc *authClient) Update(ctx context.Context, upd *types.AuthClient) (res *
 		if upd.ID == 0 {
 			return AuthClientErrInvalidID()
 		}
-		if upd.Meta.Name == "" {
+		if upd.Meta == nil || upd.Meta.Name == "" {
 			return AuthClientErrMissingName()
 		}
 
@@ -276,6 +276,11 @@ func (svc *authClient) Update(ctx context.Context, upd *types.AuthClient) (res *
 
 		if !svc.ac.CanUpdateAuthClient(ctx, res) {
 			return AuthClientErrNotAllowedToUpdate()
+		}
+
+		// Test if stale (update has an older version of data)
+		if isStale(upd.UpdatedAt, res.UpdatedAt, res.CreatedAt) {
+			return AuthClientErrStaleData()
 		}
 
 		// Firstly validate default clients before the automation occurs

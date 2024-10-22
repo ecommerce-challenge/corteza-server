@@ -16,7 +16,7 @@
     </p>
 
     <a
-      v-if="attachment"
+      v-if="attachment.download"
       slot="header.right"
       :href="(attachment || {}).download"
     >
@@ -71,21 +71,12 @@ export default {
 
   created () {
     window.addEventListener('keyup', this.onKeyUp)
-    this.$root.$on('showAttachmentsModal', ({ url, download, name, document = undefined, meta }) => {
-      this.attachment = {
-        document,
-        download,
-        meta,
-        src: url,
-        name: name,
-        caption: name,
-      }
-    })
+    this.$root.$on('showAttachmentsModal', this.showAttachmentModal)
   },
 
   beforeDestroy () {
-    window.removeEventListener('keyup', this.onKeyUp)
-    this.$root.$off('showAttachmentsModal')
+    this.destroyEvents()
+    this.setDefaultValues()
   },
 
   methods: {
@@ -93,6 +84,27 @@ export default {
       if (key === 'Escape') {
         this.attachment = undefined
       }
+    },
+
+    showAttachmentModal ({ url, download, name, document = undefined, meta, enableDownload }) {
+      this.attachment = {
+        document,
+        download,
+        meta,
+        src: url,
+        name: name,
+        caption: name,
+        enableDownload,
+      }
+    },
+
+    setDefaultValues () {
+      this.attachment = undefined
+    },
+
+    destroyEvents () {
+      window.removeEventListener('keyup', this.onKeyUp)
+      this.$root.$off('showAttachmentsModal', this.showAttachmentModal)
     },
   },
 }

@@ -1,26 +1,33 @@
 import { Apply, CortezaID, ISO8601Date, NoID } from '../../cast'
 import { IsOf, AreObjectsOf } from '../../guards'
 import { PageBlock, PageBlockMaker } from './page-block'
-import { Button } from './page-block/types'
+import { merge } from 'lodash'
 
-interface PartialPage extends Partial<Omit<Page, 'children' | 'blocks' | 'createdAt' | 'updatedAt' | 'deletedAt'>> {
+interface PartialPage extends Partial<Omit<Page, 'children' | 'meta' | 'blocks' |'createdAt' | 'updatedAt' | 'deletedAt'>> {
   children?: Array<PartialPage>;
 
-  blocks?: (Partial<PageBlock>)[];
+  blocks?: PageBlock[];
+
+  meta?: PageMeta;
 
   createdAt?: string|number|Date;
   updatedAt?: string|number|Date;
   deletedAt?: string|number|Date;
 }
 
+interface PageMeta {
+  notifications: {
+    enabled: boolean;
+  };
+}
+
 interface PageConfig {
-  buttons: {
-    submit: Button;
-    delete: Button;
-    new: Button;
-    edit: Button;
-    clone: Button;
-    back: Button;
+  navItem: {
+    icon: {
+      type: string;
+      src: string;
+    };
+    expanded: false;
   };
 }
 
@@ -39,20 +46,25 @@ export class Page {
 
   public visible = false;
 
-  public children?: Array<Page>
+  public children?: Page[];
 
-  public blocks: (InstanceType<typeof PageBlock>)[] = [];
+  public blocks: PageBlock[] = [];
 
   public config: PageConfig = {
-    buttons: {
-      submit: { enabled: true },
-      delete: { enabled: true },
-      new: { enabled: true },
-      edit: { enabled: true },
-      clone: { enabled: true },
-      back: { enabled: true },
+    navItem: {
+      icon: {
+        type: '',
+        src: '',
+      },
+      expanded: false,
     },
   }
+
+  public meta: PageMeta = {
+    notifications: {
+      enabled: true,
+    },
+  };
 
   public createdAt?: Date = undefined;
   public updatedAt?: Date = undefined;
@@ -79,10 +91,7 @@ export class Page {
     Apply(this, i, Boolean, 'visible')
 
     if (i.blocks) {
-      this.blocks = []
-      if (AreObjectsOf<PageBlock>(i.blocks, 'kind') && AreObjectsOf<PageBlock>(i.blocks, 'xywh')) {
-        this.blocks = i.blocks.map((b: { kind: string }) => PageBlockMaker(b))
-      }
+      this.blocks = i.blocks.map(block => PageBlockMaker(block))
     }
 
     if (i.children) {
@@ -92,8 +101,12 @@ export class Page {
       }
     }
 
-    if (i.config) {
-      this.config = i.config
+    if (IsOf(i, 'config')) {
+      this.config = merge({}, this.config, i.config)
+    }
+
+    if (IsOf(i, 'meta')) {
+      this.meta = merge({}, this.meta, i.meta)
     }
 
     if (IsOf(i, 'labels')) {

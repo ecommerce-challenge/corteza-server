@@ -58,6 +58,12 @@ type (
 				// Can users reset their passwords
 				PasswordReset struct{ Enabled bool } `json:"-" kv:"password-reset"`
 
+				// When enabled, users added via CLI will receive an email with a link to reset their password.
+				SendUserInviteEmail struct {
+					Enabled bool
+					Expires uint
+				} `kv:"send-user-invite-email" json:"sendUserInviteEmail"`
+
 				// PasswordCreate setting for create password for user via generated link with token
 				// If user has no password then link redirects to create password page
 				// Otherwise it redirects to profile page of that user
@@ -74,6 +80,8 @@ type (
 				SplitCredentialsCheck bool `json:"-" kv:"split-credentials-check"`
 
 				PasswordConstraints PasswordConstraints `kv:"password-constraints" json:"passwordConstraints"`
+
+				ProfileAvatar struct{ Enabled bool } `kv:"profile-avatar" json:"profile-avatar"`
 			} `json:"internal"`
 
 			External struct {
@@ -128,7 +136,7 @@ type (
 					Enforced bool
 
 					// Require fresh Email OTP on every client authorization
-					//Strict bool
+					// Strict bool
 
 					Expires uint
 				} `kv:"email-otp"`
@@ -141,7 +149,7 @@ type (
 					Enforced bool
 
 					// Require fresh TOTP on every client authorization
-					//Strict bool
+					// Strict bool
 
 					// TOTP issuer, defaults to "Corteza"
 					Issuer string
@@ -153,7 +161,7 @@ type (
 				FromName    string `kv:"from-name"`
 			} `json:"-"`
 
-			//Auth Background Image settings
+			// Auth Background Image settings
 			UI struct {
 				BackgroundImageSrc string `kv:"background-image-src" json:"backgroundImageSrc"`
 				Styles             string `kv:"styles" json:"styles"`
@@ -206,6 +214,18 @@ type (
 					Mimetypes []string
 				}
 			}
+
+			// Icon related settings
+			Icon struct {
+				// @todo implementation
+				Attachments struct {
+					// What is max size (in MB, so: MaxSize x 2^20)
+					MaxSize uint `kv:"max-size"`
+
+					// List of mime-types we support,
+					Mimetypes []string
+				}
+			}
 		} `kv:"compose" json:"compose"`
 
 		// Federation settings
@@ -218,6 +238,8 @@ type (
 		// Integration gateway settings
 		Apigw ApigwSettings `kv:"apigw" json:"apigw"`
 
+		CodeSnippets []struct{ CodeSnippet } `kv:"code-snippets" json:"codeSnippets"`
+
 		// UserInterface settings
 		UI struct {
 			MainLogo string `kv:"main-logo" json:"mainLogo"`
@@ -228,6 +250,13 @@ type (
 				Disabled bool `json:"disabled"`
 			} `kv:"sidebar,final" json:"sidebar"`
 
+			Studio struct {
+				SassInstalled bool `kv:"sass-installed" json:"sass-installed"`
+
+				Themes    []struct{ Theme } `kv:"themes" json:"themes"`
+				CustomCSS []struct{ Theme } `kv:"custom-css" json:"customCSS"`
+			} `kv:"studio" json:"studio"`
+
 			Topbar struct {
 				HideAppSelector        bool `json:"hideAppSelector"`
 				HideHelp               bool `json:"hideHelp"`
@@ -237,6 +266,7 @@ type (
 				HideProfile            bool `json:"hideProfile"`
 				HideChangePasswordLink bool `json:"hideChangePasswordLink"`
 				HideProfileLink        bool `json:"hideProfileLink"`
+				HideThemeSelector      bool `json:"hideThemeSelector"`
 
 				HelpLinks []struct {
 					Handle string `json:"handle"`
@@ -250,6 +280,14 @@ type (
 					NewTab bool   `json:"newTab"`
 				} `json:"profileLinks"`
 			} `kv:"topbar,final" json:"topbar"`
+
+			Charts struct {
+				ColorSchemes []struct {
+					ID     string   `json:"id"`
+					Name   string   `json:"name"`
+					Colors []string `json:"colors"`
+				} `kv:"colorSchemes" json:"colorSchemes"`
+			} `kv:"charts" json:"charts"`
 		} `kv:"ui" json:"ui"`
 
 		ResourceTranslations struct {
@@ -265,7 +303,7 @@ type (
 			//
 			// 1st language in the set is also a default one
 			//
-			// Empty slice defaults to LOCALE_LANGUAGES
+			// IsEmpty slice defaults to LOCALE_LANGUAGES
 			Languages []string `kv:"languages" json:"languages"`
 		} `kv:"resource-translations" json:"resourceTranslations"`
 
@@ -372,6 +410,17 @@ type (
 		//
 		// @todo implement mapped roles
 		// MappedRoles map[string]string `json:"mappedRoles,omitempty"`
+	}
+
+	Theme struct {
+		ID     string `json:"id"`
+		Values string `json:"values"`
+	}
+
+	CodeSnippet struct {
+		Name   string `json:"name"`
+		Script string `json:"script"`
+        Enabled bool `json:"enabled"`
 	}
 
 	SmtpServers struct {
@@ -589,7 +638,7 @@ func (eap ExternalAuthProvider) EncodeKV() (vv SettingValueSet, err error) {
 	for key, value := range pairs {
 		v := &SettingValue{Name: prefix + key}
 
-		if err = v.SetValue(value); err != nil {
+		if err = v.SetSetting(value); err != nil {
 			return
 		}
 

@@ -646,6 +646,26 @@ func AuthActionAccessTokensRemoved(props ...*authActionProps) *authAction {
 	return a
 }
 
+// AuthActionSendInviteEMail returns "system:auth.sendInviteEMail" action
+//
+// This function is auto-generated.
+//
+func AuthActionSendInviteEMail(props ...*authActionProps) *authAction {
+	a := &authAction{
+		timestamp: time.Now(),
+		resource:  "system:auth",
+		action:    "sendInviteEMail",
+		log:       "invite email sent to {{email}}",
+		severity:  actionlog.Notice,
+	}
+
+	if len(props) > 0 {
+		a.props = props[0]
+	}
+
+	return a
+}
+
 // *********************************************************************************************************************
 // *********************************************************************************************************************
 // Error constructors
@@ -1832,6 +1852,40 @@ func AuthErrMaxUserLimitReached(mm ...*authActionProps) *errors.Error {
 		// translation namespace & key
 		errors.Meta(locale.ErrorMetaNamespace{}, "system"),
 		errors.Meta(locale.ErrorMetaKey{}, "auth.errors.maxUserLimitReached"),
+
+		errors.StackSkip(1),
+	)
+
+	if len(mm) > 0 {
+	}
+
+	return e
+}
+
+// AuthErrDisabledSendUserInviteEmail returns "system:auth.disabledSendUserInviteEmail" as *errors.Error
+//
+//
+// This function is auto-generated.
+//
+func AuthErrDisabledSendUserInviteEmail(mm ...*authActionProps) *errors.Error {
+	var p = &authActionProps{}
+	if len(mm) > 0 {
+		p = mm[0]
+	}
+
+	var e = errors.New(
+		errors.KindInternal,
+
+		p.Format("sending user invite email is disabled", nil),
+
+		errors.Meta("type", "disabledSendUserInviteEmail"),
+		errors.Meta("resource", "system:auth"),
+
+		errors.Meta(authPropsMetaKey{}, p),
+
+		// translation namespace & key
+		errors.Meta(locale.ErrorMetaNamespace{}, "system"),
+		errors.Meta(locale.ErrorMetaKey{}, "auth.errors.disabledSendUserInviteEmail"),
 
 		errors.StackSkip(1),
 	)

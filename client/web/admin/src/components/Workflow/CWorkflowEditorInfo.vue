@@ -1,109 +1,77 @@
 <template>
   <b-card
+    header-class="border-bottom"
+    footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
     class="shadow-sm"
-    header-bg-variant="white"
-    footer-bg-variant="white"
   >
+    <template #header>
+      <h4 class="m-0">
+        {{ $t('title') }}
+      </h4>
+    </template>
+
     <b-form
       @submit.prevent="$emit('submit', workflow)"
     >
-      <b-form-group
-        v-if="workflow.workflowID"
-        :label="$t('id')"
-        label-cols="2"
-      >
-        <b-form-input
-          v-model="workflow.workflowID"
-          plaintext
-          disabled
-        />
-      </b-form-group>
-
-      <b-form-group
-        v-if="workflow.meta"
-        :label="$t('name')"
-        label-cols="2"
-      >
-        <b-form-input
-          v-model="workflow.meta.name"
-          required
-          :state="nameState"
-        />
-      </b-form-group>
-
-      <b-form-group
-        :label="$t('handle')"
-        label-cols="2"
-      >
-        <b-form-input
-          v-model="workflow.handle"
-          :state="handleState"
-        />
-        <b-form-invalid-feedback :state="handleState">
-          {{ $t('invalid-handle-characters') }}
-        </b-form-invalid-feedback>
-      </b-form-group>
-
-      <b-form-group
-        label-cols="2"
-        :class="{ 'mb-0': !workflow.workflowID }"
-      >
-        <b-form-checkbox
-          v-model="workflow.enabled"
+      <b-row>
+        <b-col
+          cols="12"
+          lg="6"
         >
-          {{ $t('enabled') }}
-        </b-form-checkbox>
-      </b-form-group>
+          <b-form-group
+            v-if="workflow.meta"
+            :label="$t('name')"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="workflow.meta.name"
+              required
+              :state="nameState"
+            />
+          </b-form-group>
+        </b-col>
 
-      <b-form-group
-        v-if="workflow.workflowID"
-        label-cols="2"
-      >
-        <b-button
-          variant="light"
-          class="align-top"
-          @click="openWorkflowBuilder()"
+        <b-col
+          cols="12"
+          lg="6"
         >
-          {{ $t('openBuilder') }}
-        </b-button>
-      </b-form-group>
+          <b-form-group
+            :label="$t('handle')"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="workflow.handle"
+              :state="handleState"
+            />
 
-      <b-form-group
-        v-if="workflow.updatedAt"
-        :label="$t('updatedAt')"
-        label-cols="2"
-      >
-        <b-form-input
-          :value="workflow.updatedAt | locFullDateTime"
-          plaintext
-          disabled
-        />
-      </b-form-group>
+            <b-form-invalid-feedback :state="handleState">
+              {{ $t('invalid-handle-characters') }}
+            </b-form-invalid-feedback>
+          </b-form-group>
+        </b-col>
 
-      <b-form-group
-        v-if="workflow.deletedAt"
-        :label="$t('deletedAt')"
-        label-cols="2"
-      >
-        <b-form-input
-          :value="workflow.deletedAt | locFullDateTime"
-          plaintext
-          disabled
-        />
-      </b-form-group>
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('enabled')"
+            label-class="text-primary"
+            :class="{ 'mb-0': !workflow.workflowID }"
+          >
+            <c-input-checkbox
+              v-model="workflow.enabled"
+              switch
+              :labels="checkboxLabel"
+            />
+          </b-form-group>
+        </b-col>
+      </b-row>
 
-      <b-form-group
-        v-if="workflow.createdAt"
-        :label="$t('createdAt')"
-        label-cols="2"
-        class="mb-0"
-      >
-        <b-form-input
-          :value="workflow.createdAt | locFullDateTime"
-          plaintext
-          disabled
-        />
-      </b-form-group>
+      <c-system-fields
+        :id="workflow.workflowID"
+        :resource="workflow"
+      />
 
       <!--
         include hidden input to enable
@@ -116,36 +84,39 @@
       >
     </b-form>
 
-    <template #header>
-      <h3 class="m-0">
-        {{ $t('title') }}
-      </h3>
-    </template>
-
     <template #footer>
-      <c-submit-button
-        class="float-right"
-        :processing="processing"
-        :success="success"
-        :disabled="saveDisabled"
-        @submit="$emit('submit', workflow)"
-      />
-
-      <confirmation-toggle
+      <c-input-confirm
         v-if="workflow && workflow.workflowID && workflow.canDeleteWorkflow"
         :disabled="deleteDisabled"
+        variant="danger"
+        size="md"
         @confirmed="$emit('delete')"
       >
         {{ getDeleteStatus }}
-      </confirmation-toggle>
+      </c-input-confirm>
+
+      <b-button
+        v-if="workflow.workflowID"
+        variant="light"
+        @click="openWorkflowBuilder()"
+      >
+        {{ $t('openBuilder') }}
+      </b-button>
+
+      <c-button-submit
+        :disabled="saveDisabled"
+        :processing="processing"
+        :success="success"
+        :text="$t('admin:general.label.submit')"
+        class="ml-auto"
+        @submit="$emit('submit', workflow)"
+      />
     </template>
   </b-card>
 </template>
 
 <script>
 import { handle } from '@cortezaproject/corteza-vue'
-import ConfirmationToggle from 'corteza-webapp-admin/src/components/ConfirmationToggle'
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
 import { NoID } from '@cortezaproject/corteza-js'
 
 export default {
@@ -154,11 +125,6 @@ export default {
   i18nOptions: {
     namespaces: 'automation.workflows',
     keyPrefix: 'editor.info',
-  },
-
-  components: {
-    ConfirmationToggle,
-    CSubmitButton,
   },
 
   props: {
@@ -181,6 +147,15 @@ export default {
       type: Boolean,
       required: true,
     },
+  },
+
+  data () {
+    return {
+      checkboxLabel: {
+        on: this.$t('general:label.general.yes'),
+        off: this.$t('general:label.general.no'),
+      },
+    }
   },
 
   computed: {

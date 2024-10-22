@@ -386,7 +386,27 @@ func ReminderActionDismiss(props ...*reminderActionProps) *reminderAction {
 		timestamp: time.Now(),
 		resource:  "system:reminder",
 		action:    "dismiss",
-		log:       "deleted {{reminder}}",
+		log:       "dismissed {{reminder}}",
+		severity:  actionlog.Notice,
+	}
+
+	if len(props) > 0 {
+		a.props = props[0]
+	}
+
+	return a
+}
+
+// ReminderActionUndismiss returns "system:reminder.undismiss" action
+//
+// This function is auto-generated.
+//
+func ReminderActionUndismiss(props ...*reminderActionProps) *reminderAction {
+	a := &reminderAction{
+		timestamp: time.Now(),
+		resource:  "system:reminder",
+		action:    "undismiss",
+		log:       "undismissed {{reminder}}",
 		severity:  actionlog.Notice,
 	}
 
@@ -406,7 +426,7 @@ func ReminderActionSnooze(props ...*reminderActionProps) *reminderAction {
 		timestamp: time.Now(),
 		resource:  "system:reminder",
 		action:    "snooze",
-		log:       "deleted {{reminder}}",
+		log:       "snoozed {{reminder}}",
 		severity:  actionlog.Notice,
 	}
 
@@ -583,6 +603,40 @@ func ReminderErrNotAllowedToDismiss(mm ...*reminderActionProps) *errors.Error {
 		// translation namespace & key
 		errors.Meta(locale.ErrorMetaNamespace{}, "system"),
 		errors.Meta(locale.ErrorMetaKey{}, "reminder.errors.notAllowedToDismiss"),
+
+		errors.StackSkip(1),
+	)
+
+	if len(mm) > 0 {
+	}
+
+	return e
+}
+
+// ReminderErrNotAllowedToUndismiss returns "system:reminder.notAllowedToUndismiss" as *errors.Error
+//
+//
+// This function is auto-generated.
+//
+func ReminderErrNotAllowedToUndismiss(mm ...*reminderActionProps) *errors.Error {
+	var p = &reminderActionProps{}
+	if len(mm) > 0 {
+		p = mm[0]
+	}
+
+	var e = errors.New(
+		errors.KindInternal,
+
+		p.Format("not allowed to undo dismissed reminders of other users", nil),
+
+		errors.Meta("type", "notAllowedToUndismiss"),
+		errors.Meta("resource", "system:reminder"),
+
+		errors.Meta(reminderPropsMetaKey{}, p),
+
+		// translation namespace & key
+		errors.Meta(locale.ErrorMetaNamespace{}, "system"),
+		errors.Meta(locale.ErrorMetaKey{}, "reminder.errors.notAllowedToUndismiss"),
 
 		errors.StackSkip(1),
 	)

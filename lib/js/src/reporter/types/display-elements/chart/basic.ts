@@ -5,7 +5,7 @@ import { getColorschemeColors } from '../../../../shared'
 import moment from 'moment'
 export class BasicChartOptions extends ChartOptions {
   public labelColumn = ''
-  public dataColumns: Array<{ name: string; label?: string }> = []
+  public dataColumns: Array<{ name: string; label?: string; stack?: string }> = []
 
   constructor (o?: BasicChartOptions | Partial<BasicChartOptions>) {
     super(o)
@@ -19,7 +19,8 @@ export class BasicChartOptions extends ChartOptions {
     }
   }
 
-  getChartConfiguration (dataframes: Array<FrameDefinition>) {
+  getChartConfiguration (dataframes: Array<FrameDefinition>, meta: any) {
+    const { themeVariables = {} } = meta
     const { labels, datasets = [] } = this.getData(dataframes[0], dataframes)
 
     const options: any = {
@@ -49,7 +50,10 @@ export class BasicChartOptions extends ChartOptions {
           radius: [`${sr}%`, `${er}%`],
           center: ['50%', '55%'],
           tooltip: {
-            formatter: '{a}<br />{b} : {c} ({d}%)',
+            formatter: (params: any) => {
+              return `${params.seriesName}<br>${params.marker}${params.name}<span style="float: right; margin-left: 20px">${params.value} (${params.percent}%)</span>`
+            },
+            appendToBody: true,
           },
           label: {
             show: this.tooltips.showAlways,
@@ -60,7 +64,7 @@ export class BasicChartOptions extends ChartOptions {
           },
           itemStyle: {
             borderRadius: 5,
-            borderColor: '#fff',
+            borderColor: themeVariables.white,
             borderWidth: 1,
           },
           emphasis: {
@@ -85,7 +89,7 @@ export class BasicChartOptions extends ChartOptions {
       const {
         label: xLabel,
         type: xType = 'category',
-        labelRotation: xLabelRotation = 0
+        labelRotation: xLabelRotation = 0,
       } = this.xAxis
 
       options.xAxis = [
@@ -100,6 +104,12 @@ export class BasicChartOptions extends ChartOptions {
             overflow: 'truncate',
             hideOverlap: true,
             rotate: xLabelRotation,
+          },
+          axisTick: {
+            show: false,
+          },
+          axisLine: {
+            show: false,
           },
         },
       ]
@@ -138,13 +148,18 @@ export class BasicChartOptions extends ChartOptions {
           rotate: yLabelRotation,
         },
         axisLine: {
-          show: true,
+          show: false,
           onZero: false,
+        },
+        splitLine: {
+          lineStyle: {
+            color: [themeVariables['extra-light']],
+          },
         },
         nameTextStyle: {
           align: labelPosition === 'center' ? 'center' : position,
           padding: labelPosition !== 'center' ? (position === 'left' ? [0, 0, 2, -20] : [0, -20, 2, 0]) : undefined,
-        }
+        },
       }
 
       // If we provide undefined, log scale breaks
@@ -155,13 +170,14 @@ export class BasicChartOptions extends ChartOptions {
 
       options.yAxis = [tempYAxis]
 
-      options.series = datasets.map(({ label, data }) => {
+      options.series = datasets.map(({ label, data, stack }) => {
         return {
           name: label,
           type: this.type,
           smooth: true,
           areaStyle: {},
           left: 'left',
+          stack,
           label: {
             show: this.tooltips.showAlways,
             position: 'inside',
@@ -181,12 +197,16 @@ export class BasicChartOptions extends ChartOptions {
         text: this.title,
         left: 'center',
         textStyle: {
+          fontFamily: themeVariables['font-regular'],
+          color: themeVariables.black,
           fontSize: 16,
         },
       },
       color: getColorschemeColors(this.colorScheme),
       textStyle: {
-        fontFamily: 'Poppins-Regular',
+        fontFamily: themeVariables['font-regular'],
+        overflow: 'break',
+        color: themeVariables.black,
       },
       legend: {
         show: !this.legend.hide,
@@ -195,7 +215,15 @@ export class BasicChartOptions extends ChartOptions {
         right: (this.legend.position.default ? undefined : this.legend.position.right) || undefined,
         bottom: (this.legend.position.default ? undefined : this.legend.position.bottom) || undefined,
         left: (this.legend.position.default ? this.legend.align || 'center' : this.legend.position.left) || 'auto',
-        orient: this.legend.orientation || 'horizontal'
+        orient: this.legend.orientation || 'horizontal',
+        textStyle: {
+          color: themeVariables.black,
+        },
+        pageTextStyle: {
+          color: themeVariables.black,
+        },
+        pageIconColor: themeVariables.black,
+        pageIconInactiveColor: themeVariables.light,
       },
       ...options,
     }
@@ -214,7 +242,7 @@ export class BasicChartOptions extends ChartOptions {
     if (localDataframe && dataframes) {
       // Get datasets
       if (this.dataColumns.length && localDataframe.rows) {
-        for (const { name } of this.dataColumns) {
+        for (const { name, stack, label } of this.dataColumns) {
           // Assume localDataframe has the dataColumn
           let columnIndex = this.getColIndex(localDataframe, name)
 
@@ -253,8 +281,9 @@ export class BasicChartOptions extends ChartOptions {
           }
 
           datasets.push({
-            label: name,
+            label: label || name,
             data,
+            stack,
           })
         }
       }

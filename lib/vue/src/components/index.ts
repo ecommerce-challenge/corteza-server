@@ -16,6 +16,13 @@ export {
   CInputCron,
   CInputSearch,
   CRichTextInput,
+  CInputCheckbox,
+  CInputColorPicker,
+  CAceEditor,
+  CInputExpression,
+  CButtonSubmit,
+  CInputSelect,
+  CInputRole,
 } from './input'
 
 export {
@@ -38,11 +45,6 @@ export {
   CSidebar,
   CSidebarNavItems,
 } from './navigation'
-
-export {
-  Tour,
-  TourStart,
-} from './Tour'
 
 export {
   CToaster,
@@ -80,5 +82,21 @@ export {
 export {
   CProgress,
 } from './progress'
+
+export {
+  CToolbar,
+} from './toolbar'
+
+export {
+  CHint,
+} from './hint'
+
+export {
+  CMap,
+} from './map'
+
+export {
+  CFormTableWrapper,
+} from './wrapper'
 
 export { default as C3 } from './c3'

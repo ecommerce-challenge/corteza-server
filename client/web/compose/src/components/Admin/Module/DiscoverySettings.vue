@@ -14,8 +14,6 @@
     <b-tabs
       v-if="modal"
       v-model="currentTabIndex"
-      active-nav-item-class="bg-grey"
-      nav-wrapper-class="bg-white border-bottom"
       card
     >
       <b-tab
@@ -28,7 +26,7 @@
           :module="module"
           :fields.sync="currentFields"
           disable-system-fields
-          style="max-height: 70vh;"
+          style="height: 70vh;"
         />
       </b-tab>
     </b-tabs>
@@ -154,11 +152,16 @@ export default {
               const fields = [...existingFields].map(name => this.module.fields.find(field => field.name === name))
 
               this[value].result.push({ lang, fields })
+              existingFields.clear()
             })
           })
         }
       },
     },
+  },
+
+  beforeDestroy () {
+    this.setDefaultValues()
   },
 
   methods: {
@@ -182,6 +185,14 @@ export default {
         ...this.module.meta,
         discovery,
       })
+    },
+
+    setDefaultValues () {
+      this.public = {}
+      this.private = {}
+      this.protected = {}
+      this.currentTabIndex = 0
+      this.currentLang = undefined
     },
   },
 }

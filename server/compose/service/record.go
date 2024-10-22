@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cortezaproject/corteza/server/pkg/envoyx"
 	"github.com/cortezaproject/corteza/server/pkg/filter"
 	"github.com/cortezaproject/corteza/server/pkg/revisions"
 	"github.com/spf13/cast"
@@ -124,7 +125,9 @@ type (
 
 		Create(ctx context.Context, record *types.Record) (*types.Record, *types.RecordValueErrorSet, error)
 		Update(ctx context.Context, record *types.Record) (*types.Record, *types.RecordValueErrorSet, error)
-		Bulk(ctx context.Context, oo ...*types.RecordBulkOperation) (types.RecordSet, *types.RecordValueErrorSet, error)
+		Bulk(ctx context.Context, skipFailed bool, oo ...*types.RecordBulkOperation) ([]types.RecordBulkOperationResult, error)
+
+		BulkModifyByFilter(ctx context.Context, f types.RecordFilter, values types.RecordValueSet, operation types.OperationType) (err error)
 
 		Validate(ctx context.Context, rec *types.Record) error
 
@@ -151,7 +154,7 @@ type (
 		Country() string
 	}
 
-	recordImportSession struct {
+	RecordImportSession struct {
 		Name        string `json:"-"`
 		SessionID   uint64 `json:"sessionID,string"`
 		UserID      uint64 `json:"userID,string"`
@@ -167,6 +170,7 @@ type (
 		UpdatedAt time.Time `json:"updatedAt"`
 
 		Resources []resource.Interface `json:"-"`
+		Providers []envoyx.Provider    `json:"-"`
 	}
 
 	RecordImportProgress struct {
@@ -545,14 +549,18 @@ func (svc record) RecordExport(ctx context.Context, f types.RecordFilter) (err e
 
 // Bulk handles provided set of bulk record operations.
 // It's able to create, update or delete records in a single transaction.
-func (svc record) Bulk(ctx context.Context, oo ...*types.RecordBulkOperation) (rr types.RecordSet, dd *types.RecordValueErrorSet, err error) {
+func (svc record) Bulk(ctx context.Context, skipFailed bool, oo ...*types.RecordBulkOperation) (rr []types.RecordBulkOperationResult, err error) {
 	var pr *types.Record
+	rr = make([]types.RecordBulkOperationResult, len(oo))
 
 	err = func() error {
 		// pre-verify all
 		for _, p := range oo {
 			switch p.Operation {
-			case types.OperationTypeCreate, types.OperationTypeUpdate, types.OperationTypeDelete:
+			case types.OperationTypeCreate,
+				types.OperationTypeUpdate,
+				types.OperationTypeDelete,
+				types.OperationTypePatch:
 				// ok
 			default:
 				return RecordErrUnknownBulkOperation(&recordActionProps{bulkOperation: string(p.Operation)})
@@ -560,22 +568,7 @@ func (svc record) Bulk(ctx context.Context, oo ...*types.RecordBulkOperation) (r
 		}
 
 		var (
-			// in case we get record value errors from create or update operations
-			// we ll merge the errors into one slice and return it all together
-			//
-			// this is done under assumption that potential before-record-update/create automation
-			// scripts are playing by the rules and do not do any changes before any potential
-			// record value errors are returned
-			//
-			// @todo all records/values could and should be pre-validated
-			//       before we start storing any changes
-			rves = &types.RecordValueErrorSet{}
-
-			// duplication errors
-			ddes = &types.RecordValueErrorSet{}
-
-			// merge of record value errors and duplication errors
-			ee = &types.RecordValueErrorSet{}
+			dupErrors = &types.RecordValueErrorSet{}
 
 			action func(props ...*recordActionProps) *recordAction
 			r      *types.Record
@@ -583,8 +576,34 @@ func (svc record) Bulk(ctx context.Context, oo ...*types.RecordBulkOperation) (r
 			aProp = &recordActionProps{}
 		)
 
-		for _, p := range oo {
+		for i, p := range oo {
+			var (
+				valueErrors *types.RecordValueErrorSet
+			)
+
 			r = p.Record
+			// Fetchthe requested record; primarily used for ops which don't need a base
+			if p.RecordID != 0 {
+				r, valueErrors, err = svc.FindByID(ctx, p.NamespaceID, p.ModuleID, p.RecordID)
+				// This one can't be recovered
+				if err != nil {
+					continue
+				}
+
+				if p.Operation == types.OperationTypePatch {
+					r.Values = p.Record.Values
+				}
+
+				rr[i] = types.RecordBulkOperationResult{
+					Record:     r,
+					ValueError: valueErrors,
+					Error:      err,
+				}
+			} else {
+				rr[i] = types.RecordBulkOperationResult{
+					Record: r,
+				}
+			}
 
 			aProp.setRecord(r)
 
@@ -596,8 +615,8 @@ func (svc record) Bulk(ctx context.Context, oo ...*types.RecordBulkOperation) (r
 					Name: p.LinkBy,
 				}
 				if pr != nil {
-					rv.Value = strconv.FormatUint(rr[0].ID, 10)
-					rv.Ref = rr[0].ID
+					rv.Value = strconv.FormatUint(rr[0].Record.ID, 10)
+					rv.Ref = rr[0].Record.ID
 				}
 				r.Values = r.Values.Set(rv)
 			}
@@ -605,39 +624,54 @@ func (svc record) Bulk(ctx context.Context, oo ...*types.RecordBulkOperation) (r
 			switch p.Operation {
 			case types.OperationTypeCreate:
 				action = RecordActionCreate
-				r, ddes, err = svc.create(ctx, r)
+				r, dupErrors, err = svc.create(ctx, r)
 
 			case types.OperationTypeUpdate:
 				action = RecordActionUpdate
-				r, ddes, err = svc.update(ctx, r)
+				r, dupErrors, err = svc.update(ctx, r)
 
 			case types.OperationTypeDelete:
 				action = RecordActionDelete
 				r, err = svc.delete(ctx, r.NamespaceID, r.ModuleID, r.ID)
+
+			case types.OperationTypePatch:
+				action = RecordActionPatch
+				r, dupErrors, err = svc.patch(ctx, r, r.Values)
 			}
 
 			aProp.setChanged(r)
 
 			// Attach meta ID to each value error for FE identification
-			if !ddes.HasStrictErrors() && r != nil {
-				ddes.SetMetaID(r.ID)
+			if !dupErrors.HasStrictErrors() && r != nil {
+				dupErrors.SetMetaID(r.ID)
 			}
-			if !ddes.IsValid() && dd == nil {
-				dd = ddes
-			} else {
-				dd.Merge(ddes)
-			}
+			rr[i].DuplicationError = dupErrors
 
 			if rve := types.IsRecordValueErrorSet(err); rve != nil {
+				if valueErrors == nil {
+					valueErrors = &types.RecordValueErrorSet{}
+				}
+
 				// Attach additional meta to each value error for FE identification
 				for _, re := range rve.Set {
-					re.Meta["id"] = p.ID
+					if re.Meta == nil {
+						continue
+					}
 
-					rves.Push(re)
+					if p.ID != "" {
+						re.Meta["id"] = p.ID
+					}
+
+					valueErrors.Push(re)
 				}
 
 				// log record value error for this record
 				_ = svc.recordAction(ctx, aProp, action, err)
+
+				rr[i].ValueError = valueErrors
+
+				// Clear the current error
+				err = nil
 
 				// do not return errors just yet, values on other records from the payload (if any)
 				// might have errors too
@@ -645,24 +679,28 @@ func (svc record) Bulk(ctx context.Context, oo ...*types.RecordBulkOperation) (r
 			}
 
 			_ = svc.recordAction(ctx, aProp, action, err)
-			if err != nil {
+			if !skipFailed && err != nil {
 				return err
+			} else {
+				rr[i].Error = err
+				err = nil
 			}
 
-			rr = append(rr, r)
 			if pr == nil {
 				pr = r
 			}
 		}
 
-		// merge record value errors and strict duplication errors
-		if dd.HasStrictErrors() {
-			ee.Merge(rves, dd)
-		} else {
-			ee = rves
+		var ee = &types.RecordValueErrorSet{}
+		for _, r := range rr {
+			if !r.ValueError.IsValid() {
+				ee.Merge(r.ValueError)
+			}
+			if r.DuplicationError.HasStrictErrors() {
+				ee.Merge(r.DuplicationError)
+			}
 		}
-
-		if !ee.IsValid() {
+		if !skipFailed && !ee.IsValid() {
 			// Any errors gathered?
 			return RecordErrValueInput().Wrap(ee)
 		}
@@ -673,15 +711,91 @@ func (svc record) Bulk(ctx context.Context, oo ...*types.RecordBulkOperation) (r
 	if len(oo) == 1 {
 		// was not really a bulk operation, and we already recorded the action
 		// inside transaction loop
-		return rr, dd, err
+		return rr, err
 	} else {
 		// when doing bulk op (updating and/or creating more than one record at once),
 		// we already log action for each operation
 		//
 		// to log the fact that the bulk op was done, we do one additional recording
 		// without any props
-		return rr, dd, svc.recordAction(ctx, &recordActionProps{}, RecordActionBulk, err)
+		return rr, svc.recordAction(ctx, &recordActionProps{}, RecordActionBulk, err)
 	}
+}
+
+// BulkModifyByFilter performs bulk record operations based on the provided filter query.
+// It's able to update, delete or undelete records in a single transaction.
+func (svc record) BulkModifyByFilter(ctx context.Context, f types.RecordFilter, values types.RecordValueSet, operation types.OperationType) (err error) {
+	var (
+		ns           *types.Namespace
+		m            *types.Module
+		r            *types.Record
+		records      types.RecordSet
+		recordFilter types.RecordFilter
+
+		aProps = &recordActionProps{
+			namespace: &types.Namespace{ID: f.NamespaceID},
+			module:    &types.Module{ID: f.ModuleID},
+		}
+		action func(props ...*recordActionProps) *recordAction
+
+		valueError *types.RecordValueErrorSet
+	)
+
+	return store.Tx(ctx, svc.store, func(ctx context.Context, s store.Storer) error {
+		// load both the namespace and module
+		if ns, m, err = loadModuleCombo(ctx, s, f.NamespaceID, f.ModuleID); err != nil {
+			return err
+		}
+
+		aProps.setNamespace(ns)
+		aProps.setModule(m)
+
+		f.Limit = 500
+
+		// performing a batched search for IDs, processing them in batches of 500 for update.
+		for {
+			records, recordFilter, err = svc.Find(ctx, f)
+			if err != nil {
+				return err
+			}
+
+			for _, r = range records {
+				aProps.setRecord(r)
+
+				switch operation {
+				case types.OperationTypePatch:
+					action = RecordActionPatch
+					r, valueError, err = svc.patch(ctx, r, values)
+				case types.OperationTypeDelete:
+					action = RecordActionDelete
+					r, err = svc.processDelete(ctx, r, ns, m)
+				case types.OperationTypeUndelete:
+					action = RecordActionUndelete
+					r, err = svc.processUndelete(ctx, r, ns, m)
+				}
+
+				aProps.setChanged(r)
+
+				if valueError != nil && !valueError.IsValid() {
+					return RecordErrValueInput().Wrap(valueError)
+				}
+
+				_ = svc.recordAction(ctx, aProps, action, err)
+
+				if err != nil {
+					return err
+				}
+			}
+
+			if recordFilter.NextPage == nil {
+				break
+			}
+
+			f.NextPage = recordFilter.NextPage
+		}
+
+		return nil
+	})
 }
 
 // Raw create function that is responsible for value validation, event dispatching
@@ -785,7 +899,7 @@ func (svc record) create(ctx context.Context, new *types.Record) (rec *types.Rec
 func RecordValueSanitization(m *types.Module, vv types.RecordValueSet) (err error) {
 	var (
 		aProps  = &recordActionProps{}
-		numeric = regexp.MustCompile(`^[1-9](\d+)$`)
+		numeric = regexp.MustCompile(`^[1-9](\d*)$`)
 	)
 
 	err = vv.Walk(func(v *types.RecordValue) error {
@@ -1089,6 +1203,64 @@ func (svc record) update(ctx context.Context, upd *types.Record) (rec *types.Rec
 	return
 }
 
+// patch prepares a payload for the update function and utilizes that
+func (svc record) patch(ctx context.Context, upd *types.Record, values types.RecordValueSet) (rec *types.Record, dd *types.RecordValueErrorSet, err error) {
+	var (
+		old *types.Record
+		m   *types.Module
+	)
+
+	if upd.ID == 0 {
+		return nil, dd, RecordErrInvalidID()
+	}
+
+	_, m, old, err = loadRecordCombo(ctx, svc.store, svc.dal, upd.NamespaceID, upd.ModuleID, upd.ID)
+	if err != nil {
+		return
+	}
+
+	// Create an update version from the old
+	//
+	// In case the record has any multi-value fields, they need to be removed
+	// since they'll be replaced with new ones.
+	upd = old.Clone()
+	// - figure out what fields are multi value
+	mvFields := make(map[string]bool)
+	for _, f := range m.Fields {
+		if f.Multi {
+			mvFields[f.Name] = true
+		}
+	}
+	// - figure out what fields need to be truncated (if a multi value field is not)
+	//   present in the payload, it should not be truncated
+	truncate := make(map[string]bool)
+	for _, v := range values {
+		if mvFields[v.Name] {
+			truncate[v.Name] = true
+		}
+	}
+	// - truncate updated multi value fields
+	newValues := types.RecordValueSet{}
+	for _, v := range upd.Values {
+		if truncate[v.Name] {
+			continue
+		}
+		newValues = append(newValues, v)
+	}
+	upd.Values = newValues
+
+	values = svc.formatter.Run(m, values)
+	for _, v := range values {
+		err = upd.SetValue(v.Name, v.Place, v.Value)
+		if err != nil {
+			return
+		}
+	}
+	upd.Values.SetUpdatedFlag(true)
+
+	return svc.update(ctx, upd)
+}
+
 func (svc record) Create(ctx context.Context, new *types.Record) (rec *types.Record, dd *types.RecordValueErrorSet, err error) {
 	var (
 		aProps = &recordActionProps{record: new}
@@ -1229,8 +1401,6 @@ func (svc record) delete(ctx context.Context, namespaceID, moduleID, recordID ui
 	var (
 		ns *types.Namespace
 		m  *types.Module
-
-		invokerID = auth.GetIdentityFromContext(ctx).Identity()
 	)
 
 	if namespaceID == 0 {
@@ -1248,6 +1418,14 @@ func (svc record) delete(ctx context.Context, namespaceID, moduleID, recordID ui
 		return nil, err
 	}
 
+	return svc.processDelete(ctx, del, ns, m)
+}
+
+func (svc record) processDelete(ctx context.Context, del *types.Record, namespace *types.Namespace, module *types.Module) (record *types.Record, err error) {
+	var (
+		invokerID = auth.GetIdentityFromContext(ctx).Identity()
+	)
+
 	if !svc.ac.CanDeleteRecord(ctx, del) {
 		return nil, RecordErrNotAllowedToDelete()
 	}
@@ -1256,7 +1434,7 @@ func (svc record) delete(ctx context.Context, namespaceID, moduleID, recordID ui
 	del.DeletedBy = invokerID
 
 	// ensure module ref is set before running through records workflows and scripts
-	del.SetModule(m)
+	del.SetModule(module)
 
 	// deleted, revision need to be set when RecordBeforeDelete is triggered
 	del.DeletedAt = nowUTC()
@@ -1265,27 +1443,27 @@ func (svc record) delete(ctx context.Context, namespaceID, moduleID, recordID ui
 
 	{
 		// Calling before-record-delete scripts
-		if err = svc.eventbus.WaitFor(ctx, event.RecordBeforeDelete(nil, del, m, ns, nil, nil)); err != nil {
+		if err = svc.eventbus.WaitFor(ctx, event.RecordBeforeDelete(nil, del, module, namespace, nil, nil)); err != nil {
 			return nil, err
 		}
 	}
 
-	if m.Config.RecordRevisions.Enabled {
+	if module.Config.RecordRevisions.Enabled {
 		// Prepare record revision for update
 		if err = svc.revisions.softDeleted(ctx, del); err != nil {
 			return
 		}
 	}
 
-	if err = dalutils.ComposeRecordSoftDelete(ctx, svc.dal, m, del); err != nil {
+	if err = dalutils.ComposeRecordSoftDelete(ctx, svc.dal, module, del); err != nil {
 		return nil, err
 	}
 
 	// ensure module ref is set before running through records workflows and scripts
-	del.SetModule(m)
+	del.SetModule(module)
 
 	{
-		_ = svc.eventbus.WaitFor(ctx, event.RecordAfterDeleteImmutable(nil, del, m, ns, nil, nil))
+		_ = svc.eventbus.WaitFor(ctx, event.RecordAfterDeleteImmutable(nil, del, module, namespace, nil, nil))
 	}
 
 	return del, nil
@@ -1302,6 +1480,14 @@ func (svc record) undelete(ctx context.Context, namespaceID, moduleID, recordID 
 		return nil, err
 	}
 
+	return svc.processUndelete(ctx, undel, ns, m)
+}
+
+func (svc record) processUndelete(ctx context.Context, undel *types.Record, namespace *types.Namespace, module *types.Module) (record *types.Record, err error) {
+	if err != nil {
+		return nil, err
+	}
+
 	if !svc.ac.CanUndeleteRecord(ctx, undel) {
 		return nil, RecordErrNotAllowedToUndelete()
 	}
@@ -1310,7 +1496,7 @@ func (svc record) undelete(ctx context.Context, namespaceID, moduleID, recordID 
 	undel.DeletedBy = 0
 
 	// ensure module ref is set before running through records workflows and scripts
-	undel.SetModule(m)
+	undel.SetModule(module)
 
 	undel.DeletedAt = nil
 	undel.DeletedBy = 0
@@ -1318,27 +1504,27 @@ func (svc record) undelete(ctx context.Context, namespaceID, moduleID, recordID 
 
 	{
 		// Calling before-record-undelete scripts
-		if err = svc.eventbus.WaitFor(ctx, event.RecordBeforeUndelete(nil, undel, m, ns, nil, nil)); err != nil {
+		if err = svc.eventbus.WaitFor(ctx, event.RecordBeforeUndelete(nil, undel, module, namespace, nil, nil)); err != nil {
 			return nil, err
 		}
 	}
 
-	if m.Config.RecordRevisions.Enabled {
+	if module.Config.RecordRevisions.Enabled {
 		// Prepare record revision for update
 		if err = svc.revisions.undeleted(ctx, undel); err != nil {
 			return
 		}
 	}
 
-	if err = dalutils.ComposeRecordUndelete(ctx, svc.dal, m, undel); err != nil {
+	if err = dalutils.ComposeRecordUndelete(ctx, svc.dal, module, undel); err != nil {
 		return nil, err
 	}
 
 	// ensure module ref is set before running through records workflows and scripts
-	undel.SetModule(m)
+	undel.SetModule(module)
 
 	{
-		_ = svc.eventbus.WaitFor(ctx, event.RecordAfterUndeleteImmutable(nil, undel, m, ns, nil, nil))
+		_ = svc.eventbus.WaitFor(ctx, event.RecordAfterUndeleteImmutable(nil, undel, module, namespace, nil, nil))
 	}
 
 	return undel, nil
@@ -1557,6 +1743,8 @@ func (svc record) Organize(ctx context.Context, namespaceID, moduleID, recordID 
 				return err
 			}
 		}
+
+		svc.recordInfoUpdate(ctx, r)
 
 		return store.Tx(ctx, svc.store, func(ctx context.Context, s store.Storer) error {
 			if err = dalutils.ComposeRecordUpdate(ctx, svc.dal, m, r); err != nil {
@@ -1844,7 +2032,7 @@ func (svc record) DupDetection(ctx context.Context, m *types.Module, rec *types.
 		config = m.Config.RecordDeDup
 	)
 
-	if len(config.Rules) > 0 {
+	if len(config.Rules) > 0 && config.Rules.Validate() == nil {
 		records, _, err = svc.Find(ctx, types.RecordFilter{
 			ModuleID:    m.ID,
 			NamespaceID: m.NamespaceID,
@@ -2175,13 +2363,19 @@ func loadRecord(ctx context.Context, s store.Storer, namespaceID, moduleID, reco
 func recordReportToDalPipeline(m *types.Module, metrics, dimensions, f string) (pp dal.Pipeline, _ *dal.Aggregate, err error) {
 	// Map dimension to the aggregate group
 	// @note we only ever used a single dimension so this is ok
-	dim := []dal.AggregateAttr{
-		{
-			Identifier: "dimension_0",
-			RawExpr:    dimensions,
-			Key:        true,
-		},
+	auxDim := dal.AggregateAttr{
+		Identifier: "dimension_0",
+		RawExpr:    dimensions,
+		Key:        true,
 	}
+
+	ff := m.Fields.FindByName(dimensions)
+	if ff != nil {
+		auxDim.MultiValue = ff.Multi
+		auxDim.Label = ff.Label
+	}
+
+	dim := []dal.AggregateAttr{auxDim}
 	oo := filter.SortExprSet{{Column: dim[0].Identifier}}
 
 	// Map metrics to the aggregate attrs

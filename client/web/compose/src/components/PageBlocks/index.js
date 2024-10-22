@@ -38,6 +38,8 @@ import GeometryBase from './GeometryBase'
 import GeometryConfigurator from './GeometryConfigurator/index'
 import NavigationConfigurator from './Navigation/Configurator'
 import NavigationBase from './Navigation/Base'
+import TabsBase from './TabsBase'
+import TabsConfigurator from './TabsConfigurator'
 
 /**
  * List of all known page block components
@@ -79,6 +81,8 @@ const Registry = {
   NylasConfigurator,
   GeometryBase,
   GeometryConfigurator,
+  TabsBase,
+  TabsConfigurator,
   NavigationConfigurator,
   NavigationBase,
 }
@@ -92,6 +96,10 @@ function GetComponent ({ block, mode = defaultMode }) {
 
   const { kind } = block
   for (mode of uniq([capitalize(mode), defaultMode])) {
+    if (mode === 'Editor' && block.options.referenceField && block.options.referenceModuleID) {
+      mode = 'Base'
+    }
+
     const cmpName = kind + mode
     if (Object.hasOwnProperty.call(Registry, cmpName)) {
       return Registry[cmpName]

@@ -1,31 +1,49 @@
 <template>
-  <div>
-    <b-form-group
-      horizontal
-      :label-cols="3"
-      breakpoint="md"
-      :label="$t('calendar.reminderFeed.colorLabel')"
+  <b-row>
+    <b-col
+      cols="12"
+      lg="6"
     >
-      <b-input-group>
-        <b-form-input
+      <b-form-group
+        :label="$t('calendar.reminderFeed.colorLabel')"
+        label-class="text-primary"
+      >
+        <c-input-color-picker
           v-model="feed.options.color"
-          style="max-width: 50px;"
-          type="color"
-          debounce="300"
+          :translations="{
+            modalTitle: $t('calendar.recordFeed.colorPicker'),
+            light: $t('general:themes.labels.light'),
+            dark: $t('general:themes.labels.dark'),
+            cancelBtnLabel: $t('general:label.cancel'),
+            saveBtnLabel: $t('general:label.saveAndClose')
+          }"
+          :theme-settings="themeSettings"
         />
-      </b-input-group>
-    </b-form-group>
-  </div>
+      </b-form-group>
+    </b-col>
+  </b-row>
 </template>
 
 <script>
 import base from './base'
+import { components } from '@cortezaproject/corteza-vue'
+const { CInputColorPicker } = components
 
 export default {
   i18nOptions: {
     namespaces: 'block',
   },
 
+  components: {
+    CInputColorPicker,
+  },
+
   extends: base,
+
+  computed: {
+    themeSettings () {
+      return this.$Settings.get('ui.studio.themes', [])
+    },
+  },
 }
 </script>

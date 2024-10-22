@@ -5,7 +5,7 @@
     >
       <b-card-header
         header-tag="header"
-        class="bg-white p-0 mb-3"
+        class="p-0 mb-3"
       >
         <h5
           class="mb-0"
@@ -22,11 +22,10 @@
           class="mb-0"
         >
           <expression-editor
-            :value.sync="item.config.arguments[0].expr"
+            v-model="item.config.arguments[0].expr"
             lang="javascript"
             font-size="18px"
             show-line-numbers
-            :border="false"
             @input="valueChanged"
           />
         </b-form-group>

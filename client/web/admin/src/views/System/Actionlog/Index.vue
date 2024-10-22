@@ -1,6 +1,7 @@
 <template>
   <b-container
-    class="py-3"
+    fluid="xl"
+    class="d-flex flex-column h-100 pt-2 pb-3"
   >
     <c-content-header
       :title="$t('title')"
@@ -9,86 +10,116 @@
     <b-card
       class="shadow-sm"
       body-class="p-0"
-      header-bg-variant="white"
-      footer-bg-variant="white"
-      footer-class="d-flex align-items-center justify-content-center"
+      footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
     >
       <template #header>
         <b-form
+          class="d-flex flex-column w-100"
           @submit.prevent="search"
         >
-          <b-form-group
-            label-cols-lg="2"
-            :label="$t('filter.from')"
-          >
-            <c-input-date-time
-              v-model="filter.from"
-              data-test-id="filter-starting-from"
-              :labels="{
-                clear: $t('general:label.clear'),
-                none: $t('general:label.none'),
-                now: $t('general:label.now'),
-                today: $t('general:label.today'),
-              }"
-            />
-          </b-form-group>
-          <b-form-group
-            label-cols-lg="2"
-            :label="$t('filter.to')"
-          >
-            <c-input-date-time
-              v-model="filter.to"
-              data-test-id="filter-ending-at"
-              only-past
-              :labels="{
-                clear: $t('general:label.clear'),
-                none: $t('general:label.none'),
-                now: $t('general:label.now'),
-                today: $t('general:label.today'),
-              }"
-            />
-          </b-form-group>
-          <b-form-group
-            label-cols-lg="2"
-            :label="$t('filter.resource')"
-          >
-            <b-form-input
-              v-model="filter.resource"
-              data-test-id="input-resource"
-              size="sm"
-            />
-          </b-form-group>
-          <b-form-group
-            label-cols-lg="2"
-            :label="$t('filter.action')"
-          >
-            <b-form-input
-              v-model="filter.action"
-              data-test-id="input-action"
-              size="sm"
-            />
-          </b-form-group>
-          <b-form-group
-            label-cols-lg="2"
-            :label="$t('filter.actor')"
-          >
-            <b-form-input
-              v-model="filter.actorID"
-              data-test-id="input-user-id"
-              size="sm"
-            />
-          </b-form-group>
+          <b-row>
+            <b-col
+              cols="12"
+              lg="6"
+            >
+              <b-form-group
+                :label="$t('filter.from')"
+                label-class="text-primary"
+              >
+                <c-input-date-time
+                  v-model="filter.from"
+                  data-test-id="filter-starting-from"
+                  :labels="{
+                    clear: $t('general:label.clear'),
+                    none: $t('general:label.none'),
+                    now: $t('general:label.now'),
+                    today: $t('general:label.today'),
+                  }"
+                />
+              </b-form-group>
+            </b-col>
+            <b-col
+              cols="12"
+              lg="6"
+            >
+              <b-form-group
+                :label="$t('filter.to')"
+                label-class="text-primary"
+              >
+                <c-input-date-time
+                  v-model="filter.to"
+                  data-test-id="filter-ending-at"
+                  only-past
+                  :labels="{
+                    clear: $t('general:label.clear'),
+                    none: $t('general:label.none'),
+                    now: $t('general:label.now'),
+                    today: $t('general:label.today'),
+                  }"
+                />
+              </b-form-group>
+            </b-col>
+          </b-row>
 
-          <b-form-group
-            label-cols-lg="2"
-          >
+          <b-row>
+            <b-col
+              cols="12"
+              lg="4"
+            >
+              <b-form-group
+                :label="$t('filter.resource')"
+                label-class="text-primary"
+              >
+                <b-form-input
+                  v-model="filter.resource"
+                  data-test-id="input-resource"
+                  size="sm"
+                />
+              </b-form-group>
+            </b-col>
+            <b-col
+              cols="12"
+              lg="4"
+            >
+              <b-form-group
+                :label="$t('filter.action')"
+                label-class="text-primary"
+              >
+                <b-form-input
+                  v-model="filter.action"
+                  data-test-id="input-action"
+                  size="sm"
+                />
+              </b-form-group>
+            </b-col>
+            <b-col
+              cols="12"
+              lg="4"
+            >
+              <b-form-group
+                :label="$t('filter.actor')"
+                label-class="text-primary"
+              >
+                <b-form-input
+                  v-model="filter.actorID"
+                  data-test-id="input-user-id"
+                  size="sm"
+                />
+              </b-form-group>
+            </b-col>
+          </b-row>
+
+          <div class="d-flex flex-wrap flex-fill-child gap-1">
             <b-button
               data-test-id="button-submit"
               type="submit"
+              :disabled="processing"
+              variant="primary"
+              class="ml-auto"
             >
               {{ $t('filter.search') }}
             </b-button>
-          </b-form-group>
+          </div>
         </b-form>
       </template>
 
@@ -145,13 +176,14 @@
           </router-link>
         </template>
         <template #row-details="{ item: a }">
-          <b-card-group class="m-3 mb-5">
-            <b-card :header="$t('details.header')">
+          <b-card-group>
+            <b-card>
+              <h6>{{ $t('details.header') }}</h6>
               <b-row>
                 <b-col cols="4">
                   {{ $t('details.id') }}
                 </b-col>
-                <b-col cols="8">
+                <b-col>
                   {{ a.actionID }}
                 </b-col>
               </b-row>
@@ -161,7 +193,6 @@
                 </b-col>
                 <b-col
                   data-test-id="details-timestamp"
-                  cols="8"
                 >
                   {{ a.timestamp | locFullDateTime }}
                 </b-col>
@@ -172,7 +203,6 @@
                 </b-col>
                 <b-col
                   data-test-id="details-request-origin"
-                  cols="8"
                 >
                   {{ a.requestOrigin }}
                 </b-col>
@@ -181,7 +211,7 @@
                 <b-col cols="4">
                   {{ $t('details.requestID') }}
                 </b-col>
-                <b-col cols="8">
+                <b-col>
                   {{ a.requestID }}
                 </b-col>
               </b-row>
@@ -189,7 +219,7 @@
                 <b-col cols="4">
                   {{ $t('details.actorIPAddr') }}
                 </b-col>
-                <b-col cols="8">
+                <b-col>
                   {{ a.actorIPAddr }}
                 </b-col>
               </b-row>
@@ -199,7 +229,6 @@
                 </b-col>
                 <b-col
                   data-test-id="details-user"
-                  cols="8"
                 >
                   {{ a.actor }}
                 </b-col>
@@ -210,7 +239,6 @@
                 </b-col>
                 <b-col
                   data-test-id="details-user-id"
-                  cols="8"
                 >
                   {{ a.actorID }}
                 </b-col>
@@ -221,7 +249,6 @@
                 </b-col>
                 <b-col
                   data-test-id="details-severity"
-                  cols="8"
                 >
                   {{ getSeverityLabel(a.severity) }}
                 </b-col>
@@ -232,7 +259,6 @@
                 </b-col>
                 <b-col
                   data-test-id="details-resource"
-                  cols="8"
                 >
                   {{ a.resource }}
                 </b-col>
@@ -243,18 +269,19 @@
                 </b-col>
                 <b-col
                   data-test-id="details-action"
-                  cols="8"
                 >
                   {{ a.action }}
                 </b-col>
               </b-row>
             </b-card>
-            <b-card :header="$t('details.headerAdditional')">
+
+            <b-card>
+              <h6>{{ $t('details.headerAdditional') }}</h6>
               <b-row>
                 <b-col cols="4">
                   {{ $t('details.description') }}
                 </b-col>
-                <b-col cols="8">
+                <b-col>
                   {{ a.description }}
                 </b-col>
               </b-row>
@@ -262,22 +289,26 @@
                 <b-col cols="4">
                   {{ $t('details.error') }}
                 </b-col>
-                <b-col cols="8">
+                <b-col>
                   {{ a.error }}
                 </b-col>
               </b-row>
-              <hr>
-              <b-row
-                v-for="(val, key) in a.meta"
-                :key="key"
-              >
-                <b-col cols="4">
-                  <code>{{ key }}</code>
-                </b-col>
-                <b-col cols="8">
-                  <code>{{ val }}</code>
-                </b-col>
-              </b-row>
+
+              <template v-if="a.meta">
+                <hr>
+                <h6>{{ $t('details.meta') }}</h6>
+                <b-row
+                  v-for="(val, key) in a.meta"
+                  :key="key"
+                >
+                  <b-col>
+                    <code>{{ key }}</code>
+                  </b-col>
+                  <b-col>
+                    <code>{{ val }}</code>
+                  </b-col>
+                </b-row>
+              </template>
             </b-card>
           </b-card-group>
         </template>
@@ -288,6 +319,7 @@
           v-if="items.length"
           data-test-id="button-load-older-actions"
           variant="light"
+          class="mx-auto"
           @click.stop="load()"
         >
           {{ $t('loadOlder') }}
@@ -298,7 +330,6 @@
 </template>
 
 <script>
-import { debounce } from 'lodash'
 import listHelpers from 'corteza-webapp-admin/src/mixins/listHelpers'
 import { components } from '@cortezaproject/corteza-vue'
 const { CInputDateTime } = components
@@ -412,7 +443,7 @@ export default {
       }
     },
 
-    load: debounce(function (reset = false) {
+    load (reset = false) {
       if (reset) {
         this.items.length = 0
         this.pagination.beforeActionID = undefined
@@ -444,7 +475,7 @@ export default {
         .finally(() => {
           this.processing = false
         })
-    }, 300),
+    },
 
     // Resets pagination & sorting and adds filtering params for drill-down
     drillDownLink (query = {}) {

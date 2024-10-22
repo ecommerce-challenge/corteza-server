@@ -1,41 +1,32 @@
 <template>
   <b-container
     v-if="role"
-    class="py-3"
+    class="pt-2 pb-3"
   >
     <c-content-header
       :title="title"
     >
-      <span
-        class="text-nowrap"
+      <b-button
+        v-if="roleID && canCreate"
+        data-test-id="button-new-role"
+        variant="primary"
+        :to="{ name: 'system.role.new' }"
       >
-        <b-button
-          v-if="roleID && canCreate"
-          data-test-id="button-new-role"
-          variant="primary"
-          class="mr-2"
-          :to="{ name: 'system.role.new' }"
-        >
-          {{ $t('new') }}
-        </b-button>
-
-        <c-permissions-button
-          v-if="roleID && canGrant"
-          :title="role.name || role.handle || role.roleID"
-          :target="role.name || role.handle || role.roleID"
-          :resource="`corteza::system:role/${roleID}`"
-          button-variant="light"
-          class="mr-2"
-        >
-          <font-awesome-icon :icon="['fas', 'lock']" />
-          {{ $t('permissions') }}
-        </c-permissions-button>
-
-        <c-permission-clone
-          v-if="roleID && canGrant"
-          :role-id="roleID"
-        />
-      </span>
+        {{ $t('new') }}
+      </b-button>
+      <c-permissions-button
+        v-if="roleID && canGrant"
+        :title="role.name || role.handle || role.roleID"
+        :target="role.name || role.handle || role.roleID"
+        :resource="`corteza::system:role/${roleID}`"
+      >
+        <font-awesome-icon :icon="['fas', 'lock']" />
+        {{ $t('permissions') }}
+      </c-permissions-button>
+      <c-permission-clone
+        v-if="roleID && canGrant"
+        :role-id="roleID"
+      />
 
       <c-corredor-manual-buttons
         ui-page="role/editor"
@@ -70,6 +61,7 @@
 </template>
 
 <script>
+import { isEqual } from 'lodash'
 import { system } from '@cortezaproject/corteza-js'
 import editorHelpers from 'corteza-webapp-admin/src/mixins/editorHelpers'
 import CRoleEditorInfo from 'corteza-webapp-admin/src/components/Role/CRoleEditorInfo'
@@ -93,6 +85,14 @@ export default {
     editorHelpers,
   ],
 
+  beforeRouteUpdate (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
+
+  beforeRouteLeave (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
+
   props: {
     roleID: {
       type: String,
@@ -104,14 +104,16 @@ export default {
   data () {
     return {
       role: undefined,
+      initialRoleState: undefined,
       isContext: false,
 
-      roleMembers: null,
+      roleMembers: undefined,
 
       info: {
         processing: false,
         success: false,
       },
+
       members: {
         processing: false,
         success: false,
@@ -154,7 +156,9 @@ export default {
           this.fetchRole()
         } else {
           this.role = new system.Role()
+          this.initialRoleState = this.role.clone()
           this.isContext = false
+          this.roleMembers = undefined
         }
       },
     },
@@ -181,6 +185,8 @@ export default {
       this.$SystemAPI.roleRead({ roleID: this.roleID })
         .then(r => {
           this.role = new system.Role(r)
+          this.initialRoleState = this.role.clone()
+
           this.isContext = !!this.role.isContext
 
           if (this.role.canManageMembersOnRole && !this.role.isContext && !this.role.isClosed) {
@@ -214,6 +220,7 @@ export default {
           .then(() => {
             this.fetchRole()
 
+            this.role.deletedAt = new Date()
             this.toastSuccess(this.$t('notification:role.delete.success'))
             this.$router.push({ name: 'system.role' })
           })
@@ -313,6 +320,18 @@ export default {
           .finally(() => {
             this.members.processing = false
           })
+      }
+    },
+
+    checkUnsavedChanges (next, to) {
+      const isNewPage = this.$route.path.includes('/new') && to.name.includes('edit')
+      const { deletedAt } = this.role || {}
+
+      if (isNewPage || deletedAt) {
+        next(true)
+      } else if (!to.name.includes('edit')) {
+        const isDirty = (this.roleMembers || []).some(m => m.dirty !== m.current) || !isEqual(this.role, this.initialRoleState)
+        next(isDirty ? window.confirm(this.$t('general:editor.unsavedChanges')) : true)
       }
     },
   },

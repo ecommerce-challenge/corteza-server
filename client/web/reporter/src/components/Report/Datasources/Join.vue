@@ -5,11 +5,13 @@
     <b-row>
       <b-col>
         <b-form-group
-          :label="$t('datasources:name')"
+          :label="$t('datasources:name-required')"
           label-class="text-primary"
         >
           <b-form-input
             v-model="step.join.name"
+            :disabled="!creating"
+            :state="nameState"
             :placeholder="$t('datasources:datasource-name')"
           />
         </b-form-group>
@@ -19,7 +21,10 @@
     <hr>
 
     <b-row>
-      <b-col cols="6">
+      <b-col
+        cols="12"
+        lg="6"
+      >
         <b-form-group
           :label="$t('datasources:primary.source')"
           label-class="text-primary"
@@ -39,7 +44,11 @@
           </b-form-select>
         </b-form-group>
       </b-col>
-      <b-col cols="6">
+
+      <b-col
+        cols="12"
+        lg="6"
+      >
         <b-form-group
           :label="$t('datasources:secondary.source')"
           label-class="text-primary"
@@ -62,7 +71,10 @@
     </b-row>
 
     <b-row>
-      <b-col cols="6">
+      <b-col
+        cols="12"
+        lg="6"
+      >
         <b-form-group
           v-if="step.join.localSource"
           :label="$t('datasources:primary.column')"
@@ -75,7 +87,11 @@
           />
         </b-form-group>
       </b-col>
-      <b-col cols="6">
+
+      <b-col
+        cols="12"
+        lg="6"
+      >
         <b-form-group
           v-if="step.join.foreignSource"
           :label="$t('datasources:secondary.column')"
@@ -102,14 +118,6 @@ export default {
   },
 
   extends: base,
-
-  props: {
-    datasources: {
-      type: Array,
-      required: false,
-      default: () => [],
-    },
-  },
 
   data () {
     return {

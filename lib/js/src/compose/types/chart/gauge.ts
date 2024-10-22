@@ -4,6 +4,8 @@ import {
   Report,
   Dimension,
   ChartType,
+  TemporalDataPoint,
+  formatChartValue,
 } from './util'
 import { getColorschemeColors } from '../../../shared'
 
@@ -14,6 +16,9 @@ export default class GaugeChart extends BaseChart {
     // Assure required fields
     for (const v of (this.config.reports || []) as Array<Report>) {
       for (const d of (v.dimensions || []) as Array<Dimension>) {
+        // Since gauge produces one value we want one dataset, deletedAt is the same for all existing records
+        d.field = 'deletedAt'
+
         if (!d.meta) {
           d.meta = {}
         }
@@ -36,12 +41,14 @@ export default class GaugeChart extends BaseChart {
     return (d.meta?.steps || []).map(({ label }: any) => label)
   }
 
-  makeDataset (m: Metric, d: Dimension, data: Array<number|any>, alias: string) {
+  makeDataset (m: Metric, d: Dimension, data: Array<number|TemporalDataPoint>, alias: string) {
     const steps = (d.meta?.steps || [])
 
-    const value = data.reduce((acc, cur) => {
+    data = this.datasetPostProc(data, m)
+
+    const value = data.reduce((acc: any, cur: any) => {
       return !isNaN(cur) ? acc + parseFloat(cur) : acc
-    }, 0)
+    }, 0).toFixed(3)
 
     const max = Math.max(...steps.map(({ value }: any) => parseFloat(value)))
 
@@ -59,17 +66,31 @@ export default class GaugeChart extends BaseChart {
       name,
       max,
       value,
+      startAngle: m.startAngle,
+      endAngle: m.endAngle,
       tooltip: {
         fixed: m.fixTooltips,
       },
+      formatting: m.formatting,
     }
   }
 
   makeOptions (data: any) {
-    const { colorScheme, noAnimation = false } = this.config
-    const { datasets = [] } = data
-    const { steps = [], name, value, max, tooltip } = datasets.find(({ value }: any) => value) || datasets[0]
-    const colors = getColorschemeColors(colorScheme)
+    const { reports = [], colorScheme, noAnimation = false, toolbox } = this.config
+    const { saveAsImage } = toolbox || {}
+    const { datasets = [], themeVariables = {} } = data
+    const {
+      steps = [],
+      name,
+      value,
+      max,
+      tooltip,
+      startAngle,
+      endAngle,
+      formatting,
+    } = datasets.find(({ value }: any) => value) || datasets[0]
+
+    const colors = getColorschemeColors(colorScheme, data.customColorSchemes)
 
     const color = steps.map((s: any, i: number) => {
       return [s.value / max, colors[i]]
@@ -78,7 +99,18 @@ export default class GaugeChart extends BaseChart {
     return {
       animation: !noAnimation,
       textStyle: {
-        fontFamily: 'Poppins-Regular',
+        fontFamily: themeVariables['font-regular'],
+        overflow: 'break',
+        color: themeVariables.black,
+      },
+      toolbox: {
+        feature: {
+          saveAsImage: saveAsImage ? {
+            name: this.name,
+          } : undefined,
+        },
+        top: 15,
+        right: 5,
       },
       grid: {
         bottom: 0,
@@ -86,25 +118,25 @@ export default class GaugeChart extends BaseChart {
       series: [
         {
           type: 'gauge',
-          startAngle: 200,
-          endAngle: -20,
+          startAngle,
+          endAngle,
           min: 0,
           max,
           splitNumber: 5,
           radius: '100%',
-          center: ['50%', '60%'],
+          center: ['50%', '50%'],
           pointer: {
             width: 5,
             length: '75%',
             itemStyle: {
-              color: '#464646',
+              color: themeVariables.black,
             },
           },
           splitLine: {
             distance: 0,
             length: 0,
             lineStyle: {
-              color: '#fff',
+              color: themeVariables.white,
             },
           },
           axisLine: {
@@ -125,11 +157,14 @@ export default class GaugeChart extends BaseChart {
             fontSize: 14,
             show: tooltip.fixed,
             offsetCenter: [0, '30%'],
+            color: themeVariables.black,
           },
           detail: {
             fontSize: 13,
             offsetCenter: [0, '55%'],
             valueAnimation: true,
+            color: themeVariables.black,
+            formatter: (value: string | number): string => formatChartValue(value, formatting),
           },
           data: [
             {
@@ -146,8 +181,13 @@ export default class GaugeChart extends BaseChart {
     return 'gauge'
   }
 
-  defMetrics (): Metric {
-    return Object.assign({}, { type: ChartType.gauge })
+  defMetric (): Metric {
+    return Object.assign(super.defMetric(), {
+      type: ChartType.gauge,
+      fixTooltips: true,
+      startAngle: 200,
+      endAngle: -20,
+    })
   }
 
   /**

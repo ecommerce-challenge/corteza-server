@@ -1,13 +1,13 @@
 <template>
   <b-card
+    header-class="border-bottom"
+    footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
     class="shadow-sm"
-    header-bg-variant="white"
-    footer-bg-variant="white"
   >
     <template #header>
-      <h3 class="m-0">
+      <h4 class="m-0">
         {{ $t('title') }}
-      </h3>
+      </h4>
     </template>
 
     <b-form
@@ -15,6 +15,7 @@
     >
       <b-form-group
         :label="$t('sidebar.title')"
+        label-class="text-primary"
       >
         <b-form-checkbox
           v-model="sidebar.hideNamespaceList"
@@ -30,6 +31,7 @@
 
       <b-form-group
         :label="$t('record-toolbar.title')"
+        label-class="text-primary"
         class="mb-0"
       >
         <b-form-checkbox
@@ -66,11 +68,12 @@
     </b-form>
 
     <template #footer>
-      <c-submit-button
-        class="float-right"
-        :disabled="!canManage"
+      <c-button-submit
+        v-if="canManage"
         :processing="processing"
         :success="success"
+        :text="$t('admin:general.label.submit')"
+        class="ml-auto"
         @submit="onSubmit"
       />
     </template>
@@ -78,7 +81,6 @@
 </template>
 
 <script>
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
 
 export default {
   name: 'CComposeEditorUI',
@@ -86,10 +88,6 @@ export default {
   i18nOptions: {
     namespaces: 'compose.settings',
     keyPrefix: 'editor.ui',
-  },
-
-  components: {
-    CSubmitButton,
   },
 
   props: {

@@ -8,11 +8,12 @@
         data-test-id="sidebar"
         :sidebar-class="`sidebar ${isExpanded ? 'expanded' : ''}`"
         :header-class="`d-block sidebar-header ${isExpanded ? 'expanded border-bottom p-2' : ''}`"
-        :body-class="`bg-white ${isExpanded ? 'py-2 px-3' : ''}`"
-        :footer-class="`bg-white rounded-right ${isExpanded ? 'px-2' : ''}`"
+        :body-class="`${isExpanded ? 'px-3' : ''}`"
+        :footer-class="`rounded-right ${isExpanded ? 'px-2' : ''}`"
         :no-header="!isExpanded"
         :backdrop="isMobile"
-        :shadow="isExpanded"
+        backdrop-variant="white"
+        :shadow="isExpanded && 'sm'"
         no-slide
         :right="right"
         no-close-on-route-change
@@ -20,8 +21,8 @@
       >
         <template #header>
           <div
-            class="d-flex align-items-center justify-content-between px-2"
-            style="height: 50px;"
+            class="d-flex align-items-center justify-content-between pl-2"
+            style="height: 47px;"
           >
             <img
               data-test-id="img-main-logo"
@@ -188,7 +189,8 @@ export default {
 
   data () {
     return {
-      sidebar_settings : {}
+      sidebarSettings : {},
+      isMobile: false,
     }
   },
 
@@ -212,21 +214,18 @@ export default {
         this.$emit('update:pinned', pinned)
       },
     },
-
-    isMobile () {
-      return window.innerWidth < 1024 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    },
   },
 
   created () {
-    this.$root.$on('close-sidebar', () => {
-      this.isExpanded = false
-      this.isPinned = false
-    })
+    this.checkIfMobile()
+
+    this.$root.$on('close-sidebar', this.closeSidebar)
+    window.addEventListener('resize', this.checkIfMobile)
   },
 
   beforeDestroy () {
-    this.$root.$off('close-sidebar')
+    this.$root.$off('close-sidebar', this.closeSidebar)
+    window.removeEventListener('resize', this.checkIfMobile)
   },
 
   watch: {
@@ -236,15 +235,25 @@ export default {
         this.checkSidebar()
       },
     },
+
+    disabledRoutes: {
+      handler () {
+        this.checkSidebar()
+      },
+    },
   },
 
   methods: {
+    checkIfMobile: throttle(function () {
+      this.isMobile = window.innerWidth < 1024 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    }, 500),
+
     checkSidebar () {
       // If sidebar should be disabled on route, close and unpin when navigating to route
       if (this.disabledRoutes.includes(this.$route.name)) {
         this.isPinned = false
         this.isExpanded = false
-      } else if(this.expandOnHover){
+      } else if (this.expandOnHover && !this.isExpanded) {
         this.defaultSidebarAppearance()
       }
     },
@@ -263,9 +272,9 @@ export default {
     },
 
     defaultSidebarAppearance () {
-      const localstorage_settings = JSON.parse(window.localStorage.getItem('sidebar_settings'))
+      const localstorage_settings = JSON.parse(window.localStorage.getItem('sidebarSettings'))
       if (localstorage_settings) {
-        this.sidebar_settings = localstorage_settings
+        this.sidebarSettings = localstorage_settings
       }
       const app_sidebar = (localstorage_settings || {})[this.$root.$options.name]
       if (!this.isMobile) {
@@ -281,12 +290,12 @@ export default {
     },
 
     saveSettings (pinned) {
-      if (this.sidebar_settings[this.$root.$options.name]) {
-        this.sidebar_settings[this.$root.$options.name].pinned = pinned
+      if (this.sidebarSettings[this.$root.$options.name]) {
+        this.sidebarSettings[this.$root.$options.name].pinned = pinned
       } else {
-        this.sidebar_settings[this.$root.$options.name] = { pinned: pinned }
+        this.sidebarSettings[this.$root.$options.name] = { pinned: pinned }
       }
-      window.localStorage.setItem('sidebar_settings', JSON.stringify(this.sidebar_settings))
+      window.localStorage.setItem('sidebarSettings', JSON.stringify(this.sidebarSettings))
     },
 
     openSidebar () {
@@ -328,7 +337,14 @@ $header-height: 64px;
 
 <style lang="scss">
 $nav-width: 320px;
-$sidebar-bg: #F4F7FA;
+
+.b-sidebar {
+  background-color: var(--white) !important;
+}
+
+.b-sidebar-backdrop {
+  opacity: 0.75 !important;
+}
 
 .sidebar {
   display: flex !important;
@@ -337,14 +353,6 @@ $sidebar-bg: #F4F7FA;
   -moz-transition: left 0.15s ease-in-out;
   -o-transition: left 0.15s ease-in-out;
   transition: left 0.15s ease-in-out;
-
-  header {
-    background-color: white;
-
-    &.expanded {
-      background-color: $sidebar-bg !important;
-    }
-  }
 
   &.expanded {
     left: 0 !important;
@@ -362,14 +370,6 @@ $sidebar-bg: #F4F7FA;
     -moz-transition: right 0.15s ease-in-out;
     -o-transition: right 0.15s ease-in-out;
     transition: right 0.15s ease-in-out;
-
-    header {
-      background-color: white;
-
-      &.expanded {
-        background-color: $sidebar-bg !important;
-      }
-    }
 
     &.expanded {
       right: 0 !important;

@@ -2,6 +2,7 @@ import axios, { AxiosInstance } from 'axios'
 import { Make } from '../libs/url'
 import { system } from '@cortezaproject/corteza-js'
 import { PluginFunction } from 'vue'
+import { User } from '@cortezaproject/corteza-js/dist/system'
 
 const accessToken = Symbol('accessToken')
 const user = Symbol('user')
@@ -40,10 +41,13 @@ interface OAuth2TokenResponse {
   refresh_token: string;
   expires_in: number;
 
+  roles?: string[];
   name?: string;
   handle?: string;
   email?: string;
   preferred_language?: string;
+  avatarID?: string;
+  theme?: string;
 }
 
 interface PluginOpts {
@@ -366,14 +370,13 @@ export class Auth {
 
         const authUser = new system.User({
           userID: data.sub,
-          name: data.name,
-          email: data.email,
-          handle: data.username,
+          meta: {
+            preferredLanguage: data.preferred_language || 'en',
+            avatarID: data.avatarID,
+            theme: data.theme,
+          },
+          ...data,
         })
-
-        if (data.preferred_language) {
-          authUser.meta.preferredLanguage = data.preferred_language || 'en'
-        }
 
         this[user] = authUser
 
@@ -440,7 +443,6 @@ export class Auth {
     this.location.assign(Make({
       url: `${this.cortezaAuthURL}` + oauth2FlowURL,
       query: {
-        // eslint-disable-next-line @typescript-eslint/camelcase
         redirect_uri: this.callbackURL,
         scope: oauth2Scope,
         state,
@@ -497,7 +499,6 @@ export class Auth {
     return this.oauth2token({
       code: code,
       scope: oauth2Scope,
-      // eslint-disable-next-line @typescript-eslint/camelcase
       redirect_uri: this.callbackURL,
     }).then((oa2tr) => this.procTokenResponse(oa2tr))
   }
@@ -517,7 +518,6 @@ export class Auth {
     this.completeFinalState()
 
     return this.oauth2token({
-      // eslint-disable-next-line @typescript-eslint/camelcase
       refresh_token: refreshToken || '',
     }).then((oa2tr) => this.procTokenResponse(oa2tr))
       .catch((err) => {
@@ -549,7 +549,6 @@ export class Auth {
     const timeout = oa2tkn.expires_in * this.refreshFactor
 
     this.log.debug('setting up refresh timeout callback', {
-      // eslint-disable-next-line @typescript-eslint/camelcase
       expires_in: oa2tkn.expires_in,
       timeout,
     })
@@ -568,14 +567,13 @@ export class Auth {
 
     const u = new system.User({
       userID: oa2tkn.sub,
-      name: oa2tkn.name,
-      handle: oa2tkn.handle,
-      email: oa2tkn.email,
+      meta: {
+        preferredLanguage: oa2tkn.preferred_language || 'en',
+        avatarID: oa2tkn.avatarID,
+        theme: oa2tkn.theme,
+      },
+      ...oa2tkn,
     })
-
-    if (oa2tkn.preferred_language) {
-      u.meta.preferredLanguage = oa2tkn.preferred_language
-    }
 
     this[accessToken] = oa2tkn.access_token
     this[user] = u
@@ -651,7 +649,6 @@ export default function (): PluginFunction<PluginOpts> {
        * (most likely through config.js)
        */
 
-      // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
       // @ts-ignore
       const { CortezaAPI = undefined, CortezaAuth = undefined } = window
 
@@ -688,7 +685,6 @@ export default function (): PluginFunction<PluginOpts> {
         throw new Error('can not construct callbackURL; specify \'callbackURL\' or \'app\' property')
       }
 
-      // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
       // @ts-ignore
       const { CortezaWebapp = undefined } = window
       const callbackPath = 'auth/callback'

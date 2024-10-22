@@ -233,10 +233,15 @@ export default {
     }
   },
 
+  beforeDestroy () {
+    this.setDefaultValues()
+  },
+
   methods: {
     ...mapActions({
       createModule: 'module/create',
       createPage: 'page/create',
+      createPageLayout: 'pageLayout/create',
       createChart: 'chart/create',
     }),
 
@@ -280,9 +285,18 @@ export default {
         blocks: [],
       })
 
-      this.createPage(newPage).then((page) => {
-        this.$router.push({ name: 'admin.pages.builder', params: { pageID: page.pageID } })
+      this.createPage(newPage).then(({ pageID, title }) => {
+        const pageLayout = new compose.PageLayout({ namespaceID, pageID, handle: 'primary', meta: { title } })
+        return this.createPageLayout(pageLayout).then(() => {
+          this.$router.push({ name: 'admin.pages.builder', params: { pageID } })
+        })
       }).catch(this.toastErrorHandler(this.$t('notification:page.saveFailed')))
+    },
+
+    setDefaultValues () {
+      this.navVisible = false
+      this.documentWidth = 0
+      this.loaded = false
     },
   },
 }

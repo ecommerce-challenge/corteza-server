@@ -87,12 +87,12 @@ interface RecordDeDupRule {
  */
 export const systemFields = Object.freeze([
   { isSystem: true, name: 'recordID', label: 'Record ID', kind: 'String' },
-  { isSystem: true, name: 'revision', label: 'Revision', kind: 'Number' },
   { isSystem: true, name: 'ownedBy', label: 'Owned by', kind: 'User' },
   { isSystem: true, name: 'createdBy', label: 'Created by', kind: 'User' },
   { isSystem: true, name: 'createdAt', label: 'Created at', kind: 'DateTime' },
   { isSystem: true, name: 'updatedBy', label: 'Updated by', kind: 'User' },
   { isSystem: true, name: 'updatedAt', label: 'Updated at', kind: 'DateTime' },
+  { isSystem: true, name: 'revision', label: 'Revision', kind: 'Number' },
   { isSystem: true, name: 'deletedBy', label: 'Deleted by', kind: 'User' },
   { isSystem: true, name: 'deletedAt', label: 'Deleted at', kind: 'DateTime' },
 ].map(f => ModuleFieldMaker(f)))
@@ -155,7 +155,7 @@ export class Module {
           {
             lang: '',
             fields: [],
-          }
+          },
         ],
       },
       protected: {
@@ -174,12 +174,7 @@ export class Module {
     },
 
     recordDeDup: {
-      rules: [
-        {
-          strict: true,
-          constraints: []
-        }
-      ],
+      rules: [],
     },
   }
 
@@ -230,13 +225,17 @@ export class Module {
     }
 
     if (IsOf(m, 'meta')) {
+      if (m.meta.ui && m.meta.ui.admin && m.meta.ui.admin.fields) {
+        if (!AreStrings(m.meta.ui.admin.fields)) {
+          m.meta.ui.admin.fields = m.meta.ui.admin.fields.map((f: any) => f.fieldID)
+        }
+      }
+
       this.meta = { ...m.meta }
     }
 
     if (IsOf(m, 'config')) {
       this.config = merge({}, this.config, m.config)
-
-      // Remove when we improve duplicate detection, for now its always enabled
     }
 
     if (IsOf(m, 'labels')) {
@@ -303,19 +302,19 @@ export class Module {
     }
 
     if (!AreStrings(requested)) {
-      requested = (requested as ModuleField[]).map((f: ModuleField) => f.name)
+      requested = (requested as ModuleField[]).map((f: ModuleField) => f.name || f.fieldID)
     }
 
     const out: ModuleField[] = []
 
     for (const r of requested) {
-      const sf = this.systemFields().find(f => r === f.name)
+      const sf = this.systemFields().find(f => r === f.name || r === f.fieldID)
       if (sf) {
         out.push(sf)
         continue
       }
 
-      const mf = this.fields.find(f => r === f.name)
+      const mf = this.fields.find(f => r === f.name || r === f.fieldID)
       if (mf) {
         out.push(mf)
       }

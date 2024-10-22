@@ -14,14 +14,15 @@
         label-class="text-primary"
         class="mb-0"
       >
-        <vue-select
-          v-model="connection"
+        <c-input-select
+          v-model="connectionID"
           :disabled="processing.connections"
           :options="connections"
           :clearable="false"
+          :reduce="o => o.connectionID"
           :placeholder="$t('connection.placeholder')"
           :get-option-label="({ handle, meta }) => meta.name || handle"
-          class="h-100 bg-white"
+          :get-option-key="getOptionKey"
         />
       </b-form-group>
     </b-card>
@@ -34,7 +35,7 @@
     </div>
 
     <h5
-      v-else-if="!(connection && modules[connection.connectionID])"
+      v-else-if="!(connectionID && modules[connectionID])"
       class="text-center mt-5"
     >
       {{ $t('no-data-available') }}
@@ -43,7 +44,7 @@
     <module-records
       v-else
       v-slot="{ value }"
-      :modules="modules[connection.connectionID]"
+      :modules="modules[connectionID]"
     >
       <p
         v-for="(v, vi) in value.value"
@@ -61,6 +62,7 @@
         :back-link="{ name: 'data-overview' }"
       >
         <b-button
+          data-test-id="button-request-deletion"
           :disabled="processing.connections || processing.sensitiveData"
           variant="light"
           size="lg"
@@ -71,6 +73,7 @@
         </b-button>
 
         <b-button
+          data-test-id="button-request-correction"
           :disabled="processing.connections || processing.sensitiveData"
           variant="primary"
           size="lg"
@@ -87,7 +90,6 @@
 <script>
 import EditorToolbar from 'corteza-webapp-privacy/src/components/Common/EditorToolbar'
 import ModuleRecords from 'corteza-webapp-privacy/src/components/Common/ModuleRecords'
-import VueSelect from 'vue-select'
 
 export default {
   name: 'ApplicationDataOverview',
@@ -98,7 +100,6 @@ export default {
   },
 
   components: {
-    VueSelect,
     EditorToolbar,
     ModuleRecords,
   },
@@ -110,7 +111,7 @@ export default {
         sensitiveData: true,
       },
 
-      connection: undefined,
+      connectionID: undefined,
 
       connections: [],
 
@@ -118,9 +119,15 @@ export default {
     }
   },
 
+  computed: {
+    connection () {
+      return this.connections.find(({ connectionID }) => connectionID === this.connectionID) || {}
+    },
+  },
+
   watch: {
-    connection: {
-      handler ({ connectionID } = {}) {
+    connectionID: {
+      handler (connectionID = '') {
         this.fetchSensitiveData(connectionID)
       },
     },
@@ -137,7 +144,8 @@ export default {
       this.$SystemAPI.dataPrivacyConnectionList()
         .then(({ set = [] }) => {
           this.connections = set
-          this.connection = set[0]
+          const { connectionID } = set[0] || {}
+          this.connectionID = connectionID
         })
         .catch(this.toastErrorHandler(this.$t('notification:connection-load-failed')))
         .finally(() => {
@@ -160,6 +168,10 @@ export default {
             this.processing.sensitiveData = false
           })
       }
+    },
+
+    getOptionKey ({ connectionID }) {
+      return connectionID
     },
   },
 }

@@ -5,7 +5,14 @@ import { Module } from '../module'
 import { Button } from './types'
 
 const kind = 'RecordList'
-interface Options {
+
+interface FilterPreset {
+  name: string;
+  filter: unknown[];
+  roles: string[];
+}
+
+export interface Options {
   moduleID: string;
   prefilter: string;
   presort: string;
@@ -13,22 +20,28 @@ interface Options {
   hideHeader: boolean;
   hideAddButton: boolean;
   hideImportButton: boolean;
+  hideConfigureFieldsButton: boolean;
   hideSearch: boolean;
   hidePaging: boolean;
   hideSorting: boolean;
+  hideFiltering: boolean;
   hideRecordReminderButton: boolean;
   hideRecordCloneButton: boolean;
   hideRecordEditButton: boolean;
   hideRecordViewButton: boolean;
   hideRecordPermissionsButton: boolean;
+  enableRecordPageNavigation: boolean;
   allowExport: boolean;
   perPage: number;
   recordDisplayOption: string;
+  recordSelectorDisplayOption: string;
+  addRecordDisplayOption: string;
   magnifyOption: string;
 
   fullPageNavigation: boolean;
   showTotalCount: boolean;
   showDeletedRecordsOption: boolean;
+  customFilterPresets: boolean;
   refreshRate: number;
   showRefresh: boolean;
 
@@ -36,11 +49,9 @@ interface Options {
   editable: boolean;
   draggable?: boolean;
   positionField?: string;
-  refField?: string;
+  refField?: string; // When adding a new record, prefill refField value with parent record ID
   editFields?: unknown[];
-
-  // When adding a new record, link it to parent when available
-  linkToParent: boolean;
+  linkToParent: boolean; // Legacy
 
   // Should records be opened in a new tab
   // legacy field that has been removed but we keep it for backwards compatibility
@@ -52,32 +63,49 @@ interface Options {
 
   // Ordered list of buttons to display in the block
   selectionButtons: Array<Button>;
+
+  bulkRecordEditEnabled: boolean;
+  inlineRecordEditEnabled: boolean;
+  inlineValueFiltering: boolean;
+  filterPresets: FilterPreset[];
+  showRecordPerPageOption: boolean;
+  openRecordInEditMode: boolean;
+
+  textStyles: {
+    noWrapFields: Array<string>
+  }
 }
 
 const defaults: Readonly<Options> = Object.freeze({
   moduleID: NoID,
   prefilter: '',
-  presort: '',
+  presort: 'createdAt DESC',
   fields: [],
   hideHeader: false,
   hideAddButton: false,
   hideImportButton: false,
+  hideConfigureFieldsButton: true,
   hideSearch: false,
   hidePaging: false,
   hideSorting: false,
-  hideRecordReminderButton: true,
-  hideRecordCloneButton: true,
+  hideFiltering: false,
+  hideRecordReminderButton: false,
+  hideRecordCloneButton: false,
   hideRecordEditButton: false,
-  hideRecordViewButton: true,
-  hideRecordPermissionsButton: true,
+  hideRecordViewButton: false,
+  hideRecordPermissionsButton: false,
+  enableRecordPageNavigation: false,
   allowExport: false,
   perPage: 20,
   recordDisplayOption: 'sameTab',
+  recordSelectorDisplayOption: 'sameTab',
+  addRecordDisplayOption: 'sameTab',
   magnifyOption: '',
 
-  fullPageNavigation: true,
-  showTotalCount: true,
+  fullPageNavigation: false,
+  showTotalCount: false,
   showDeletedRecordsOption: false,
+  customFilterPresets: false,
 
   editable: false,
   draggable: false,
@@ -85,7 +113,7 @@ const defaults: Readonly<Options> = Object.freeze({
   refField: undefined,
   editFields: [],
 
-  linkToParent: true,
+  linkToParent: false,
 
   openInNewTab: false,
 
@@ -95,6 +123,17 @@ const defaults: Readonly<Options> = Object.freeze({
   selectionButtons: [],
   refreshRate: 0,
   showRefresh: false,
+
+  bulkRecordEditEnabled: true,
+  inlineRecordEditEnabled: false,
+  inlineValueFiltering: false,
+  filterPresets: [],
+  showRecordPerPageOption: false,
+  openRecordInEditMode: false,
+
+  textStyles: {
+    noWrapFields: [],
+  },
 })
 
 export class PageBlockRecordList extends PageBlock {
@@ -111,11 +150,27 @@ export class PageBlockRecordList extends PageBlock {
     if (!o) return
 
     Apply(this.options, o, CortezaID, 'moduleID')
-    Apply(this.options, o, String, 'prefilter', 'presort', 'selectMode', 'positionField', 'refField', 'recordDisplayOption', 'magnifyOption')
+
+    Apply(this.options, o, String,
+      'prefilter',
+      'presort',
+      'selectMode',
+      'positionField',
+      'refField',
+      'recordDisplayOption',
+      'magnifyOption',
+      'recordSelectorDisplayOption',
+      'addRecordDisplayOption',
+    )
+
     Apply(this.options, o, Number, 'perPage', 'refreshRate')
 
     if (o.fields) {
       this.options.fields = o.fields
+    }
+
+    if (o.filterPresets) {
+      this.options.filterPresets = o.filterPresets
     }
 
     if (o.editFields) {
@@ -130,11 +185,14 @@ export class PageBlockRecordList extends PageBlock {
       'hideHeader',
       'hideAddButton',
       'hideImportButton',
+      'hideConfigureFieldsButton',
       'hideSearch',
       'hidePaging',
+      'hideFiltering',
       'fullPageNavigation',
       'showTotalCount',
       'showDeletedRecordsOption',
+      'customFilterPresets',
       'hideSorting',
       'allowExport',
       'selectable',
@@ -143,14 +201,24 @@ export class PageBlockRecordList extends PageBlock {
       'hideRecordEditButton',
       'hideRecordViewButton',
       'hideRecordPermissionsButton',
+      'enableRecordPageNavigation',
       'editable',
       'draggable',
       'linkToParent',
       'showRefresh',
+      'bulkRecordEditEnabled',
+      'inlineRecordEditEnabled',
+      'inlineValueFiltering',
+      'showRecordPerPageOption',
+      'openRecordInEditMode',
     )
 
     if (o.selectionButtons) {
       this.options.selectionButtons = o.selectionButtons.map(b => new Button(b))
+    }
+
+    if (o.textStyles) {
+      this.options.textStyles = o.textStyles
     }
   }
 

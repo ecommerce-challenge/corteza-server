@@ -3,12 +3,15 @@
     <td />
 
     <td
-      colspan="4"
+      colspan="5"
       class="p-0"
     >
       <div class="d-flex">
-        <th>
-          <b-form-group :label="$t('navigation.fieldLabel')">
+        <th style="min-width: 200px;">
+          <b-form-group
+            :label="$t('navigation.fieldLabel')"
+            label-class="text-primary"
+          >
             <b-form-input
               v-model="options.item.dropdown.label"
               type="text"
@@ -16,109 +19,112 @@
           </b-form-group>
         </th>
 
-        <th>
+        <th style="min-width: 200px;">
           <b-form-group
-            horizontal
             :label="$t('navigation.drop')"
+            horizontal
+            label-class="text-primary"
           >
             <b-form-radio-group
               v-model="options.item.align"
               buttons
-              button-variant="outline-secondary"
-              size="sm"
+              button-variant="outline-primary"
               :options="aligns"
             />
           </b-form-group>
         </th>
       </div>
 
-      <div class="d-flex align-items-center mb-4 mb-3 px-3">
-        <h6 class="text-primary mb-0">
-          {{ $t("navigation.dropdownItems") }}
-        </h6>
+      <b-table-simple
+        v-if="options.item.dropdown.items.length > 0"
+        borderless
+        responsive
+        class="border-top pt-2"
+      >
+        <thead>
+          <tr class="text-primary">
+            <th style="min-width: 200px;">
+              {{ $t("navigation.text") }}
+            </th>
+            <th style="min-width: 200px;">
+              {{ $t("navigation.url") }}
+            </th>
+            <th style="min-width: 200px;">
+              {{ $t('navigation.openIn') }}
+            </th>
+            <th
+              class="text-center"
+              style="width: 50px; min-width: 50px;"
+            >
+              {{ $t("navigation.delimiter") }}
+            </th>
+          </tr>
+        </thead>
 
+        <tr
+          v-for="(item, dropIndex) in options.item.dropdown.items"
+          :key="`drop-${dropIndex}`"
+        >
+          <td>
+            <b-form-group class="mb-0">
+              <b-form-input
+                v-model="item.label"
+                type="text"
+              />
+            </b-form-group>
+          </td>
+
+          <td>
+            <b-form-group class="mb-0">
+              <b-form-input
+                v-model="item.url"
+                type="text"
+              />
+            </b-form-group>
+          </td>
+
+          <td class="align-middle text-center">
+            <b-form-group class="mb-0">
+              <b-form-select
+                v-model="item.target"
+                :options="targetOptions"
+              />
+            </b-form-group>
+          </td>
+
+          <td class="align-middle text-center">
+            <b-form-group class="d-flex align-items-center justify-content-center mb-0">
+              <c-input-checkbox
+                v-model="item.delimiter"
+                switch
+                size="sm"
+              />
+            </b-form-group>
+          </td>
+
+          <td class="align-middle text-center">
+            <c-input-confirm
+              show-icon
+              @confirmed="options.item.dropdown.items.splice(dropIndex, 1)"
+            />
+          </td>
+        </tr>
+      </b-table-simple>
+
+      <div class="mb-4 mb-3 px-3">
         <b-button
-          variant="link"
+          variant="primary"
+          size="sm"
           class="text-decoration-none"
-          @click="options.item.dropdown.items.push({ text: '', url: '', target: 'sameTab' })"
+          @click="options.item.dropdown.items.push({ text: '', url: '', target: 'sameTab', delimiter: false })"
         >
           <font-awesome-icon
             :icon="['fas', 'plus']"
             size="sm"
             class="mr-1"
           />
-          {{ $t("navigation.add") }}
+          {{ $t("navigation.addDropdown") }}
         </b-button>
-      </div>
-
-      <div class="px-3">
-        <table
-          v-if="options.item.dropdown.items.length > 0"
-          class="table table-sm table-borderless table-responsive-lg"
-        >
-          <tr>
-            <th>
-              {{ $t("navigation.text") }}
-            </th>
-            <th>
-              {{ $t("navigation.url") }}
-            </th>
-            <th class="text-center">
-              {{ $t('navigation.openIn') }}
-            </th>
-            <th class="text-center">
-              {{ $t("navigation.delimiter") }}
-            </th>
-          </tr>
-
-          <tr
-            v-for="(item, dropIndex) in options.item.dropdown.items"
-            :key="`drop-${dropIndex}`"
-          >
-            <th>
-              <b-form-group class="mb-0">
-                <b-form-input
-                  v-model="item.label"
-                  type="text"
-                />
-              </b-form-group>
-            </th>
-
-            <th>
-              <b-form-group class="mb-0">
-                <b-form-input
-                  v-model="item.url"
-                  type="text"
-                />
-              </b-form-group>
-            </th>
-
-            <th class="align-middle text-center">
-              <b-form-group class="mb-0">
-                <b-form-select
-                  v-model="item.target"
-                  :options="targetOptions"
-                />
-              </b-form-group>
-            </th>
-
-            <th class="align-middle text-center">
-              <b-form-group class="mb-0">
-                <b-form-checkbox
-                  v-model="item.delimiter"
-                  switch
-                  size="sm"
-                />
-              </b-form-group>
-            </th>
-
-            <th class="align-middle text-center">
-              <c-input-confirm
-                @confirmed="options.item.dropdown.items.splice(dropIndex, 1)"
-              />
-            </th>
-          </tr>
-        </table>
       </div>
     </td>
   </tr>
@@ -144,5 +150,24 @@ export default {
       ],
     }
   },
+
+  beforeDestroy () {
+    this.setDefaultValues()
+  },
+
+  methods: {
+    setDefaultValues () {
+      this.aligns = []
+      this.targetOptions = []
+    },
+  },
 }
 </script>
+
+<style lang="scss" scoped>
+th,
+td {
+  padding-left: 15px;
+  padding-right: 15px;
+}
+</style>

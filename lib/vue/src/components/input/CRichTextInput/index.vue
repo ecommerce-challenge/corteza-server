@@ -1,22 +1,24 @@
 <template>
-  <b-card no-body class="editor rt-content">
+  <b-card
+    no-body
+    class="editor rt-content"
+  >
     <template v-if="editor">
-      <b-card-header header-class="p-0 rounded-sm">
+      <b-card-header header-class="p-0 border-bottom">
         <editor-menu-bar
-          :editor="editor"
           v-slot="{ commands, isActive, getMarkAttrs, getNodeAttrs }"
-        >
-
-        <r-toolbar
           :editor="editor"
-          :formats="toolbar"
-          :commands="commands"
-          :is-active="isActive"
-          :get-mark-attrs="getMarkAttrs"
-          :get-node-attrs="getNodeAttrs" 
-          :labels="labels"
-          :current-value="currentValue"
-        />
+        >
+          <r-toolbar
+            :editor="editor"
+            :formats="toolbar"
+            :commands="commands"
+            :is-active="isActive"
+            :get-mark-attrs="getMarkAttrs"
+            :get-node-attrs="getNodeAttrs"
+            :labels="labels"
+            :current-value="currentValue"
+          />
         </editor-menu-bar>
       </b-card-header>
 
@@ -25,7 +27,6 @@
           :editor="editor"
           class="editor__content"
         />
-
       </b-card-body>
     </template>
   </b-card>
@@ -51,10 +52,11 @@ export default {
       required: false,
       default: null,
     },
+
     labels: {
       type: Object,
-      default: () => ({})
-    }
+      default: () => ({}),
+    },
   },
 
   data () {
@@ -62,7 +64,7 @@ export default {
     return {
       formats,
       toolbar: getToolbar(),
-      // Helper to determine if current content differes from prop's content
+      // Helper to determine if current content differs from prop's content
       emittedContent: false,
       editor: undefined,
       currentValue: '',
@@ -98,19 +100,13 @@ export default {
     init () {
       this.editor = new Editor({
         extensions: this.formats,
-        content: this.value,
+        // Bypass Editor default empty white space script with an empty space string if there is no value because it's not really valid html
+        // also ensuring that the unsaved changes alert detection is not triggered when the Editor does not have any changes
+        content: this.value || ' ',
         parseOptions: {
           preserveWhitespace: 'full',
         },
         onUpdate: this.onUpdate,
-      })
-
-      /**
-       * Since we migrated to TipTap, the new content should be emitted
-       * after tiptap is done parsing it.
-       */
-      this.$nextTick(() => {
-        this.onUpdate()
       })
     },
 
@@ -131,3 +127,76 @@ export default {
   },
 }
 </script>
+
+<style>
+/* Basic editor styles */
+.rt-content {
+  min-width: 12rem;
+  position: static;
+}
+
+.rt-content :first-child {
+  margin-top: 0;
+}
+
+/* Table-specific styling */
+.rt-content  table {
+  border-collapse: collapse;
+  margin: 0;
+  overflow: hidden;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.rt-content  td,
+.rt-content  th {
+  border: 1px solid var(--gray);
+  box-sizing: border-box;
+  min-width: 1em;
+  padding: 6px 8px;
+  position: relative;
+  vertical-align: top;
+}
+
+.rt-content  td > *,
+.rt-content  th > * {
+  margin-bottom: 0;
+}
+
+.rt-content  th {
+  background-color: var(--gray-dark);
+  font-weight: bold;
+  text-align: left;
+}
+
+.rt-content  .selectedCell::after {
+  background: var(--gray-dark);
+  content: "";
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
+.rt-content  .column-resize-handle {
+  background-color: var(--purple);
+  bottom: -2px;
+  pointer-events: none;
+  position: absolute;
+  right: -2px;
+  top: 0;
+  width: 4px;
+}
+
+.rt-content  .tableWrapper {
+  overflow-x: auto;
+}
+
+.rt-content .resize-cursor {
+  cursor: ew-resize;
+  cursor: col-resize;
+}
+</style>

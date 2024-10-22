@@ -10,7 +10,10 @@
     >
       <b-input-group>
         <b-input-group-prepend>
-          <b-button variant="dark">
+          <b-button
+            v-b-tooltip.noninteractive.hover="{ title: $t('validators.expression.tooltip'), container: '#body' }"
+            variant="extra-light"
+          >
             ƒ
           </b-button>
         </b-input-group-prepend>
@@ -26,6 +29,7 @@
           <!-- no prompt/confirmation on empty input -->
           <c-input-confirm
             :no-prompt="value[e].length === 0"
+            show-icon
             @confirmed="$emit('remove', e)"
           />
         </b-input-group-addon>
@@ -36,6 +40,10 @@
 <script>
 
 export default {
+  i18nOptions: {
+    namespaces: 'field',
+  },
+
   props: {
     value: {
       type: Array,

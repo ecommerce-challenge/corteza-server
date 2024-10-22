@@ -7,13 +7,8 @@
       <slot name="single" />
     </div>
 
-    <errors
-      v-if="errors"
-      :errors="errors"
-      class="mb-1"
-    />
-
     <draggable
+      v-if="showList"
       :list.sync="val"
       handle=".handle"
     >
@@ -23,10 +18,9 @@
         class="d-flex w-100 align-items-center mb-1"
       >
         <font-awesome-icon
-          v-b-tooltip.hover
+          v-b-tooltip.noninteractive.hover="{ title: $t('tooltip.dragAndDrop'), container: '#body' }"
           :icon="['fas', 'bars']"
-          :title="$t('tooltip.dragAndDrop')"
-          class="handle text-light ml-1 mr-2"
+          class="handle text-secondary mr-3"
         />
 
         <div
@@ -40,11 +34,13 @@
         <font-awesome-icon
           v-if="removable"
           :icon="['fas', 'times']"
-          class="pointer text-danger ml-2 mr-1"
+          class="pointer text-danger ml-3"
           @click="removeValue(index)"
         />
       </div>
     </draggable>
+
+    <errors :errors="errors" />
 
     <b-button
       v-if="!singleInput"
@@ -87,6 +83,11 @@ export default {
     singleInput: {
       type: Boolean,
       default: false,
+    },
+
+    showList: {
+      type: Boolean,
+      default: true,
     },
 
     errors: {

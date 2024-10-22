@@ -1,10 +1,8 @@
 <template>
-  <b-card
-    header-bg-variant="white"
-    footer-bg-variant="white"
-  >
+  <b-card>
     <b-form-group
       :label="$t('recordList.import.report.title')"
+      label-class="text-primary"
     >
       <div
         class="small pl-2"
@@ -39,6 +37,7 @@
 
     <b-form-group
       :label="$t('recordList.import.report.detectedErrors')"
+      label-class="text-primary"
     >
       <b-table
         id="error-list"
@@ -54,6 +53,7 @@
 
     <b-form-group
       :label="$t('recordList.import.report.failedEntries')"
+      label-class="text-primary"
     >
       <div
         v-for="(ee, ix) in progress.failLog.records"
@@ -80,11 +80,11 @@
 
     <div slot="footer">
       <b-button
-        variant="dark"
+        variant="light"
         class="float-right"
         @click="$emit('close')"
       >
-        {{ $t('general.label.ok') }}
+        {{ $t('general:label.close') }}
       </b-button>
     </div>
   </b-card>
@@ -133,12 +133,12 @@ export default {
         {
           key: 'k',
           label: this.$t('recordList.import.report.error'),
-          tdClass: 'border-top text-truncate pointer',
+          tdClass: 'border-top',
         },
         {
           key: 'v',
           label: this.$t('recordList.import.report.count'),
-          tdClass: 'border-top text-truncate pointer',
+          tdClass: 'border-top',
         },
       ]
     },

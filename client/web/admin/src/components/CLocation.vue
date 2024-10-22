@@ -19,32 +19,27 @@
       hide-header
       hide-footer
     >
-      <l-map
-        ref="map"
-        :zoom="map.zoom"
-        :center="map.center"
+      <c-map
+        :map="map"
+        :markers="[{ value }]"
         style="height: 75vh; width: 100%;"
-        :style="{ 'cursor': editable ? 'pointer' : 'grab'}"
-        @click="placeMarker"
-      >
-        <l-tile-layer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          :attribution="map.attribution"
-        />
-        <l-marker
-          v-if="value && value.length"
-          :lat-lng="getLatLng(value)"
-          @click="removeMarker"
-        />
-      </l-map>
+        @on-marker-click="removeMarker"
+        @on-map-click="placeMarker"
+      />
     </b-modal>
   </div>
 </template>
 
 <script>
-import { latLng } from 'leaflet'
+import { components } from '@cortezaproject/corteza-vue'
+
+const { CMap } = components
 
 export default {
+  components: {
+    CMap,
+  },
+
   props: {
     value: {
       type: Array,
@@ -72,14 +67,6 @@ export default {
   methods: {
     openMap () {
       this.map.show = true
-
-      setTimeout(() => {
-        this.$refs.map.mapObject.invalidateSize()
-      }, 100)
-    },
-
-    getLatLng (coordinates = [0, 0]) {
-      return latLng(coordinates[0], coordinates[1])
     },
 
     placeMarker ({ latlng = {} }) {

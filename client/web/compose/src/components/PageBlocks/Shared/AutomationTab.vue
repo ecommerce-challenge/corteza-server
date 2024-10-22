@@ -5,7 +5,7 @@
       <b-badge
         v-if="buttons.length > 0"
         pill
-        variant="dark"
+        variant="light"
       >
         {{ buttons.length }}
       </b-badge>
@@ -13,10 +13,11 @@
 
     <b-container class="pt-3">
       <b-row>
-        <b-col cols="6">
+        <b-col lg="6">
           <b-card
-            :header="$t('automation.configuredButtons')"
+            :title="$t('automation.configuredButtons')"
             footer-class="text-right"
+            class="border"
           >
             <draggable
               :list.sync="buttons"
@@ -42,16 +43,15 @@
               </b-button>
               <c-input-confirm
                 v-if="buttons.length"
+                :text="$t('automation.removeAll')"
                 variant="link"
                 size="md"
                 @confirmed="removeAllButtons"
-              >
-                {{ $t('automation.removeAll') }}
-              </c-input-confirm>
+              />
             </template>
           </b-card>
         </b-col>
-        <b-col cols="6">
+        <b-col lg="6">
           <button-editor
             v-if="currentButton"
             :page="page"
@@ -59,15 +59,19 @@
             :button="currentButton"
             :script="currentScript"
             :trigger="currentTrigger"
+            :record="record"
+            :module="module"
             @delete="deleteButton(currentButton)"
           />
         </b-col>
       </b-row>
+
       <b-row class="mt-4">
-        <b-col cols="12">
+        <b-col>
           <b-card
             v-if="available.length > 0"
-            :header="$t('automation.availableScriptsAndWorkflow', { count: available.length })"
+            :title="$t('automation.availableScriptsAndWorkflow', { count: available.length })"
+            class="border"
           >
             <c-input-search
               v-model="queryAvailable"
@@ -76,19 +80,19 @@
             />
 
             <b-list-group
-              v-for="(b) in filtered"
-              :key="b.script || `${b.workflowID}-${b.stepID}`"
+              v-for="(b, index) in filtered"
+              :key="index"
               class="mb-2 cursor-pointer"
               no-gutters
               @click.prevent="appendButton(b)"
             >
               <b-list-group-item>
-                <div class="d-flex w-100 justify-content-between">
-                  <h5>
+                <div class="d-flex align-items-center w-100 justify-content-between">
+                  <h6>
                     {{ b.label || b.script }}
                     <b-badge
                       v-if="b.workflowID"
-                      variant="light"
+                      variant="info"
                     >
                       {{ $t('automation.badge.workflow') }}
                     </b-badge>
@@ -98,7 +102,7 @@
                     >
                       {{ $t('automation.badge.script') }}
                     </b-badge>
-                  </h5>
+                  </h6>
                   <code v-if="b.label && b.script">{{ b.script }}</code>
                 </div>
                 <p

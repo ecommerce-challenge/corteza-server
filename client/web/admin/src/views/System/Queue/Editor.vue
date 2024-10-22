@@ -1,24 +1,20 @@
 <template>
   <b-container
     v-if="queue"
-    class="py-3"
+    class="pt-2 pb-3"
   >
     <c-content-header
       :title="title"
+      class="mb-2"
     >
-      <span
-        class="text-nowrap"
+      <b-button
+        v-if="queueID && canCreate"
+        data-test-id="button-add"
+        variant="primary"
+        :to="{ name: 'system.queue.new' }"
       >
-        <b-button
-          v-if="queueID && canCreate"
-          data-test-id="button-add"
-          variant="primary"
-          class="mr-2"
-          :to="{ name: 'system.queue.new' }"
-        >
-          {{ $t('new') }}
-        </b-button>
-      </span>
+        {{ $t('new') }}
+      </b-button>
     </c-content-header>
 
     <c-queue-editor-info
@@ -34,6 +30,7 @@
 </template>
 
 <script>
+import { isEqual, cloneDeep } from 'lodash'
 import editorHelpers from 'corteza-webapp-admin/src/mixins/editorHelpers'
 import CQueueEditorInfo from 'corteza-webapp-admin/src/components/Queues/CQueueEditorInfo'
 import { mapGetters } from 'vuex'
@@ -52,6 +49,14 @@ export default {
     editorHelpers,
   ],
 
+  beforeRouteUpdate (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
+
+  beforeRouteLeave (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
+
   props: {
     queueID: {
       type: String,
@@ -63,6 +68,7 @@ export default {
   data () {
     return {
       queue: undefined,
+      initialQueueState: undefined,
 
       consumers: [],
 
@@ -102,6 +108,16 @@ export default {
               poll_delay: '',
               dispatch_events: false,
             },
+            queue: '',
+          }
+
+          this.initialQueueState = {
+            consumer: 'corteza',
+            meta: {
+              poll_delay: '',
+              dispatch_events: false,
+            },
+            queue: '',
           }
         }
       },
@@ -113,7 +129,10 @@ export default {
       this.incLoader()
 
       this.$SystemAPI.queuesRead({ queueID: this.queueID })
-        .then(q => { this.queue = q })
+        .then(q => {
+          this.queue = q
+          this.initialQueueState = cloneDeep(q)
+        })
         .catch(this.toastErrorHandler(this.$t('notification:queue.fetch.error')))
         .finally(() => {
           this.decLoader()
@@ -135,10 +154,12 @@ export default {
 
     onSubmit (queue) {
       this.incLoader()
+
       if (this.queueID) {
         this.$SystemAPI.queuesUpdate(queue)
           .then(queue => {
             this.queue = queue
+            this.initialQueueState = cloneDeep(queue)
 
             this.animateSuccess('info')
             this.toastSuccess(this.$t('notification:queue.update.success'))
@@ -172,12 +193,26 @@ export default {
         .then(() => {
           this.fetchQueue()
           this.toastSuccess(this.$t(`notification:queue.${event}.success`))
-          this.$router.push({ name: 'system.queue' })
+          if (!deletedAt) {
+            this.queue.deletedAt = new Date()
+            this.$router.push({ name: 'system.queue' })
+          }
         })
         .catch(this.toastErrorHandler(this.$t(`notification:queue.${event}.error`)))
         .finally(() => {
           this.decLoader()
         })
+    },
+
+    checkUnsavedChanges (next, to) {
+      const isNewPage = this.$route.path.includes('/new') && to.name.includes('edit')
+      const { deletedAt } = this.queue || {}
+
+      if (isNewPage || deletedAt) {
+        next(true)
+      } else if (!to.name.includes('edit')) {
+        next(!isEqual(this.queue, this.initialQueueState) ? window.confirm(this.$t('general:editor.unsavedChanges')) : true)
+      }
     },
   },
 }

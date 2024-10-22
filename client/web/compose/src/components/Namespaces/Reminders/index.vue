@@ -1,8 +1,9 @@
 <template>
-  <div>
+  <div class="d-flex flex-column h-100">
     <list
       v-if="!edit"
       :reminders="reminders"
+      class="flex-fill"
       @edit="onEdit"
       @dismiss="onDismiss"
       @delete="onDelete"
@@ -11,8 +12,11 @@
     <edit
       v-else
       :edit="edit"
-      :my-i-d="$auth.user.userID"
-      :users="users"
+      :disable-save="disableSave"
+      :processing-save="processingSave"
+      class="flex-fill"
+      @dismiss="onDismiss"
+      @back="onCancel()"
       @save="onSave"
     />
   </div>
@@ -21,7 +25,6 @@
 <script>
 import List from './List'
 import Edit from './Edit'
-import { mapGetters } from 'vuex'
 import { system, NoID } from '@cortezaproject/corteza-js'
 
 export default {
@@ -34,16 +37,12 @@ export default {
     return {
       reminders: [],
       edit: null,
+      disableSave: false,
+      processingSave: false,
     }
   },
 
-  computed: {
-    ...mapGetters({
-      users: 'user/set',
-    }),
-  },
-
-  created () {
+  mounted () {
     this.fetchReminders()
     // @todo remove this, when sockets get implemented
     this.$root.$on('reminders.pull', this.fetchReminders)
@@ -52,9 +51,8 @@ export default {
   },
 
   beforeDestroy () {
-    this.$root.$off('reminders.pull', this.fetchReminders)
-    this.$root.$off('reminder.updated', this.fetchReminders)
-    this.$root.$off('reminder.create', this.onEdit)
+    this.destroyEvents()
+    this.setDefaultValues()
   },
 
   methods: {
@@ -73,41 +71,56 @@ export default {
     },
 
     onSave (r) {
-      let h = 'reminderCreate'
-      if (r.reminderID && r.reminderID !== NoID) {
-        h = 'reminderUpdate'
-      }
-      this.$SystemAPI[h](r).then(r => {
-        this.fetchReminders()
-        this.$Reminder.prefetch()
-      })
+      this.processingSave = true
+      const endpoint = r.reminderID && r.reminderID !== NoID ? 'reminderUpdate' : 'reminderCreate'
 
-      this.onCancel()
+      this.$SystemAPI[endpoint](r).then(() => {
+        return this.fetchReminders()
+      }).then(() => {
+        this.onCancel()
+        this.$Reminder.prefetch()
+      }).finally(() => {
+        this.processingSave = false
+      })
     },
 
     onCancel () {
-      this.edit = null
+      this.edit = undefined
     },
 
-    onDismiss (r) {
-      this.$SystemAPI.reminderDismiss(r).then(() => {
+    onDismiss ({ reminderID }, value) {
+      const endpoint = value ? 'reminderDismiss' : 'reminderUndismiss'
+      this.$SystemAPI[endpoint]({ reminderID }).then(() => {
         this.fetchReminders()
       })
     },
 
-    onDelete (r) {
-      this.$SystemAPI.reminderDelete(r).then(() => {
+    onDelete ({ reminderID }) {
+      this.$SystemAPI.reminderDelete({ reminderID }).then(() => {
         this.fetchReminders()
       })
     },
 
-    fetchReminders () {
-      this.$SystemAPI.reminderList({
+    async fetchReminders () {
+      return this.$SystemAPI.reminderList({
         assignedTo: this.$auth.user.userID,
         limit: 0,
       }).then(({ set: reminders = [] }) => {
         this.reminders = reminders.map(r => new system.Reminder(r))
       })
+    },
+
+    setDefaultValues () {
+      this.reminder = []
+      this.edit = null
+      this.disableSave = false
+      this.processingSave = false
+    },
+
+    destroyEvents () {
+      this.$root.$off('reminders.pull', this.fetchReminders)
+      this.$root.$off('reminder.updated', this.fetchReminders)
+      this.$root.$off('reminder.create', this.onEdit)
     },
   },
 

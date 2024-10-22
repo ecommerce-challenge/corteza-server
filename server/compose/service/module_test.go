@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cortezaproject/corteza/server/pkg/dal"
+	"github.com/cortezaproject/corteza/server/pkg/id"
 	"github.com/cortezaproject/corteza/server/pkg/logger"
 
 	"github.com/cortezaproject/corteza/server/compose/types"
@@ -13,6 +14,7 @@ import (
 	"github.com/cortezaproject/corteza/server/pkg/rbac"
 	"github.com/cortezaproject/corteza/server/store"
 	"github.com/cortezaproject/corteza/server/store/adapters/rdbms/drivers/sqlite"
+	sysService "github.com/cortezaproject/corteza/server/system/service"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -49,7 +51,7 @@ func makeTestModuleService(t *testing.T, mods ...any) *module {
 		case store.Storer:
 			t.Log("using custom Store to initialize Module service")
 			svc.store = c
-		case dalService:
+		case dal.FullService:
 			t.Log("using custom DAL to initialize Module service")
 			t.Log("make sure you manually reload models!")
 			svc.dal = c
@@ -103,7 +105,7 @@ func makeTestModuleService(t *testing.T, mods ...any) *module {
 		svc.dal = dalAux
 
 		t.Log("reloading DAL models")
-		req.NoError(DalModelReload(ctx, svc.store, dalAux))
+		req.NoError(DalModelReload(ctx, svc.store, sysService.DefaultDalSchemaAlteration, dalAux))
 	}
 
 	return svc
@@ -188,7 +190,7 @@ func TestModule_LabelSearch(t *testing.T) {
 			return out
 		}
 
-		findModules = func(labels map[string]string, IDs []uint64) types.ModuleSet {
+		findModules = func(labels map[string]string, IDs []string) types.ModuleSet {
 			f := types.ModuleFilter{NamespaceID: ns.ID, Labels: labels, ModuleID: IDs}
 			set, _, err := svc.Find(ctx, f)
 			req.NoError(err)
@@ -214,16 +216,16 @@ func TestModule_LabelSearch(t *testing.T) {
 	req.Len(findModules(map[string]string{"label2": "value2"}, nil), 1)
 
 	// explicit by ID and label
-	req.Len(findModules(map[string]string{"label1": "value1"}, []uint64{m2.ID}), 1)
+	req.Len(findModules(map[string]string{"label1": "value1"}, id.Strings(m2.ID)), 1)
 
 	// none with this combo
-	req.Len(findModules(map[string]string{"foo": "foo"}, []uint64{m3.ID}), 0)
+	req.Len(findModules(map[string]string{"foo": "foo"}, id.Strings(m3.ID)), 0)
 
 	// one with explicit ID (regression) and nil for label filter
-	req.Len(findModules(nil, []uint64{m3.ID}), 1)
+	req.Len(findModules(nil, id.Strings(m3.ID)), 1)
 
 	// one with explicit ID (regression) and empty map for label filter
-	req.Len(findModules(map[string]string{}, []uint64{m3.ID}), 1)
+	req.Len(findModules(map[string]string{}, id.Strings(m3.ID)), 1)
 
 }
 

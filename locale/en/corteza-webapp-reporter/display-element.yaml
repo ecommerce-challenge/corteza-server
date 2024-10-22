@@ -17,6 +17,14 @@ chart:
     step-size: Step size
     animation:
       enabled: Animation enabled
+    metrics:
+      label: Metrics
+      field: Field
+      stack:
+        label: Stack
+        description: Metrics with same value will be stacked
+      label-field:
+        label: Label
     time:
       label: Time
       unit:
@@ -76,7 +84,7 @@ chart:
     tooltips:
       name: Tooltips
       show:
-        always: Always show tooltips
+        always: Always show labels
     offset:
       name: Offset
       default: Default offset
@@ -89,6 +97,7 @@ metric:
     color:
       background: Background color
       text: Text color
+      picker: Choose a color
     format: Format
     label-column: Label column
     none: None

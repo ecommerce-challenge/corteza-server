@@ -1,30 +1,31 @@
 <template>
-  <b-container class="py-3">
-    <c-content-header :title="$t('title')">
-      <span class="text-nowrap">
-        <b-button
-          v-if="routeID && canCreate"
-          data-test-id="button-add"
-          variant="primary"
-          :to="{ name: 'system.apigw.new' }"
-        >
-          {{ $t("new") }}
-        </b-button>
-        <c-permissions-button
-          v-if="routeID && canGrant"
-          :title="route.endpoint || routeID"
-          :target="route.endpoint || routeID"
-          :resource="`corteza::system:apigw-route/${routeID}`"
-          button-variant="light"
-          class="ml-2"
-        >
-          <font-awesome-icon :icon="['fas', 'lock']" />
-          {{ $t("permissions") }}
-        </c-permissions-button>
-      </span>
+  <b-container class="pt-2 pb-3">
+    <c-content-header
+      :title="$t('title')"
+      class="mb-2"
+    >
+      <b-button
+        v-if="routeID && canCreate"
+        data-test-id="button-add"
+        variant="primary"
+        :to="{ name: 'system.apigw.new' }"
+      >
+        {{ $t("new") }}
+      </b-button>
+
+      <c-permissions-button
+        v-if="routeID && canGrant"
+        :title="route.endpoint || routeID"
+        :target="route.endpoint || routeID"
+        :resource="`corteza::system:apigw-route/${routeID}`"
+      >
+        <font-awesome-icon :icon="['fas', 'lock']" />
+        {{ $t("permissions") }}
+      </c-permissions-button>
     </c-content-header>
 
     <c-route-editor-info
+      v-if="Object.keys(route).length"
       :route="route"
       :processing="info.processing"
       :success="info.success"
@@ -53,6 +54,7 @@
   </b-container>
 </template>
 <script>
+import { isEqual, cloneDeep } from 'lodash'
 import editorHelpers from 'corteza-webapp-admin/src/mixins/editorHelpers'
 import CRouteEditorInfo from 'corteza-webapp-admin/src/components/Apigw/CRouteEditorInfo'
 import CFiltersStepper from 'corteza-webapp-admin/src/components/Apigw/CFiltersStepper'
@@ -74,6 +76,14 @@ export default {
 
   mixins: [editorHelpers],
 
+  beforeRouteUpdate (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
+
+  beforeRouteLeave (to, from, next) {
+    this.checkUnsavedChanges(next, to)
+  },
+
   props: {
     routeID: {
       type: String,
@@ -85,12 +95,14 @@ export default {
   data () {
     return {
       route: {},
+      initialRouteState: {},
       routeEndpoint: undefined,
 
       info: {
         processing: false,
         success: false,
       },
+
       stepper: {
         fetching: false,
         processing: false,
@@ -98,6 +110,7 @@ export default {
       },
 
       filters: [],
+      initialFiltersState: [],
       availableFilters: [],
       steps: [],
     }
@@ -133,8 +146,11 @@ export default {
           this.fetchFilters()
         } else {
           this.route = {
+            endpoint: '',
             method: 'GET',
           }
+
+          this.initialRouteState = cloneDeep(this.route)
         }
       },
     },
@@ -146,6 +162,7 @@ export default {
       this.$SystemAPI.apigwRouteRead({ routeID: this.routeID, incFlags: 1 })
         .then((api) => {
           this.route = api
+          this.initialRouteState = cloneDeep(api)
           this.routeEndpoint = btoa(api.endpoint)
         })
         .catch(this.toastErrorHandler(this.$t('notification:gateway.fetch.error')))
@@ -156,6 +173,7 @@ export default {
 
     onInfoSubmit (route) {
       this.info.processing = true
+
       if (this.routeID) {
         this.$SystemAPI
           .apigwRouteUpdate(route)
@@ -208,6 +226,8 @@ export default {
           .apigwRouteDelete({ routeID: this.routeID })
           .then(() => {
             this.fetchRoute()
+
+            this.route.deletedAt = new Date()
 
             this.toastSuccess(this.$t('notification:gateway.delete.success'))
             this.$router.push({ name: 'system.apigw' })
@@ -286,6 +306,7 @@ export default {
           f.enabled = !!filter.enabled
           return { ...f }
         })
+        this.initialFiltersState = cloneDeep(this.filters)
       })
     },
 
@@ -324,6 +345,20 @@ export default {
 
     fetchSteps () {
       this.steps = ['prefilter', 'processer', 'postfilter']
+    },
+
+    checkUnsavedChanges (next, to) {
+      const isNewPage = this.$route.path.includes('/new') && to.name.includes('edit')
+      const { deletedAt } = this.route || {}
+
+      if (isNewPage || deletedAt) {
+        next(true)
+      } else if (!to.name.includes('edit')) {
+        const routeState = !isEqual(this.route, this.initialRouteState)
+        const filtersState = !isEqual(this.filters, this.initialFiltersState)
+
+        next((routeState || filtersState) ? window.confirm(this.$t('general:editor.unsavedChanges')) : true)
+      }
     },
   },
 }

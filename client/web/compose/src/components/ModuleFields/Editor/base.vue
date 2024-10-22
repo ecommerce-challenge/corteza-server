@@ -10,11 +10,11 @@
     </fieldset>
   </div>
 </template>
+
 <script>
 import multi from './multi'
 import errors from '../errors'
 import { compose, validator } from '@cortezaproject/corteza-js'
-import Hint from 'corteza-webapp-compose/src/components/Common/Hint.vue'
 
 export default {
   components: {
@@ -25,10 +25,6 @@ export default {
     // errors is used in the components that extends base
     // eslint-disable-next-line vue/no-unused-components
     errors,
-
-    // Hint is used in the components that extends base
-    // eslint-disable-next-line vue/no-unused-components
-    Hint,
   },
 
   props: {
@@ -57,9 +53,14 @@ export default {
       default: false,
     },
 
-    appendToBody: {
+    horizontal: {
       type: Boolean,
-      default: true,
+      default: false,
+    },
+
+    extraOptions: {
+      type: Object,
+      default: () => ({}),
     },
   },
 
@@ -72,6 +73,7 @@ export default {
         // because of font-size: inherit prop on .col-form-label on
         // wrapping element
         small: false,
+        'value-only': this.valueOnly,
       }
     },
 
@@ -114,10 +116,6 @@ export default {
     },
 
     label () {
-      if (this.valueOnly) {
-        return ''
-      }
-
       return this.field.label || this.field.name
     },
 
@@ -138,6 +136,19 @@ export default {
       const { view, edit } = this.field.options.hint
 
       return edit || view
+    },
+
+    // detect when a page block is opened in a modal through magnification or record open type
+    inModal () {
+      const { recordPageID, magnifiedBlockID } = this.$route.query
+
+      return !!recordPageID || !!magnifiedBlockID
+    },
+  },
+
+  methods: {
+    getFieldCypressId (field) {
+      return `field-${field.toLowerCase().split(' ').join('-')}`
     },
   },
 }

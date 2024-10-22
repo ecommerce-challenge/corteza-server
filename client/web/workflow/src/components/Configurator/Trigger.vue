@@ -5,7 +5,7 @@
     >
       <b-card-header
         header-tag="header"
-        class="bg-white p-0 mb-3"
+        class="p-0 mb-3"
       >
         <h5
           class="mb-0"
@@ -20,9 +20,10 @@
           :label="$t('steps:trigger.configurator.resource*')"
           label-class="text-primary"
         >
-          <vue-select
+          <c-input-select
             v-model="item.triggers.resourceType"
             :options="resourceTypeOptions"
+            :get-option-key="getOptionTypeKey"
             label="text"
             :reduce="r => r.value"
             :filter="resTypeFilter"
@@ -33,12 +34,13 @@
 
         <b-form-group
           v-if="item.triggers.resourceType"
-          label-class="text-primary"
           :label="$t('steps:trigger.configurator.event*')"
+          label-class="text-primary"
         >
-          <vue-select
+          <c-input-select
             v-model="item.triggers.eventType"
             :options="eventTypeOptions"
+            :get-option-key="getOptionEventTypeKey"
             label="eventType"
             :reduce="e => e.eventType"
             :filter="evtTypeFilter"
@@ -69,7 +71,7 @@
     >
       <b-card-header
         header-tag="header"
-        class="d-flex align-items-center bg-white p-4"
+        class="d-flex align-items-center"
       >
         <h5
           class="mb-0"
@@ -94,7 +96,7 @@
           fixed
           borderless
           hover
-          head-row-variant="secondary"
+          head-variant="light"
           details-td-class="bg-white"
           :items="item.triggers.constraints"
           :fields="constraintFields"
@@ -118,16 +120,13 @@
               <samp>{{ c.values.join(' or ') }}</samp>
             </div>
 
-            <b-button
+            <c-input-confirm
               v-if="c._showDetails"
-              variant="outline-danger"
-              class="position-absolute trash border-0"
-              @click="removeConstraint(index)"
-            >
-              <font-awesome-icon
-                :icon="['far', 'trash-alt']"
-              />
-            </b-button>
+              show-icon
+              class="position-absolute trash"
+              size="md"
+              @confirmed="removeConstraint(index)"
+            />
           </template>
 
           <template #row-details="{ item: c }">
@@ -139,9 +138,10 @@
                 :label="$t('steps:trigger.configurator.resource')"
                 label-class="text-primary"
               >
-                <vue-select
+                <c-input-select
                   v-model="c.name"
                   :options="constraintNameTypes"
+                  :get-option-key="getOptionTypeKey"
                   label="text"
                   :reduce="c => c.value"
                   :filter="constrFilter"
@@ -154,9 +154,10 @@
                 :label="$t('steps:trigger.configurator.operator')"
                 label-class="text-primary"
               >
-                <vue-select
+                <c-input-select
                   v-model="c.op"
                   :options="constraintOperatorTypes"
+                  :get-option-key="getOptionTypeKey"
                   label="text"
                   :reduce="c => c.value"
                   :placeholder="$t('steps:trigger.configurator.select-operator')"
@@ -190,15 +191,10 @@
                     @input="$root.$emit('change-detected')"
                   />
 
-                  <b-button
-                    variant="outline-danger"
-                    class="ml-1 border-0"
-                    @click="c.values.splice(index, 1)"
-                  >
-                    <font-awesome-icon
-                      :icon="['far', 'trash-alt']"
-                    />
-                  </b-button>
+                  <c-input-confirm
+                    show-icon
+                    @confirmed="c.values.splice(index, 1)"
+                  />
                 </b-input-group>
               </b-form-group>
             </b-card>
@@ -250,7 +246,6 @@
     >
       <b-card-header
         header-tag="header"
-        class="bg-white p-4"
       >
         <h5
           class="mb-0"
@@ -265,7 +260,7 @@
           id="variable"
           fixed
           borderless
-          head-row-variant="secondary"
+          head-variant="light"
           class="mb-4"
           :items="eventType.properties || []"
           :fields="scopeFields"
@@ -281,7 +276,6 @@
 
 <script>
 import base from './base'
-import { VueSelect } from 'vue-select'
 import { components } from '@cortezaproject/corteza-vue'
 import { objectSearchMaker } from '../../lib/filter'
 const { CInputDateTime } = components
@@ -289,7 +283,6 @@ const { CInputDateTime } = components
 export default {
   components: {
     CInputDateTime,
-    VueSelect,
   },
 
   extends: base,
@@ -453,7 +446,11 @@ export default {
 
     eventChanged () {
       this.item.triggers.constraints = []
-      this.addConstraint()
+
+      if (['onTimestamp', 'onInterval'].includes(this.item.triggers.eventType)) {
+        this.addConstraint()
+      }
+
       this.$root.$emit('change-detected')
       this.updateDefaultName()
     },
@@ -480,6 +477,14 @@ export default {
         value = value.charAt(0).toUpperCase() + value.slice(1)
         this.$emit('update-default-value', { value, force: !this.item.node.value })
       }
+    },
+
+    getOptionTypeKey ({ value }) {
+      return value
+    },
+
+    getOptionEventTypeKey ({ eventType }) {
+      return eventType
     },
   },
 }

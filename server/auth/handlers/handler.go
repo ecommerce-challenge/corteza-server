@@ -6,16 +6,22 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"golang.org/x/text/language"
+
+	"github.com/cortezaproject/corteza/server/system/service"
 
 	"github.com/cortezaproject/corteza/server/auth/external"
 	"github.com/cortezaproject/corteza/server/auth/request"
 	"github.com/cortezaproject/corteza/server/auth/saml"
 	"github.com/cortezaproject/corteza/server/auth/settings"
 	"github.com/cortezaproject/corteza/server/pkg/auth"
+	"github.com/cortezaproject/corteza/server/pkg/errors"
 	"github.com/cortezaproject/corteza/server/pkg/locale"
 	"github.com/cortezaproject/corteza/server/pkg/options"
 	"github.com/cortezaproject/corteza/server/system/types"
@@ -50,6 +56,8 @@ type (
 		SendEmailOTP(ctx context.Context) (err error)
 		ConfigureEmailOTP(ctx context.Context, userID uint64, enable bool) (u *types.User, err error)
 		ValidateEmailOTP(ctx context.Context, code string) (err error)
+		SendInviteEmail(ctx context.Context, email string) (err error)
+		ValidateInviteEmailToken(ctx context.Context, token string) (user *types.User, err error)
 	}
 
 	credentialsService interface {
@@ -62,6 +70,9 @@ type (
 	userService interface {
 		FindByAny(ctx context.Context, identifier interface{}) (*types.User, error)
 		Update(context.Context, *types.User) (*types.User, error)
+		UploadAvatar(ctx context.Context, userID uint64, upload *multipart.FileHeader) (err error)
+		GenerateAvatar(ctx context.Context, userID uint64, bgColor string, initialColor string) (err error)
+		DeleteAvatar(ctx context.Context, userID uint64) (err error)
 	}
 
 	clientService interface {
@@ -102,6 +113,7 @@ type (
 	localeService interface {
 		NS(ctx context.Context, ns string) func(key string, rr ...string) string
 		T(ctx context.Context, ns, key string, rr ...string) string
+		HasLanguage(lang language.Tag) bool
 		LocalizedList(ctx context.Context) []*locale.Language
 	}
 
@@ -121,6 +133,7 @@ type (
 		Opt                options.AuthOpt
 		Settings           *settings.Settings
 		SamlSPService      *saml.SamlSPService
+		Attachment         service.AttachmentService
 	}
 
 	handlerFn func(req *request.AuthReq) error
@@ -136,6 +149,7 @@ const (
 	TmplRequestPasswordReset     = "request-password-reset.html.tpl"
 	TmplPasswordResetRequested   = "password-reset-requested.html.tpl"
 	TmplResetPassword            = "reset-password.html.tpl"
+	TmplInvite                   = "invite.html.tpl"
 	TmplSecurity                 = "security.html.tpl"
 	TmplProfile                  = "profile.html.tpl"
 	TmplSessions                 = "sessions.html.tpl"
@@ -195,6 +209,12 @@ func (h *AuthHandlers) handle(fn handlerFn) http.HandlerFunc {
 				return
 			}
 
+			// Caching 32MB to memory, the rest to disk
+			err = r.ParseMultipartForm(32 << 20)
+			if err != nil && err != http.ErrNotMultipart {
+				return
+			}
+
 			if !validFormPost(r) {
 				req.Status = http.StatusRequestEntityTooLarge
 				return
@@ -206,12 +226,23 @@ func (h *AuthHandlers) handle(fn handlerFn) http.HandlerFunc {
 
 			// make sure user (identity) is part of the context
 			// so we can properly identify ourselves when interacting
-			// with services
+			// with services, and set user's preferred language
 			if req.AuthUser != nil && !req.AuthUser.PendingMFA() {
 				req.Request = req.Request.Clone(auth.SetIdentityToContext(
 					req.Context(),
 					auth.Authenticated(req.AuthUser.User.ID, req.AuthUser.User.Roles()...),
 				))
+
+				userPreferredLanguage := language.Make(req.AuthUser.User.Meta.PreferredLanguage)
+
+				// set user's preferred language
+				if h.Locale.HasLanguage(userPreferredLanguage) {
+					ctx := req.Request.Context()
+					ctx = locale.SetAcceptLanguageToContext(ctx, userPreferredLanguage)
+					ctx = locale.SetContentLanguageToContext(ctx, userPreferredLanguage)
+
+					req.Request = req.Request.WithContext(ctx)
+				}
 			}
 
 			// Alerts show for 1 session only!
@@ -317,8 +348,27 @@ func (h *AuthHandlers) handle(fn handlerFn) http.HandlerFunc {
 // Add alerts, settings, providers, csrf token, Bg
 func (h *AuthHandlers) enrichTmplData(req *request.AuthReq) interface{} {
 	d := req.Data
+	d["theme"] = "light"
 	if req.AuthUser != nil {
-		req.Data["user"] = req.AuthUser.User
+		maskEmail := service.CurrentSettings.Privacy.Mask.Email
+		maskName := service.CurrentSettings.Privacy.Mask.Name
+
+		service.CurrentSettings.Privacy.Mask.Email = false
+		service.CurrentSettings.Privacy.Mask.Name = false
+
+		// fetch current user with updated fields
+		user, err := h.UserService.FindByAny(req.Context(), req.AuthUser.User.ID)
+
+		service.CurrentSettings.Privacy.Mask.Email = maskEmail
+		service.CurrentSettings.Privacy.Mask.Name = maskName
+
+		// check if err is not nil and cater for MFA by checking if the error is not allowed to read
+		if err != nil && !errors.Is(err, service.UserErrNotAllowedToRead()) {
+			return err
+		}
+
+		d["user"] = user
+		d["theme"] = user.Meta.Theme
 	}
 
 	if req.Client != nil {
@@ -332,7 +382,7 @@ func (h *AuthHandlers) enrichTmplData(req *request.AuthReq) interface{} {
 			c.Description = req.Client.Meta.Description
 		}
 
-		req.Data["client"] = c
+		d["client"] = c
 	}
 
 	d[csrf.TemplateTag] = csrf.TemplateField(req.Request)
@@ -375,7 +425,7 @@ func (h *AuthHandlers) enrichTmplData(req *request.AuthReq) interface{} {
 	dSettings.Providers = nil
 	d["settings"] = dSettings
 
-	d["authBg"] = h.bgStylesData()
+	d["authBg"] = template.CSS(h.bgStylesData())
 
 	return d
 }

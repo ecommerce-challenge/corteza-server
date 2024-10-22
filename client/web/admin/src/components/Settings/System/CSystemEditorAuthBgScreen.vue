@@ -1,32 +1,33 @@
 <template>
   <b-card
-    header-bg-variant="white"
-    footer-bg-variant="white"
+    header-class="border-bottom"
+    footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
     class="shadow-sm"
   >
     <template #header>
-      <h3 class="m-0">
+      <h4 class="m-0">
         {{ $t("title") }}
-      </h3>
+      </h4>
     </template>
 
-    <b-row cols="12">
-      <b-col cols="6">
-        <div class="shadow-sm">
-          <div class="d-flex justify-content-between">
-            <h5>
-              {{ $t("image.uploader.title") }}
-            </h5>
+    <b-row>
+      <b-col
+        cols="12"
+        lg="6"
+      >
+        <b-form-group
+          label-class="d-flex align-items-center text-primary"
+        >
+          <template #label>
+            {{ $t('image.uploader.label') }}
 
-            <b-button
+            <c-input-confirm
               v-if="uploadedFile('auth.ui.background-image-src')"
-              variant="link"
-              class="d-flex align-items-top text-dark p-1"
-              @click="$emit('resetAttachment', 'auth.ui.background-image-src')"
-            >
-              <font-awesome-icon :icon="['far', 'trash-alt']" />
-            </b-button>
-          </div>
+              show-icon
+              class="ml-auto"
+              @confirmed="$emit('resetAttachment', 'auth.ui.background-image-src')"
+            />
+          </template>
 
           <c-uploader-with-preview
             :value="uploadedFile('auth.ui.background-image-src')"
@@ -36,53 +37,52 @@
             @upload="$emit('onUpload')"
             @clear="$emit('resetAttachment', 'auth.ui.background-image-src')"
           />
-        </div>
+        </b-form-group>
       </b-col>
 
-      <b-col cols="6">
-        <div class="shadow-sm">
-          <h5>
-            {{ $t("image.editor.title") }}
-          </h5>
-
-          <ace-editor
+      <b-col
+        cols="12"
+        lg="6"
+      >
+        <b-form-group
+          :label="$t('image.editor.label')"
+          label-class="d-flex align-items-center text-primary"
+        >
+          <c-ace-editor
+            v-model="settings['auth.ui.styles']"
             data-test-id="auth-bg-image-styling-editor"
-            :font-size="14"
-            :show-print-margin="true"
-            :show-gutter="true"
-            :highlight-active-line="true"
-            width="100%"
-            height="200px"
-            mode="css"
-            theme="chrome"
             name="editor/css"
-            :on-change="v => (settings['auth.ui.styles'] = v)"
-            :value="settings['auth.ui.styles']"
-            :editor-props="{
-              $blockScrolling: false
-            }"
+            lang="css"
+            height="300px"
+            font-size="14px"
+            show-line-numbers
+            class="flex-fill w-100"
+            auto-complete
+            :auto-complete-suggestions="customCssAutocompleteVal"
           />
-
-          <c-submit-button
-            :disabled="!canManage"
-            :processing="processing"
-            :success="success"
-            class="float-right mt-2"
-            @submit="$emit('submit', settings['auth.ui.styles'])"
-          />
-        </div>
+        </b-form-group>
       </b-col>
     </b-row>
+
+    <template #footer>
+      <c-button-submit
+        v-if="canManage"
+        :processing="processing"
+        :success="success"
+        :text="$t('admin:general.label.submit')"
+        class="ml-auto"
+        @submit="$emit('submit', settings['auth.ui.styles'])"
+      />
+    </template>
   </b-card>
 </template>
 
 <script>
-import { Ace as AceEditor } from 'vue2-brace-editor'
+import { components } from '@cortezaproject/corteza-vue'
+import { CUSTOM_CSS_AUTO_COMPLETE_VALUES } from 'corteza-webapp-admin/src/lib/cssAutoComplete'
 import CUploaderWithPreview from 'corteza-webapp-admin/src/components/CUploaderWithPreview'
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
 
-import 'brace/mode/css'
-import 'brace/theme/chrome'
+const { CAceEditor } = components
 
 export default {
   name: 'CSystemEditorAuthBgImage',
@@ -94,8 +94,7 @@ export default {
 
   components: {
     CUploaderWithPreview,
-    AceEditor,
-    CSubmitButton,
+    CAceEditor,
   },
 
   props: {
@@ -118,6 +117,12 @@ export default {
       type: Boolean,
       value: false,
     },
+  },
+
+  data () {
+    return {
+      customCssAutocompleteVal: CUSTOM_CSS_AUTO_COMPLETE_VALUES,
+    }
   },
 
   methods: {

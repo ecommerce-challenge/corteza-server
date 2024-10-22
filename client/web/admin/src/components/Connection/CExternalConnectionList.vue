@@ -1,17 +1,17 @@
 <template>
   <b-card
-    class="shadow-sm"
+    header-class="border-bottom"
     body-class="p-0"
-    header-bg-variant="white"
-    footer-bg-variant="white"
+    class="shadow-sm"
   >
     <template
       #header
     >
-      <h3 class="m-0">
+      <h4 class="m-0">
         {{ $t('title') }}
-      </h3>
+      </h4>
     </template>
+
     <c-resource-list
       :primary-key="primaryKey"
       :filter="filter"
@@ -29,18 +29,25 @@
         singlePluralPagination: 'admin:general.pagination.single',
         prevPagination: $t('admin:general.pagination.prev'),
         nextPagination: $t('admin:general.pagination.next'),
+        resourceSingle: $t('general:label.connection.single'),
+        resourcePlural: $t('general:label.connection.plural')
       }"
+      clickable
       hide-search
-      class="h-100"
+      class="h-100 bg-transparent"
+      @row-clicked="handleRowClicked"
     >
       <template #header>
         <b-button
           variant="primary"
+          size="lg"
           :to="{ name: 'system.connection.new' }"
         >
           {{ $t('add-button') }}
         </b-button>
+      </template>
 
+      <template #toolbar>
         <c-resource-list-status-filter
           v-model="filter.deleted"
           data-test-id="filter-deleted-connections"
@@ -48,21 +55,39 @@
           :excluded-label="$t('filterForm.excluded.label')"
           :inclusive-label="$t('filterForm.inclusive.label')"
           :exclusive-label="$t('filterForm.exclusive.label')"
-          class="mt-2"
           @change="filterList"
         />
       </template>
 
-      <template #actions="{ item }">
-        <b-button
-          size="sm"
-          variant="link"
-          :to="{ name: editRoute, params: { [primaryKey]: item[primaryKey] } }"
+      <template #actions="{ item: c }">
+        <b-dropdown
+          v-if="c.canDeleteConnection"
+          variant="outline-extra-light"
+          toggle-class="d-flex align-items-center justify-content-center text-primary border-0 py-2"
+          no-caret
+          dropleft
+          lazy
+          menu-class="m-0"
         >
-          <font-awesome-icon
-            :icon="['fas', 'pen']"
+          <template #button-content>
+            <font-awesome-icon
+              :icon="['fas', 'ellipsis-v']"
+            />
+          </template>
+
+          <c-input-confirm
+            :text="getActionText(c)"
+            show-icon
+            :icon="getActionIcon(c)"
+            borderless
+            variant="link"
+            size="md"
+            button-class="dropdown-item text-decoration-none text-dark regular-font rounded-0"
+            icon-class="text-danger"
+            class="w-100"
+            @confirmed="handleDelete(c)"
           />
-        </b-button>
+        </b-dropdown>
       </template>
     </c-resource-list>
   </b-card>
@@ -129,8 +154,7 @@ export default {
         },
         {
           key: 'actions',
-          label: '',
-          class: 'text-right',
+          class: 'actions',
         },
       ].map(c => ({
         // Generate column label translation key
@@ -141,8 +165,17 @@ export default {
   },
 
   methods: {
+
     items () {
       return this.procListResults(this.$SystemAPI.dalConnectionList(this.encodeListParams()))
+    },
+
+    handleDelete (connection) {
+      this.handleItemDelete({
+        resource: connection,
+        resourceName: 'dalConnection',
+        locale: 'connection',
+      })
     },
   },
 }

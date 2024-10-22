@@ -13,7 +13,7 @@
       :cols="{ lg: 48, md: 48, sm: 1, xs: 1, xxs: 1 }"
       :margin="[0, 0]"
       :responsive="!editable"
-      use-css-transforms
+      :use-css-transforms="false"
     >
       <grid-item
         v-for="(item, index) in grid"
@@ -21,15 +21,20 @@
         ref="items"
         :min-w="3"
         :min-h="3"
-        v-bind="{ ...item }"
+        :i="item.i"
+        :h="item.h"
+        :w="item.w"
+        :x="item.x"
+        :y="item.y"
         :class="{ 'editable-grid-item': editable }"
         drag-ignore-from=".gutter"
+        @moved="onBlockUpdated(index)"
+        @resized="onBlockUpdated(index)"
       >
         <slot
           :block="blocks[item.i]"
           :index="index"
           :block-index="item.i"
-          :bounding-rect="boundingRects[index]"
           v-on="$listeners"
         />
       </grid-item>
@@ -59,7 +64,7 @@ export default {
   props: {
     blocks: {
       type: Array,
-      default: () => [],
+      default: () => ([]),
     },
 
     editable: {
@@ -72,9 +77,6 @@ export default {
     return {
       // All blocks in vue-grid friendly structure
       grid: undefined,
-
-      // Grid items bounding rect info
-      boundingRects: [],
     }
   },
 
@@ -107,26 +109,16 @@ export default {
     },
   },
 
-  mounted () {
-    window.addEventListener('resize', this.windowResizeThrottledHandler)
-  },
-
-  destroyed () {
-    window.removeEventListener('resize', this.windowResizeThrottledHandler)
+  methods: {
+    onBlockUpdated (index) {
+      this.$emit('item-updated', index)
+    },
   },
 }
 </script>
 
 <style lang="scss">
 .vue-grid-item.vue-grid-placeholder {
-  background: $primary !important;
-}
-</style>
-
-<style lang="scss" scoped>
-.editable-grid-item {
-  touch-action: none;
-  background-image: linear-gradient(45deg, #f3f3f5 25%, #ffffff 25%, #ffffff 50%, #f3f3f5 50%, #f3f3f5 75%, #ffffff 75%, #ffffff 100%);
-  background-size: 28.28px 28.28px;
+  background: var(--primary) !important;
 }
 </style>

@@ -8,7 +8,7 @@ primary:
 
 list:
   title: List of database connections
-  add-button: Add connection
+  add-button: New Connection
   loading: Loading connections
   filterForm:
     deleted:
@@ -24,6 +24,9 @@ list:
     location: Location
     ownership: Ownership
     createdAt: Created
+    actions: ''
+  delete: Delete
+  undelete: Undelete
 
 editor:
   title:
@@ -40,7 +43,7 @@ editor:
         label: Handle
         placeholder: simplified_connection_name
         description:
-        invalid-characters: Should be at least 2 characters long and start with a letter. Can contain only letters, numbers, dashes, underscores and dots
+        invalid-characters: Should be at least 2 characters long. Can contain only letters, numbers, underscores and dots. Must end with letter or number
       location-name:
         label: Location name
         placeholder: Name of the location where the data is stored
@@ -93,7 +96,7 @@ editor:
         label: Default table or container name
         placeholder: compose_record
         description: |
-          Identifier can contain placeholders like {{module}} (replaced with module handle) and/or {{namespace}} (replace with namespace handle). 
+          Identifier can contain placeholders like {{module}} (replaced with module handle) and/or {{namespace}} (replace with namespace handle).
           When set it is used as a default for modules without configure ident.
 
       type:

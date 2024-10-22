@@ -77,7 +77,7 @@ export default {
     maxPages: {
       required: false,
       type: Number,
-      default: 5,
+      default: 25,
     },
 
     initialScale: {
@@ -124,6 +124,10 @@ export default {
     }
 
     this.$nextTick(() => this.init())
+  },
+
+  beforeDestroy () {
+    this.setDefaultValues()
   },
 
   methods: {
@@ -250,13 +254,13 @@ export default {
         // Render page
         const canvas = document.createElement('canvas')
         const scale = doc.scale
-        const viewport = np.page.getViewport(scale)
+        const viewport = np.page.getViewport({ scale })
         const canvasContext = canvas.getContext('2d')
         const renderContext = { canvasContext, viewport }
         canvas.height = viewport.height
         canvas.width = viewport.width
 
-        return np.page.render(renderContext).then(() => {
+        return np.page.render(renderContext).promise.then(() => {
           np.node = canvas
           np.rendered = true
           if (this.inline) {
@@ -285,16 +289,24 @@ export default {
      * @param {Error} err The error
      */
     stdErr (err) {
+      console.error(err)
       this.loadError = err
       this.$emit('error', err)
+    },
+
+    setDefaultValues () {
+      this.document = null
+      this.pages = []
+      this.show = false
+      this.loadError = undefined
     },
   },
 }
 </script>
 
 <style lang="scss" scoped>
-$white: white !default;
-$danger: red !default;
+$white: #FFFFFF !default;
+$danger: #E54122 !default;
 
 .doc-msg {
   display: flex;
@@ -355,5 +367,4 @@ $danger: red !default;
     margin-bottom: 10px;
   }
 }
-
 </style>

@@ -15,9 +15,10 @@ import {
   BarChart,
   PieChart,
   GaugeChart,
-  HeatmapChart,
+  RadarChart,
   FunnelChart,
 } from 'echarts/charts'
+
 import {
   TitleComponent,
   GridComponent,
@@ -32,7 +33,7 @@ use([
   LineChart,
   PieChart,
   GaugeChart,
-  HeatmapChart,
+  RadarChart,
   FunnelChart,
   SVGRenderer,
   TitleComponent,
@@ -50,3 +51,6 @@ Vue.component('font-awesome-icon', FontAwesomeIcon)
 Vue.component('font-awesome-layers', FontAwesomeLayers)
 Vue.component('c-permissions-button', components.CPermissionsButton)
 Vue.component('c-input-confirm', components.CInputConfirm)
+Vue.component('c-button-submit', components.CButtonSubmit)
+Vue.component('c-input-select', components.CInputSelect)
+Vue.component('c-form-table-wrapper', components.CFormTableWrapper)

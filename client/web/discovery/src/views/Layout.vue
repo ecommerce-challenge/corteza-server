@@ -5,6 +5,7 @@
         :sidebar-pinned="pinned"
         :settings="$Settings.get('ui.topbar', {})"
         :labels="{
+          appMenu: $t('appMenu'),
           helpForum: $t('help.forum'),
           helpDocumentation: $t('help.documentation'),
           helpFeedback: $t('help.feedback'),
@@ -13,6 +14,8 @@
           userSettingsProfile: $t('userSettings.profile'),
           userSettingsChangePassword: $t('userSettings.changePassword'),
           userSettingsLogout: $t('userSettings.logout'),
+          lightTheme: $t('general:themes.labels.light'),
+          darkTheme: $t('general:themes.labels.dark'),
         }"
       >
         <template #title>
@@ -27,7 +30,6 @@
         :pinned.sync="pinned"
         :icon="icon"
         :logo="logo"
-        :disabled-routes="['report.list', 'report.create', 'report.edit']"
         expand-on-hover
       >
         <template #body-expanded>
@@ -43,7 +45,7 @@
       -->
       <template>
         <div
-          class="spacer"
+          class="sidebar-spacer d-print-none"
           :class="{
             'expanded': expanded && pinned,
           }"
@@ -124,21 +126,3 @@ export default {
   },
 }
 </script>
-
-<style lang="scss" scoped>
-.spacer {
-  min-width: 0;
-  -webkit-transition: min-width 0.2s ease-in-out;
-  -moz-transition: min-width 0.2s ease-in-out;
-  -o-transition: min-width 0.2s ease-in-out;
-  transition: min-width 0.2s ease-in-out;
-
-  &.expanded {
-    min-width: $sidebar-width;
-    -webkit-transition: min-width 0.2s ease-in-out;
-    -moz-transition: min-width 0.2s ease-in-out;
-    -o-transition: min-width 0.2s ease-in-out;
-    transition: min-width 0.2s ease-in-out;
-  }
-}
-</style>

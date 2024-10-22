@@ -1,35 +1,76 @@
 <template>
   <div>
+    <h5 class="d-flex align-items-center mb-3">
+      {{ $t('duplicationDetection') }}
+      <c-hint
+        :tooltip="$t('tooltip.performance')"
+        icon-class="text-warning"
+      />
+    </h5>
+
     <div
       v-for="(rule, index) in rules"
       :key="index"
     >
-      <hr v-if="index">
-      <div>
-        <div class="d-flex justify-content-between align-items-center">
-          <h5 v-html="$t('uniqueValueConstraint', { index: index + 1, interpolation: { escapeValue: false } })" />
+      <label class="d-flex align-items-center text-primary">
+        {{ $t('uniqueValueConstraint', { index: index + 1 }) }}
+        <c-input-confirm
+          show-icon
+          class="ml-2"
+          @confirmed="rules.splice(index, 1)"
+        />
+      </label>
 
-          <div class="px-4">
-            <c-input-confirm
-              @confirmed="rules.splice(index, 1)"
+      <div class="d-flex align-items-center justify-content-between flex-wrap w-100">
+        <b-form-group>
+          <b-input-group>
+            <c-input-select
+              v-model="rule.currentField"
+              :placeholder="$t('searchFields')"
+              :get-option-label="getOptionLabel"
+              :get-option-key="getOptionKey"
+              :options="filterFieldOptions(rule)"
+              :reduce="o => o.name"
+              style="min-width: 300px;"
             />
-          </div>
-        </div>
-        <b-form-checkbox
-          v-model="rule.strict"
-          switch
-          class="mt-3"
+
+            <b-input-group-append>
+              <b-button
+                variant="primary"
+                class="px-4"
+                :disabled="!rule.currentField"
+                @click="updateRuleConstraint(rule)"
+              >
+                {{ $t("add") }}
+              </b-button>
+            </b-input-group-append>
+          </b-input-group>
+        </b-form-group>
+
+        <b-form-group
+          :label="$t('preventRecordsSave')"
+          label-class="text-primary ml-auto"
         >
-          {{ $t("preventRecordsSave") }}
-        </b-form-checkbox>
+          <c-input-checkbox
+            v-model="rule.strict"
+            switch
+            :labels="checkboxLabel"
+          />
+        </b-form-group>
       </div>
-      <div class="mt-3">
+
+      <c-form-table-wrapper
+        v-if="rule.constraints && rule.constraints.length > 0"
+        hide-add-button
+      >
         <b-table-simple
-          v-if="rule.constraints.length > 0"
           borderless
+          small
+          responsive
+          class="mb-0"
         >
           <thead>
-            <tr>
+            <tr class="text-primary">
               <th>
                 {{ $t("field") }}
               </th>
@@ -42,15 +83,19 @@
               <th style="width: 250px;">
                 {{ $t("multiValues") }}
               </th>
+              <th style="width: 150px;" />
             </tr>
           </thead>
+
           <tbody v-if="rule.constraints">
             <tr
               v-for="(constraint, consIndex) in rule.constraints"
               :key="`constraint-${consIndex}`"
             >
               <td>{{ getOptionLabel(getField(constraint.attribute)) }}</td>
+
               <td>{{ getField(constraint.attribute).kind }}</td>
+
               <td>
                 <b-form-select
                   v-model="constraint.modifier"
@@ -58,6 +103,7 @@
                   size="sm"
                 />
               </td>
+
               <td>
                 <b-form-select
                   v-model="constraint.multiValue"
@@ -66,47 +112,25 @@
                   size="sm"
                 />
               </td>
+
               <td class="text-right p-0 px-4 align-middle">
                 <c-input-confirm
-                  button-class="text-right"
+                  show-icon
                   @confirmed="rule.constraints.splice(consIndex, 1)"
                 />
               </td>
             </tr>
           </tbody>
         </b-table-simple>
+      </c-form-table-wrapper>
 
-        <b-form-group>
-          <b-input-group>
-            <vue-select
-              v-model="rule.currentField"
-              :placeholder="$t('searchFields')"
-              :get-option-label="getOptionLabel"
-              :options="filterFieldOptions(rule)"
-              class="bg-white"
-            />
-
-            <b-input-group-append>
-              <b-button
-                variant="primary"
-                class="px-4"
-                @click="updateRuleConstraint(rule)"
-              >
-                {{ $t("add") }}
-              </b-button>
-            </b-input-group-append>
-          </b-input-group>
-        </b-form-group>
-      </div>
+      <hr>
     </div>
 
-    <hr>
-
-    <div class="d-flex justify-content-end">
+    <div class="d-flex">
       <b-button
-        size="lg"
-        variant="link"
-        class="d-flex align-items-center text-decoration-none p-0 mt-3"
+        variant="outline-light"
+        class="d-flex align-items-center border-0 text-primary ml-auto"
         @click="addNewConstraint"
       >
         <font-awesome-icon
@@ -121,16 +145,11 @@
 
 <script>
 import { compose } from '@cortezaproject/corteza-js'
-import { VueSelect } from 'vue-select'
 
 export default {
   i18nOptions: {
     namespaces: 'module',
     keyPrefix: 'edit.config.uniqueValues',
-  },
-
-  components: {
-    VueSelect,
   },
 
   props: {
@@ -140,29 +159,57 @@ export default {
     },
   },
 
+  data () {
+    return {
+      checkboxLabel: {
+        on: this.$t('general:label.yes'),
+        off: this.$t('general:label.no'),
+      },
+    }
+  },
+
   computed: {
     rules: {
       get () {
-        this.module.config.recordDeDup.rules.forEach(rule => {
-          if (rule.constraints === null) {
-            rule.constraints = []
-          }
-        })
-
         return this.module.config.recordDeDup.rules
       },
+
       set (value) {
         this.module.config.recordDeDup.rules = value
       },
     },
 
+    isEnabled: {
+      get () {
+        return this.module.config.recordDeDup.enabled
+      },
+
+      set (value) {
+        this.module.config.recordDeDup.enabled = value
+      },
+    },
+
     modifierOptions () {
+      const ruleModifiers = this.rules.reduce((acc, { constraints }) => {
+        if (!constraints) {
+          return acc
+        }
+
+        constraints.forEach(({ modifier }) => {
+          if (!acc.includes(modifier)) {
+            acc.push(modifier)
+          }
+        })
+
+        return acc
+      }, [])
+
       return [
         { value: 'ignore-case', text: this.$t('ignoreCase') },
-        { value: 'fuzzy-match', text: this.$t('fuzzyMatch') },
-        { value: 'sounds-like', text: this.$t('soundsLike') },
+        { value: 'fuzzy-match', text: this.$t('fuzzyMatch'), legacy: true },
+        { value: 'sounds-like', text: this.$t('soundsLike'), legacy: true },
         { value: 'case-sensitive', text: this.$t('caseSensitive') },
-      ]
+      ].filter(({ value, legacy }) => !legacy || ruleModifiers.includes(value))
     },
 
     multiValueOptions () {
@@ -183,6 +230,12 @@ export default {
     },
 
     updateRuleConstraint (rule) {
+      rule.currentField = this.module.fields.find(({ name }) => name === rule.currentField)
+
+      if (!rule.constraints) {
+        rule.constraints = []
+      }
+
       rule.constraints.push({
         attribute: rule.currentField.name,
         modifier: 'case-sensitive',
@@ -195,7 +248,7 @@ export default {
     },
 
     filterFieldOptions (rule) {
-      const selectedFields = rule.constraints.map(({ attribute }) => attribute)
+      const selectedFields = rule.constraints ? rule.constraints.map(({ attribute }) => attribute) : []
       return this.module.fields.filter(({ name }) => !selectedFields.includes(name))
     },
 
@@ -210,6 +263,16 @@ export default {
     getOptionLabel ({ kind, label, name }) {
       return label || name || kind
     },
+
+    getOptionKey ({ fieldID }) {
+      return fieldID
+    },
   },
 }
 </script>
+
+<style lang="scss" scoped>
+.list-background {
+  background-color: var(--body-bg);
+}
+</style>

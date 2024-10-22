@@ -1,18 +1,21 @@
 <template>
-  <b-card
-    header-bg-variant="white"
-    footer-bg-variant="white"
-  >
-    <b-form-group :label="$t('name.label')">
+  <b-card footer-class="border-top d-flex justify-content-between align-items-center">
+    <b-form-group
+      :label="$t('name.label')"
+      label-class="text-primary"
+    >
       <b-form-input
         v-model="name"
         data-test-id="input-name"
-        class="mt-1"
         :placeholder="$t('name.placeholder')"
+        class="mt-1"
       />
     </b-form-group>
 
-    <b-form-group :label="$t('slug.label')">
+    <b-form-group
+      :label="$t('import.slug.label')"
+      label-class="text-primary"
+    >
       <b-form-input
         v-model="slug"
         data-test-id="input-handle"
@@ -25,26 +28,29 @@
       </b-form-invalid-feedback>
     </b-form-group>
 
-    <div slot="footer">
+    <template #footer>
       <b-button
         data-test-id="button-back"
-        variant="outline-dark"
-        class="float-left"
+        variant="link"
+        class="d-flex align-items-center text-dark back gap-1 text-decoration-none"
         @click="$emit('back')"
       >
+        <font-awesome-icon
+          :icon="['fas', 'chevron-left']"
+          class="back-icon"
+        />
         {{ $t('import.back') }}
       </b-button>
 
       <b-button
         data-test-id="button-import"
-        variant="dark"
+        variant="primary"
         :disabled="submitDisabled"
-        class="float-right"
         @click="nextStep"
       >
         {{ $t('import.import') }}
       </b-button>
-    </div>
+    </template>
   </b-card>
 </template>
 
@@ -73,7 +79,7 @@ export default {
 
   computed: {
     submitDisabled () {
-      return [this.nameState, this.slugState].includes(false)
+      return [this.nameState, this.slugState, this.slug].includes(false)
     },
 
     nameState () {

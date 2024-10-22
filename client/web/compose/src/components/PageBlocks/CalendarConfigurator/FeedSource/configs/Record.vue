@@ -1,155 +1,180 @@
 <template>
-  <div>
-    <template v-if="feed.options">
+  <b-row>
+    <b-col
+      cols="12"
+      lg="6"
+    >
       <b-form-group
-        horizontal
-        :label-cols="3"
-        breakpoint="md"
         :label="$t('calendar.recordFeed.moduleLabel')"
+        label-class="text-primary"
       >
         <b-input-group>
-          <b-form-select
+          <c-input-select
             v-model="feed.options.moduleID"
             :options="modules"
-            value-field="moduleID"
-            text-field="name"
-          >
-            <template slot="first">
-              <option value="0">
-                {{ $t('calendar.recordFeed.modulePlaceholder') }}
-              </option>
-            </template>
-          </b-form-select>
+            :reduce="o => o.moduleID"
+            default-value="0"
+            :placeholder="$t('calendar.recordFeed.modulePlaceholder')"
+            label="name"
+            @input="onModuleChange"
+          />
         </b-input-group>
       </b-form-group>
+    </b-col>
 
-      <template v-if="module">
+    <template v-if="module">
+      <b-col
+        cols="12"
+        lg="6"
+      >
         <b-form-group
-          horizontal
-          :label-cols="3"
-          breakpoint="md"
-          :label="$t('calendar.recordFeed.colorLabel')"
-        >
-          <b-input-group>
-            <b-form-input
-              v-model="feed.options.color"
-              style="max-width: 50px;"
-              type="color"
-              debounce="300"
-            />
-          </b-input-group>
-        </b-form-group>
-        <b-form-group
-          horizontal
-          :label-cols="3"
-          breakpoint="md"
           :label="$t('calendar.recordFeed.titleLabel')"
+          label-class="text-primary"
         >
-          <b-form-select
+          <c-input-select
             v-model="feed.titleField"
-            :options="titleFields | optionizeFields"
-          >
-            <template slot="first">
-              <option
-                disabled
-                value=""
-              >
-                {{ $t('calendar.recordFeed.titlePlaceholder') }}
-              </option>
-            </template>
-          </b-form-select>
+            :options="titleFields"
+            :get-option-key="getOptionEventFieldKey"
+            :get-option-label="getOptionEventFieldLabel"
+            :reduce="o => o.name"
+            :placeholder="$t('calendar.recordFeed.titlePlaceholder')"
+          />
         </b-form-group>
+      </b-col>
 
+      <b-col
+        cols="12"
+        lg="6"
+      >
         <b-form-group
-          horizontal
-          :label-cols="3"
-          breakpoint="md"
           :label="$t('calendar.recordFeed.eventStartFieldLabel')"
+          label-class="text-primary"
         >
-          <b-form-select
+          <c-input-select
             v-model="feed.startField"
-            :options="dateFields | optionizeFields"
-          >
-            <template slot="first">
-              <option
-                disabled
-                value=""
-              >
-                {{ $t('calendar.recordFeed.eventStartFieldPlaceholder') }}
-              </option>
-            </template>
-          </b-form-select>
-
-          <b-form-text
-            v-if="hasMultiFields"
-            class="test-multi-field-ntf"
-          >
-            {{ $t('calendar.recordFeed.noMultiFields') }}
-          </b-form-text>
+            :options="dateFields"
+            :get-option-key="getOptionEventFieldKey"
+            :get-option-label="getOptionEventFieldLabel"
+            :reduce="o => o.name"
+            :placeholder="$t('calendar.recordFeed.eventStartFieldPlaceholder')"
+          />
         </b-form-group>
+      </b-col>
 
+      <b-col
+        cols="12"
+        lg="6"
+      >
         <b-form-group
-          horizontal
-          :label-cols="3"
-          breakpoint="md"
           :label="$t('calendar.recordFeed.eventEndFieldLabel')"
+          label-class="text-primary"
         >
-          <b-form-select
+          <c-input-select
             v-model="feed.endField"
-            :options="dateFields | optionizeFields"
-          >
-            <template slot="first">
-              <option value="">
-                {{ $t('calendar.recordFeed.eventEndFieldPlaceholder') }}
-              </option>
-            </template>
-          </b-form-select>
-
-          <b-form-text
-            v-if="hasMultiFields"
-            class="test-multi-field-ntf"
-          >
-            {{ $t('calendar.recordFeed.noMultiFields') }}
-          </b-form-text>
+            :options="dateFields"
+            :get-option-key="getOptionEventFieldKey"
+            :get-option-label="getOptionEventFieldLabel"
+            :reduce="o => o.name"
+            :disabled="feed.allDay"
+            :placeholder="$t('calendar.recordFeed.eventEndFieldPlaceholder')"
+          />
 
           <b-form-checkbox
             v-model="feed.allDay"
-            class="mt-3"
             :value="true"
             :unchecked-value="false"
+            class="mt-1"
           >
             {{ $t('calendar.recordFeed.eventAllDay') }}
           </b-form-checkbox>
         </b-form-group>
+      </b-col>
 
-        <br>
-
+      <b-col cols="12">
         <b-form-group
-          horizontal
-          :label-cols="3"
-          breakpoint="md"
           :label="$t('calendar.recordFeed.prefilterLabel')"
+          label-class="text-primary"
         >
-          <b-form-textarea
+          <c-input-expression
             v-model="feed.options.prefilter"
-            :value="true"
+            height="3.688rem"
+            lang="javascript"
+            :suggestion-params="recordAutoCompleteParams"
             :placeholder="$t('calendar.recordFeed.prefilterPlaceholder')"
           />
+
+          <i18next
+            path="interpolationFootnote"
+            tag="small"
+            class="text-muted"
+          >
+            <code>${record.values.fieldName}</code>
+            <code>${recordID}</code>
+            <code>${ownerID}</code>
+            <span><code>${userID}</code>, <code>${user.name}</code></span>
+          </i18next>
         </b-form-group>
-      </template>
+      </b-col>
+
+      <b-col
+        cols="12"
+        lg="6"
+      >
+        <b-form-group
+          :label="$t('calendar.recordFeed.colorLabel')"
+          label-class="text-primary"
+        >
+          <c-input-color-picker
+            v-model="feed.options.color"
+            :translations="{
+              modalTitle: $t('calendar.recordFeed.colorPicker'),
+              light: $t('general:themes.labels.light'),
+              dark: $t('general:themes.labels.dark'),
+              cancelBtnLabel: $t('general:label.cancel'),
+              saveBtnLabel: $t('general:label.saveAndClose')
+            }"
+            :theme-settings="themeSettings"
+          />
+        </b-form-group>
+      </b-col>
     </template>
-  </div>
+  </b-row>
 </template>
 
 <script>
 import base from './base'
+import { components } from '@cortezaproject/corteza-vue'
+import { compose, NoID } from '@cortezaproject/corteza-js'
+import autocomplete from 'corteza-webapp-compose/src/mixins/autocomplete.js'
+
+const { CInputColorPicker, CInputExpression } = components
 
 export default {
   i18nOptions: {
     namespaces: 'block',
   },
 
+  components: {
+    CInputColorPicker,
+    CInputExpression,
+  },
+
   extends: base,
+
+  mixins: [autocomplete],
+
+  props: {
+    record: {
+      type: compose.Record,
+      required: false,
+      default: undefined,
+    },
+
+    page: {
+      type: compose.Page,
+      required: true,
+    },
+  },
 
   computed: {
     /**
@@ -164,15 +189,11 @@ export default {
       return this.modules.find(({ moduleID }) => moduleID === this.feed.options.moduleID)
     },
 
-    /**
-     * Determines if given module has any multi-fields
-     * @returns {Boolean}
-     */
-    hasMultiFields () {
-      if (!this.module) {
-        return false
-      }
-      return this.module.fields.reduce((acc, { isMulti }) => acc || isMulti, false)
+    moduleOptions () {
+      return [
+        { moduleID: '0', name: this.$t('calendar.recordFeed.modulePlaceholder') },
+        ...this.modules,
+      ]
     },
 
     /**
@@ -183,6 +204,7 @@ export default {
       if (!this.module) {
         return []
       }
+
       return [...this.module.fields]
         .filter(f => ['String', 'Email', 'Url'].includes(f.kind))
         .sort((a, b) => a.label.localeCompare(b.label))
@@ -199,6 +221,7 @@ export default {
       }
 
       const moduleFields = this.module.fields.slice().sort((a, b) => a.label.localeCompare(b.label))
+
       return [
         ...moduleFields,
         ...this.module.systemFields().map(sf => {
@@ -206,6 +229,34 @@ export default {
           return sf
         }),
       ].filter(f => f.kind === 'DateTime' && !f.isMulti)
+    },
+
+    themeSettings () {
+      return this.$Settings.get('ui.studio.themes', [])
+    },
+
+    isRecordPage () {
+      return this.page && this.page.moduleID !== NoID
+    },
+
+    recordAutoCompleteParams () {
+      return this.processRecordAutoCompleteParams({ operators: true })
+    },
+  },
+
+  methods: {
+    onModuleChange () {
+      this.feed.titleField = ''
+      this.feed.startField = ''
+      this.feed.endField = ''
+    },
+
+    getOptionEventFieldKey ({ name }) {
+      return name
+    },
+
+    getOptionEventFieldLabel ({ name, label }) {
+      return label || name
     },
   },
 }

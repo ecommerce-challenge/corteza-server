@@ -11,7 +11,7 @@ import (
 	"github.com/cortezaproject/corteza/server/pkg/api"
 	"github.com/cortezaproject/corteza/server/pkg/filter"
 	"github.com/cortezaproject/corteza/server/pkg/handle"
-	"github.com/cortezaproject/corteza/server/pkg/payload"
+	"github.com/cortezaproject/corteza/server/pkg/id"
 	"github.com/cortezaproject/corteza/server/system/rest/request"
 	"github.com/cortezaproject/corteza/server/system/service"
 	"github.com/cortezaproject/corteza/server/system/types"
@@ -77,9 +77,9 @@ func (ctrl DalConnection) List(ctx context.Context, r *request.DalConnectionList
 		dalConnections types.DalConnectionSet
 
 		f = types.DalConnectionFilter{
-			ConnectionID: payload.ParseUint64s(r.ConnectionID),
-			Handle:       r.Handle,
-			Type:         r.Type,
+			DalConnectionID: r.ConnectionID,
+			Handle:          r.Handle,
+			Type:            r.Type,
 
 			Deleted: filter.State(r.Deleted),
 		}
@@ -117,11 +117,12 @@ func (ctrl DalConnection) Create(ctx context.Context, r *request.DalConnectionCr
 
 func (ctrl DalConnection) Update(ctx context.Context, r *request.DalConnectionUpdate) (interface{}, error) {
 	connection := &types.DalConnection{
-		ID:     r.ConnectionID,
-		Handle: r.Handle,
-		Type:   r.Type,
-		Meta:   r.Meta,
-		Config: r.Config,
+		ID:        r.ConnectionID,
+		Handle:    r.Handle,
+		Type:      r.Type,
+		Meta:      r.Meta,
+		Config:    r.Config,
+		UpdatedAt: r.UpdatedAt,
 	}
 
 	res, err := ctrl.svc.Update(ctx, connection)
@@ -164,7 +165,7 @@ func (ctrl DalConnection) makeFilterPayload(ctx context.Context, connections typ
 
 // Make payload for dal-connection
 //
-// Payload is without connection params on the config prop
+// # Payload is without connection params on the config prop
 //
 // An explicit call to /params
 func (ctrl DalConnection) makePayload(ctx context.Context, c *types.DalConnection) *connectionPayload {
@@ -243,8 +244,8 @@ func (ctrl DalConnection) filterConnections(baseConnections types.DalConnectionS
 	for _, conn := range baseConnections {
 		include := true
 
-		if len(f.ConnectionID) > 0 {
-			include = include && ctrl.inIDSet(f.ConnectionID, conn.ID)
+		if len(f.DalConnectionID) > 0 {
+			include = include && ctrl.inIDSet(id.Uints(f.DalConnectionID...), conn.ID)
 		}
 
 		if f.Handle != "" {

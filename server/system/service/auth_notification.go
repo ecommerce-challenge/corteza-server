@@ -30,6 +30,7 @@ type (
 		EmailConfirmation(ctx context.Context, emailAddress string, url string) error
 		PasswordReset(ctx context.Context, emailAddress string, url string) error
 		PasswordCreate(url string) (string, error)
+		InviteEmail(ctx context.Context, emailAddress string, token string) error
 	}
 )
 
@@ -68,18 +69,14 @@ func (svc authNotification) PasswordCreate(token string) (string, error) {
 	return fmt.Sprintf("%s/create-password?token=%s", svc.opt.BaseURL, url.QueryEscape(token)), nil
 }
 
+func (svc authNotification) InviteEmail(ctx context.Context, emailAddress string, token string) error {
+	return svc.send(ctx, "auth_email_user_invite", emailAddress, map[string]interface{}{
+		"URL": fmt.Sprintf("%s/accept-invite?token=%s", svc.opt.BaseURL, url.QueryEscape(token)),
+	})
+}
+
 func (svc authNotification) newMail() *gomail.Message {
-	var (
-		m    = mail.New()
-		addr = svc.settings.Auth.Mail.FromAddress
-		name = svc.settings.Auth.Mail.FromName
-	)
-
-	if addr != "" {
-		m.SetAddressHeader("From", addr, name)
-	}
-
-	return m
+	return mail.New()
 }
 
 func (svc authNotification) send(ctx context.Context, name, sendTo string, payload map[string]interface{}) error {
@@ -110,8 +107,6 @@ func (svc authNotification) send(ctx context.Context, name, sendTo string, paylo
 	// Prepare payload
 	payload["Logo"] = htpl.URL(svc.settings.General.Mail.Logo)
 	payload["BaseURL"] = svc.opt.BaseURL
-	payload["SignatureName"] = svc.settings.Auth.Mail.FromName
-	payload["SignatureEmail"] = svc.settings.Auth.Mail.FromAddress
 	payload["EmailAddress"] = sendTo
 
 	// Render document

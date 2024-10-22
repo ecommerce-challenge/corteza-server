@@ -40,6 +40,8 @@
         </b-col>
       </b-row>
 
+      <hr>
+
       <b-row
         class="mt-3"
       >
@@ -56,6 +58,7 @@
             <fieldset>
               <b-form-group
                 :label="$t('metric.edit.labelLabel')"
+                label-class="text-primary"
               >
                 <b-form-input
                   v-model="edit.label"
@@ -72,23 +75,16 @@
 
               <b-form-group
                 :label="$t('metric.edit.moduleLabel')"
+                label-class="text-primary"
               >
-                <b-form-select
+                <c-input-select
                   v-model="edit.moduleID"
                   :options="modules"
-                  text-field="name"
+                  label="name"
                   class="mt-1"
-                  value-field="moduleID"
-                >
-                  <template slot="first">
-                    <option
-                      :value="undefined"
-                      disabled
-                    >
-                      {{ $t('metric.edit.modulePlaceholder') }}
-                    </option>
-                  </template>
-                </b-form-select>
+                  :reduce="o => o.moduleID"
+                  :placeholder="$t('metric.edit.modulePlaceholder')"
+                />
               </b-form-group>
 
               <!-- <b-form-group
@@ -147,70 +143,97 @@
                 </b-form-group>
               </template> -->
 
-              <b-form-group :label="$t('metric.edit.filterLabel')">
-                <b-form-textarea
+              <b-form-group
+                :label="$t('metric.edit.filterLabel')"
+                label-class="text-primary"
+              >
+                <c-input-expression
                   v-model="edit.filter"
+                  auto-complete
+                  lang="javascript"
                   placeholder="(A > B) OR (A < C)"
                   class="mb-1"
+                  height="3.448rem"
+                  :suggestion-params="recordAutoCompleteParams"
                 />
 
-                <b-form-text>
-                  <i18next
-                    path="metric.edit.filterFootnote"
-                    tag="label"
-                  >
-                    <code>${recordID}</code>
-                    <code>${ownerID}</code>
-                    <code>${userID}</code>
-                  </i18next>
-                </b-form-text>
+                <i18next
+                  path="metric.edit.filterFootnote"
+                  tag="small"
+                  class="d-block text-muted"
+                >
+                  <code>${record.values.fieldName}</code>
+                  <code>${recordID}</code>
+                  <code>${ownerID}</code>
+                  <span><code>${userID}</code>, <code>${user.name}</code></span>
+                </i18next>
               </b-form-group>
             </fieldset>
 
-            <fieldset>
+            <fieldset v-if="selectedMetricModule">
               <h5>
                 {{ $t('metric.edit.metricLabel') }}
               </h5>
 
               <b-form-group
                 :label="$t('metric.edit.metricFieldLabel')"
+                label-class="text-primary"
               >
-                <vue-select
+                <c-input-select
                   v-model="edit.metricField"
                   :placeholder="$t('metric.edit.metricFieldSelect')"
                   :options="metricFields"
+                  :get-option-key="getOptionMetricFieldKey"
+                  :get-option-label="getOptionMetricFieldLabel"
                   :reduce="f => f.name"
-                  class="bg-white"
+                  @input="onMetricFieldChange"
                 />
               </b-form-group>
 
               <b-form-group
                 :label="$t('metric.edit.metricAggregateLabel')"
+                label-class="text-primary"
               >
-                <vue-select
+                <c-input-select
                   v-model="edit.operation"
                   :disabled="edit.metricField === 'count'"
                   :placeholder="$t('metric.edit.metricSelectAggregate')"
                   :options="aggregationOperations"
+                  :get-option-key="getOptionAggregationOperationKey"
                   :reduce="a => a.operation"
-                  class="bg-white"
                 />
               </b-form-group>
 
               <b-form-group
                 :label="$t('metric.edit.transformFunctionLabel')"
+                label-class="text-primary"
               >
-                <b-form-textarea
+                <c-input-expression
                   v-model="edit.transformFx"
+                  auto-complete
+                  lang="javascript"
                   placeholder="v"
                   class="mb-1"
+                  height="3.448rem"
+                  :suggestion-params="recordAutoCompleteParams"
                 />
 
                 <small>{{ $t('metric.edit.transformFunctionDescription') }}</small>
+                <i18next
+                  path="metric.edit.transformFootnote"
+                  tag="small"
+                  class="d-block text-muted"
+                >
+                  <code>${record.values.fieldName}</code>
+                  <code>${recordID}</code>
+                  <code>${ownerID}</code>
+                  <span><code>${userID}</code>, <code>${user.name}</code></span>
+                </i18next>
               </b-form-group>
 
               <b-form-group
                 :label="$t('metric.edit.numberFormat')"
+                label-class="text-primary"
               >
                 <b-form-input
                   v-model="edit.numberFormat"
@@ -221,6 +244,7 @@
 
               <b-form-group
                 :label="$t('metric.edit.prefixLabel')"
+                label-class="text-primary"
               >
                 <b-form-input
                   v-model="edit.prefix"
@@ -231,6 +255,7 @@
 
               <b-form-group
                 :label="$t('metric.edit.suffixLabel')"
+                label-class="text-primary"
               >
                 <b-form-input
                   v-model="edit.suffix"
@@ -238,14 +263,51 @@
                   class="mb-1"
                 />
               </b-form-group>
+
+              <b-form-group
+                :description="$t('metric.drillDown.description')"
+                label-class="d-flex align-items-center text-primary"
+                class="mb-1"
+              >
+                <template #label>
+                  {{ $t('metric.drillDown.label') }}
+
+                  <b-form-checkbox
+                    v-model="edit.drillDown.enabled"
+                    switch
+                    class="ml-1 mb-1"
+                  />
+                </template>
+
+                <b-input-group>
+                  <c-input-select
+                    v-model="edit.drillDown.blockID"
+                    :options="drillDownOptions"
+                    :disabled="!edit.drillDown.enabled"
+                    :get-option-label="o => o.title || o.kind"
+                    :reduce="option => option.blockID"
+                    :clearable="true"
+                    :placeholder="$t('metric.drillDown.openInModal')"
+                    append-to-body
+                  />
+
+                  <b-input-group-append>
+                    <column-picker
+                      :module="selectedMetricModule"
+                      :disabled="!!edit.drillDown.blockID || !edit.drillDown.enabled"
+                      :fields="selectedDrilldownFields"
+                      variant="extra-light"
+                      size="md"
+                      @updateFields="onUpdateFields"
+                    >
+                      <font-awesome-icon :icon="['fas', 'wrench']" />
+                    </column-picker>
+                  </b-input-group-append>
+                </b-input-group>
+              </b-form-group>
             </fieldset>
           </b-card>
 
-          <!-- <m-style :options="edit.labelStyle">
-            <h5 slot="title">
-              {{ $t('metric.editStyle.labelLabel') }}
-            </h5>
-          </m-style> -->
           <m-style
             class="mt-2"
             :options="edit.valueStyle"
@@ -266,10 +328,13 @@
             style="top: 0;"
           >
             <b-button
-              variant="outline-primary"
+              v-b-tooltip.noninteractive.hover="{ title: $t('metric.edit.refreshData'), container: '#body' }"
+              variant="outline-light"
+              size="lg"
+              class="d-flex align-items-center text-primary ml-auto border-0 px-2 mt-2 mr-2"
               @click.prevent="$root.$emit('metric.update')"
             >
-              {{ $t('metric.edit.refreshData') }}
+              <font-awesome-icon :icon="['fa', 'sync']" />
             </b-button>
 
             <div
@@ -292,8 +357,12 @@ import base from '../base'
 import MStyle from './MStyle'
 import { mapGetters } from 'vuex'
 import MetricBase from '../MetricBase'
-import { VueSelect } from 'vue-select'
-import { compose } from '@cortezaproject/corteza-js'
+import ColumnPicker from 'corteza-webapp-compose/src/components/Admin/Module/Records/ColumnPicker'
+import autocomplete from 'corteza-webapp-compose/src/mixins/autocomplete.js'
+import { compose, NoID } from '@cortezaproject/corteza-js'
+import { components } from '@cortezaproject/corteza-vue'
+
+const { CInputExpression } = components
 
 export default {
   i18nOptions: {
@@ -304,9 +373,12 @@ export default {
   components: {
     MStyle,
     MetricBase,
-    VueSelect,
+    ColumnPicker,
+    CInputExpression,
   },
   extends: base,
+
+  mixins: [autocomplete],
 
   data () {
     return {
@@ -336,7 +408,7 @@ export default {
   computed: {
     ...mapGetters({
       modules: 'module/set',
-      moduleByID: 'module/getByID',
+      getModuleByID: 'module/getByID',
     }),
 
     fields () {
@@ -344,7 +416,13 @@ export default {
         return []
       }
 
-      return this.moduleByID(this.edit.moduleID).fields
+      return this.getModuleByID(this.edit.moduleID).fields
+    },
+
+    selectedDrilldownFields () {
+      if (!this.edit || !this.edit.drillDown.recordListOptions.fields) return []
+
+      return this.edit.drillDown.recordListOptions.fields
     },
 
     metricFields () {
@@ -363,6 +441,20 @@ export default {
         this.options.metrics = m
       },
     },
+
+    drillDownOptions () {
+      return this.page.blocks.filter(({ blockID, kind, options = {} }) => kind === 'RecordList' && blockID !== NoID && options.moduleID === this.edit.moduleID)
+    },
+
+    selectedMetricModule () {
+      if (!this.edit.moduleID) return undefined
+
+      return this.getModuleByID(this.edit.moduleID)
+    },
+
+    recordAutoCompleteParams () {
+      return this.processRecordAutoCompleteParams({ module: this.selectedMetricModule })
+    },
   },
 
   watch: {
@@ -372,11 +464,6 @@ export default {
         this.edit.dateFormat = undefined
       } else {
         this.edit.dateFormat = this.edit.dateFormat || 'YYYY-MM-DD'
-      }
-    },
-    'edit.metricField': function (mf) {
-      if (mf === 'count') {
-        this.edit.operation = undefined
       }
     },
   },
@@ -389,14 +476,13 @@ export default {
     this.edit = this.metrics[0]
   },
 
+  beforeDestroy () {
+    this.setDefaultValues()
+  },
+
   methods: {
     addMetric () {
-      const m = {
-        labelStyle: {},
-        valueStyle: {
-          backgroundColor: '#ffffff',
-        },
-      }
+      const m = this.block.makeMetric()
       this.metrics.push(m)
       this.editMetric(m)
     },
@@ -412,6 +498,36 @@ export default {
 
     isTemporalField (name) {
       return !!this.fields.find(f => f.name === name && f.kind === 'DateTime')
+    },
+
+    getOptionMetricFieldKey ({ name }) {
+      return name
+    },
+
+    getOptionMetricFieldLabel ({ name, label }) {
+      return label || name
+    },
+
+    getOptionAggregationOperationKey ({ operation }) {
+      return operation
+    },
+
+    onMetricFieldChange (field) {
+      if (field === 'count') {
+        this.edit.operation = undefined
+      } else if (!this.edit.operation) {
+        this.edit.operation = this.aggregationOperations[0].operation
+      }
+    },
+
+    onUpdateFields (fields) {
+      this.edit.drillDown.recordListOptions.fields = fields
+    },
+
+    setDefaultValues () {
+      this.edit = undefined
+      this.dimensionModifiers = []
+      this.aggregationOperations = []
     },
   },
 }

@@ -56,6 +56,11 @@ export default (options = {}) => {
             .setHeader('Content-Language', user.meta.preferredLanguage)
         }
 
+        // switch the webapp theme based on user preference
+        if (user.meta.theme) {
+          document.getElementsByTagName('html')[0].setAttribute('data-color-mode', user.meta.theme)
+        }
+
         // ref to vue is needed inside compose helper
         // load and register bundle and list of client/server scripts
 
@@ -149,7 +154,7 @@ export default (options = {}) => {
               break
 
             case 'error':
-              console.error('websocket message with error', msg['@value'])
+              this.toastDanger('Websocket message with error', msg['@value'])
           }
         })
       },
@@ -178,6 +183,12 @@ export default (options = {}) => {
     // Any additional options we want to merge
     ...options,
   }
+
+  options.router.beforeEach((to, from, next) => {
+    store.dispatch('ui/setPreviousPage', from)
+
+    next()
+  })
 
   return new Vue(options)
 }

@@ -5,6 +5,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/cortezaproject/corteza/server/compose/model"
 	"github.com/cortezaproject/corteza/server/compose/types"
 	discovery "github.com/cortezaproject/corteza/server/discovery/types"
@@ -12,14 +16,12 @@ import (
 	"github.com/cortezaproject/corteza/server/pkg/errors"
 	"github.com/cortezaproject/corteza/server/pkg/filter"
 	labelsType "github.com/cortezaproject/corteza/server/pkg/label/types"
+	"github.com/cortezaproject/corteza/server/pkg/logger"
 	"github.com/cortezaproject/corteza/server/store"
 	"github.com/doug-martin/goqu/v9"
 	"github.com/doug-martin/goqu/v9/exp"
 	"github.com/spf13/cast"
 	"go.uber.org/zap"
-	"os"
-	"strings"
-	"time"
 )
 
 // RDBMS database fixes
@@ -33,7 +35,6 @@ import (
 var (
 	// all enabled fix function need to be listed here
 	fixes = []func(context.Context, *Store) error{
-		fix_2022_09_00_migrateComposeModuleDiscoveryConfigSettings,
 		fix_2022_09_00_extendComposeModuleForPrivacyAndDAL,
 		fix_2022_09_00_extendComposeModuleFieldsForPrivacyAndDAL,
 		fix_2022_09_00_dropObsoleteComposeModuleFields,
@@ -46,6 +47,8 @@ var (
 		fix_2022_09_00_addMissingNodeIdOnFederationMapping,
 		fix_2023_03_00_migrateComposeModuleConfigForRecordDeDup,
 		fix_2022_09_07_changePostgresIdColumnsDatatype,
+		fix_2022_09_00_migrateComposeModuleDiscoveryConfigSettings,
+		fix_2023_03_00_migrateComposePageMeta,
 	}
 )
 
@@ -151,6 +154,12 @@ func fix_2022_09_00_migrateComposeModuleDiscoveryConfigSettings(ctx context.Cont
 				bb             []byte
 				settings       discovery.ModuleMeta
 				migrateSetting = func(input interface{}) (out result) {
+					out = result{
+						Result: discovery.Result{
+							Lang:   "",
+							Fields: []string{},
+						},
+					}
 					var (
 						ok  bool
 						ii  map[string]interface{}
@@ -212,10 +221,10 @@ func fix_2022_09_00_migrateComposeModuleDiscoveryConfigSettings(ctx context.Cont
 			} else {
 				query = fmt.Sprintf(updateModuleDiscoverySettings, u.Config, u.ID)
 			}
-			log.Debug("saving migrated module.config.discovery settings", zap.Uint64("id", u.ID))
+			log.Debug("saving migrated module.config.discovery settings", logger.Uint64("id", u.ID))
 			_, err = s.(*Store).DB.ExecContext(ctx, query)
 			if err != nil {
-				log.Debug("error saving migrated module.config.discovery settings", zap.Uint64("id", u.ID))
+				log.Debug("error saving migrated module.config.discovery settings", logger.Uint64("id", u.ID))
 				continue
 			}
 		}
@@ -224,6 +233,13 @@ func fix_2022_09_00_migrateComposeModuleDiscoveryConfigSettings(ctx context.Cont
 	})
 
 	return
+}
+
+func fix_2023_03_00_migrateComposePageMeta(ctx context.Context, s *Store) (err error) {
+	return addColumn(ctx, s,
+		"compose_page",
+		model.Page.Attributes.FindByIdent("meta"),
+	)
 }
 
 func fix_2022_09_00_extendComposeModuleForPrivacyAndDAL(ctx context.Context, s *Store) (err error) {
@@ -376,7 +392,7 @@ func fix_2022_09_00_migrateOldComposeRecordValues(ctx context.Context, s *Store)
 
 		perModLog := log.With(
 			zap.String("handle", mod.Handle),
-			zap.Uint64("id", mod.ID),
+			logger.Uint64("id", mod.ID),
 		)
 
 		err = func() (err error) {
@@ -616,9 +632,12 @@ func fix_2022_09_07_changePostgresIdColumnsDatatype(ctx context.Context, s *Stor
 		return
 	}
 
+	log := s.log(ctx)
+	log.Info("changing postgres ID columns")
+
 	tnames := tableNames()
 	tnamesQry := `SELECT table_name FROM INFORMATION_SCHEMA.COLUMNS  WHERE column_name = 'id' AND
-                table_name IN('` + strings.Join(tnames, "', '") + `') AND table_name NOT LIKE 'auth_sessions'`
+                table_name IN('` + strings.Join(tnames, "', '") + `') AND table_name NOT LIKE 'auth_sessions' AND is_updatable = 'YES'`
 
 	rows, err := s.DB.QueryContext(ctx, tnamesQry)
 	if err != nil {
@@ -643,6 +662,13 @@ func fix_2022_09_07_changePostgresIdColumnsDatatype(ctx context.Context, s *Stor
 }
 
 func fix_2023_03_00_migrateComposeModuleConfigForRecordDeDup(ctx context.Context, s *Store) (err error) {
+	// @note skipping this for SQL server since it was introduced with 2023.3.0 so there.
+	// There are issues with the implementation which won't work on mssql.
+	// Since there is no way this would do anything on mssql, we can skip it.
+	if s.DB.DriverName() == "sqlserver" {
+		return
+	}
+
 	type (
 		oldRule struct {
 			Name       string   `json:"name"`
@@ -693,7 +719,7 @@ func fix_2023_03_00_migrateComposeModuleConfigForRecordDeDup(ctx context.Context
 		)
 
 		if err = s.Tx(ctx, func(ctx context.Context, s store.Storer) (err error) {
-			log.Debug("collecting module.config.recordDeDup for module", zap.Uint64("id", m.ID))
+			log.Debug("collecting module.config.recordDeDup for module", logger.Uint64("id", m.ID))
 
 			query = fmt.Sprintf(moduleConfigRecordDeDup, m.ID)
 			rows, err = s.(*Store).DB.QueryContext(ctx, query)
@@ -709,7 +735,7 @@ func fix_2023_03_00_migrateComposeModuleConfigForRecordDeDup(ctx context.Context
 			for rows.Next() {
 				if err = rows.Err(); err != nil {
 					log.Info("failed to scan rows to migrated module.config.recordDeDup for module",
-						zap.Uint64("id", m.ID))
+						logger.Uint64("id", m.ID))
 					return
 				}
 
@@ -751,9 +777,9 @@ func fix_2023_03_00_migrateComposeModuleConfigForRecordDeDup(ctx context.Context
 			if len(migratedRules) > 0 {
 				m.Config.RecordDeDup.Rules = migratedRules
 
-				log.Debug("saving migrated module.config.recordDeDup for module", zap.Uint64("id", m.ID))
+				log.Debug("saving migrated module.config.recordDeDup for module", logger.Uint64("id", m.ID))
 				if err = s.UpdateComposeModule(ctx, m); err != nil {
-					log.Debug("error saving migrated module.config.recordDeDup for module", zap.Uint64("id", m.ID))
+					log.Debug("error saving migrated module.config.recordDeDup for module", logger.Uint64("id", m.ID))
 					return
 				}
 			}

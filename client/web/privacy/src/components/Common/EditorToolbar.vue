@@ -10,14 +10,15 @@
       <b-col>
         <b-button
           v-if="backLink"
+          data-test-id="button-back"
           variant="link"
           size="lg"
           :to="backLink"
-          class="d-flex align-items-center text-dark back"
+          class="d-flex align-items-center text-dark back text-decoration-none gap-1"
         >
           <font-awesome-icon
             :icon="['fas', 'chevron-left']"
-            class="back-icon mr-1"
+            class="back-icon"
           />
           {{ $t('general:label.back') }}
         </b-button>
@@ -38,18 +39,18 @@
           <c-input-confirm
             v-if="deleteConfirm"
             :disabled="deleteDisabled || processing"
-            :borderless="false"
+            :processing="processingDelete"
+            :text="deleteLabel"
             variant="danger"
             size="lg"
             size-confirm="lg"
             class="ml-1"
             @confirmed="$emit('delete')"
-          >
-            {{ deleteLabel }}
-          </c-input-confirm>
+          />
 
           <b-button
             v-else
+            :data-test-id="buttonLabelCypressId(deleteLabel)"
             :disabled="deleteDisabled || processing"
             variant="danger"
             size="lg"
@@ -60,16 +61,16 @@
           </b-button>
         </template>
 
-        <b-button
+        <c-button-submit
           v-if="submitShow"
-          :disabled="submitDisabled || processing"
-          variant="primary"
+          :data-test-id="buttonLabelCypressId(submitLabel)"
+          :disabled="submitDisabled"
+          :processing="processing"
+          :text="submitLabel"
           size="lg"
           class="ml-1"
-          @click="$emit('submit')"
-        >
-          {{ submitLabel }}
-        </b-button>
+          @submit="$emit('submit')"
+        />
 
         <slot />
       </b-col>
@@ -78,11 +79,15 @@
 </template>
 
 <script>
+
 export default {
   props: {
     processing: {
       type: Boolean,
-      required: false,
+    },
+
+    processingDelete: {
+      type: Boolean,
     },
 
     backLink: {
@@ -92,12 +97,10 @@ export default {
 
     deleteShow: {
       type: Boolean,
-      required: false,
     },
 
     deleteDisabled: {
       type: Boolean,
-      required: false,
     },
 
     deleteConfirm: {
@@ -112,17 +115,21 @@ export default {
 
     submitShow: {
       type: Boolean,
-      required: false,
     },
 
     submitDisabled: {
       type: Boolean,
-      required: false,
     },
 
     submitLabel: {
       type: String,
       default: '',
+    },
+  },
+
+  methods: {
+    buttonLabelCypressId (label) {
+      return `button-${label.toLowerCase().split(' ').join('-')}`
     },
   },
 }

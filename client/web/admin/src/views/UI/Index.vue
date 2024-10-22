@@ -1,30 +1,35 @@
 <template>
   <b-container
-    class="py-3"
+    class="pt-2 pb-3"
   >
     <c-content-header
       :title="$t('title')"
     />
 
-    <c-ui-logo-editor
+    <c-ui-branding-editor
+      v-if="settings"
       :settings="settings"
+      :processing="branding.processing"
+      :success="branding.success"
       :can-manage="canManage"
+      @submit="onSubmit($event, 'branding')"
     />
 
     <c-ui-topbar-settings
+      v-if="settings"
       :settings="settings"
       :processing="topbar.processing"
       :success="topbar.success"
       :can-manage="canManage"
       class="mt-3"
-      @submit="onTopbarSubmit"
+      @submit="onSubmit($event, 'topbar')"
     />
   </b-container>
 </template>
 
 <script>
 import editorHelpers from 'corteza-webapp-admin/src/mixins/editorHelpers'
-import CUILogoEditor from 'corteza-webapp-admin/src/components/Settings/UI/CUILogoEditor'
+import CUIBrandingEditor from '../../components/Settings/UI/CUIBrandingEditor.vue'
 import CUITopbarSettings from 'corteza-webapp-admin/src/components/Settings/UI/CUITopbarSettings'
 import { mapGetters } from 'vuex'
 
@@ -37,7 +42,7 @@ export default {
   },
 
   components: {
-    'c-ui-logo-editor': CUILogoEditor,
+    'c-ui-branding-editor': CUIBrandingEditor,
     'c-ui-topbar-settings': CUITopbarSettings,
   },
 
@@ -47,12 +52,23 @@ export default {
 
   data () {
     return {
-      settings: {},
+      settings: undefined,
 
       topbar: {
         processing: false,
         success: false,
       },
+
+      customCSS: {
+        processing: false,
+        success: false,
+      },
+
+      branding: {
+        processing: false,
+        success: false,
+      },
+
     }
   },
 
@@ -73,8 +89,12 @@ export default {
   methods: {
     fetchSettings () {
       this.incLoader()
-      this.$SystemAPI.settingsList({ prefix: prefix })
+
+      this.$Settings.fetch()
+      return this.$SystemAPI.settingsList({ prefix: prefix })
         .then(settings => {
+          this.settings = {}
+
           settings.forEach(({ name, value }) => {
             this.$set(this.settings, name, value)
           })
@@ -85,8 +105,8 @@ export default {
         })
     },
 
-    onTopbarSubmit (settings) {
-      this.topbar.processing = true
+    onSubmit (settings, type) {
+      this[type].processing = true
 
       const values = Object.entries(settings).map(([name, value]) => {
         return { name, value }
@@ -94,13 +114,26 @@ export default {
 
       this.$SystemAPI.settingsUpdate({ values })
         .then(() => {
-          this.animateSuccess('topbar')
-          this.toastSuccess(this.$t('notification:settings.compose.update.success'))
-          this.$Settings.fetch()
+          return this.fetchSettings().then(() => {
+            if ((type === 'branding' && this.settings['ui.studio.sass-installed']) || type === 'customCSS') {
+              // window.location.reload()
+              return new Promise((resolve) => {
+                setTimeout(() => {
+                  const stylesheet = document.querySelector('link#corteza-custom-css')
+                  stylesheet.href = 'custom.css?v=' + new Date().getTime()
+                  resolve()
+                }, 1000)
+              })
+            }
+          })
         })
-        .catch(this.toastErrorHandler(this.$t('notification:settings.compose.update.error')))
+        .then(() => {
+          this.animateSuccess(type)
+          this.toastSuccess(this.$t('notification:settings.ui.update.success'))
+        })
+        .catch(this.toastErrorHandler(this.$t('notification:settings.ui.update.error')))
         .finally(() => {
-          this.topbar.processing = false
+          this[type].processing = false
         })
     },
   },

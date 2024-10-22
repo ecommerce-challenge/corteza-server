@@ -20,6 +20,7 @@ env:
   NODE_VERSION: 16
 
   RELEASE_BASE_URL: "https://releases.cortezaproject.org/files"
+  SASS_VERSION: 1.69.5
 
 jobs:
   server-test:
@@ -120,6 +121,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
+        with: { node-version: "${{ env.NODE_VERSION }}" }
       - uses: actions/cache@v3
         if: ${{ !env.ACT }}
         with:
@@ -147,6 +149,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           registry-url: 'https://registry.npmjs.org/'
+          node-version: "${{ env.NODE_VERSION }}" 
       - uses: actions/cache@v3
         if: ${{ !env.ACT }}
         with:
@@ -404,12 +407,12 @@ jobs:
     needs:
       - server-release
       - client-web-aio-release
-      # - extra-server-discovery-release
+      - extra-server-discovery-release
     strategy:
       fail-fast: true
       matrix:
         include:
-          # - { context: "extra/server-discovery",     image: "cortezaproject/corteza-server-discovery" }
+          - { context: "extra/server-discovery",     image: "cortezaproject/corteza-server-discovery" }
           - { context: "client/web",                 image: "cortezaproject/corteza-webapp" }
           - { context: "server",                     image: "cortezaproject/corteza-server" }
           - { context: ".",                          image: "cortezaproject/corteza" }
@@ -433,6 +436,7 @@ jobs:
         run: |
           docker build \
             --build-arg "VERSION=${{ env.DOCKER_IMAGE_TAG }}" \
+            --build-arg "SASS_VERSION=${{ env.SASS_VERSION }}" \
             --tag ${{ matrix.image }}:${{ env.DOCKER_IMAGE_TAG }} \
             ${{ matrix.context }}
 
@@ -492,3 +496,22 @@ jobs:
           channel: ${{ secrets.MATRIX_ROOM_ID }}
           message: |
             # Corteza **${{ env.DOCKER_IMAGE_TAG }}** release has failed
+
+  publish-release-sentry:
+    name: "Publish release to sentry"
+    runs-on: ubuntu-20.04
+    needs: [ notify ]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Create Sentry release
+        uses: getsentry/action-release@v1
+        continue-on-error: true
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        with:
+          ignore_empty: true
+          ignore_missing: true
+          version: ${{ github.ref_name }}

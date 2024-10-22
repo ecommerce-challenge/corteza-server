@@ -1,6 +1,6 @@
 {{ template "inc_header.html.tpl" . }}
 <div class="card-body p-0">
-	<h4 class="login-title card-title p-3 border-bottom">{{ tr "login.template.title" }}</h4>
+	<h4 class="login-title mb-0 p-3 border-bottom">{{ tr "login.template.title" }}</h4>
 	{{ if .settings.LocalEnabled }}
 	<form
 		method="POST"
@@ -62,7 +62,7 @@
 				{{ end }}
 				<button
 					data-test-id="button-login"
-					class="btn btn-light btn-block"
+					class="btn btn-light btn-block btn-lg"
 					type="submit"
 				>
 					{{ tr "login.template.form.button.login" }}
@@ -111,12 +111,12 @@
 
 	{{ if .settings.ExternalEnabled }}
 	<div class="px-3 pb-3">
-	{{ range .providers }}
-		<a href="{{ links.External }}/{{ .Handle }}" class="btn btn-light btn-block btn-lg mb-2 mt-1 text-dark">
-			<i class="bi bi-{{ .Icon }} mr-1"></i>
-			{{ tr "login.template.links.external.login-with" "idp" (coalesce .Label .Handle) }}
-		</a>
-	{{ end }}
+		{{ range .providers }}
+			<a href="{{ links.External }}/{{ .Handle }}" class="btn btn-light btn-block btn-lg mb-2 mt-1 text-dark">
+				<i class="bi bi-{{ .Icon }} mr-1"></i>
+				{{ tr "login.template.links.external.login-with" "idp" (coalesce .Label .Handle) }}
+			</a>
+		{{ end }}
 	</div>
 	{{ end }}
 </div>

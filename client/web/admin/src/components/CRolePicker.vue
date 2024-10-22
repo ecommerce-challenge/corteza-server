@@ -1,105 +1,61 @@
 <template>
   <div
     data-test-id="role-picker"
+    class="d-flex flex-column"
   >
-    <b-input-group>
-      <b-input-group-append is-text>
-        <font-awesome-icon :icon="['fas', 'search']" />
-      </b-input-group-append>
-      <b-form-input
-        v-model.trim="filter"
-        data-test-id="input-role"
-      />
-      <b-input-group-append
-        v-if="filter"
-        is-text
-      >
-        <b-button
-          data-test-id="button-clear-role"
-          variant="link"
-          size="sm"
-          class="p-0 m-0"
-          @click="filter = ''"
+    <c-input-role
+      data-test-id="input-role-picker"
+      :selectable="r => !value.includes(r.roleID)"
+      :placeholder="$t('admin:picker.role.placeholder')"
+      :visible="isRoleVisible"
+      clear-on-select
+      @input="addRole($event)"
+    />
+
+    <b-spinner
+      v-if="preloading"
+      class="mx-auto my-4"
+    />
+
+    <b-table-simple
+      v-else-if="getSelectedRoles.length"
+      responsive
+      small
+      hover
+      class="w-100 p-0 mb-0 mt-1"
+    >
+      <tbody>
+        <tr
+          v-for="role in getSelectedRoles"
+          :key="role.roleID"
+          data-test-id="selected-row-list"
         >
-          <font-awesome-icon :icon="['fas', 'times']" />
-        </b-button>
-      </b-input-group-append>
-    </b-input-group>
-
-    <b-container
-      v-if="filter && filtered.length > 0"
-      class="ml-5 my-2 position-absolute bg-white border results shadow w-50"
-    >
-      <b-row
-        v-for="r in filtered"
-        :key="r.roleID"
-        data-test-id="filtered-row-list"
-        class="filtered-role"
-        @click="addRole(r)"
-      >
-        <b-col class="pt-1">
-          {{ r | label }}
-          <b-button
-            data-test-id="button-add-role"
-            variant="link"
-            class="float-right"
-            @click="addRole(r)"
-          >
-            <font-awesome-icon :icon="['fas', 'plus']" />
-          </b-button>
-        </b-col>
-      </b-row>
-    </b-container>
-
-    <b-form-text
-      v-if="$slots['description']"
-    >
-      <slot name="description" />
-    </b-form-text>
-
-    <b-container
-      v-if="selected"
-      class="p-1"
-    >
-      <b-row
-        v-for="r in selected"
-        :key="r.userID"
-        data-test-id="selected-row-list"
-      >
-        <b-col>{{ r | label }}</b-col>
-        <b-col class="text-right">
-          <b-button
-            data-test-id="button-remove-role"
-            variant="link"
-            @click="removeRole(r)"
-          >
-            <font-awesome-icon :icon="['far', 'trash-alt']" />
-          </b-button>
-        </b-col>
-      </b-row>
-    </b-container>
+          <td class="align-middle">
+            {{ getRoleLabel(role) }}
+          </td>
+          <td class="text-right">
+            <c-input-confirm
+              data-test-id="button-remove-role"
+              show-icon
+              @confirmed="removeRole(role.roleID)"
+            />
+          </td>
+        </tr>
+      </tbody>
+    </b-table-simple>
   </div>
 </template>
 
 <script>
-
-function roleSorter (a, b) {
-  return `${a.name} ${a.handle} ${a.roleID}`.localeCompare(`${b.name} ${b.handle} ${b.roleID}`)
-}
+import { components } from '@cortezaproject/corteza-vue'
+const { CInputRole } = components
 
 export default {
-  filters: {
-    label (r) {
-      return r.name || r.handle || r.roleID
-    },
+  components: {
+    CInputRole,
   },
 
   props: {
-    label: {
-      type: String,
-      default: 'count',
-    },
-
     // list of role IDs
     value: {
       type: Array,
@@ -109,71 +65,73 @@ export default {
 
   data () {
     return {
-      roles: [],
+      fetching: false,
+      preloading: false,
+
       filter: '',
+
+      selectedRoles: [],
     }
   },
 
   computed: {
-    selected () {
-      return this.roles
-        .filter(({ roleID }) => this.value.includes(roleID))
-        .sort(roleSorter)
-    },
-
-    filtered () {
-      const match = ({ name = '', handle = '', roleID = '' }) => {
-        return `${name} ${handle} ${roleID}`.toLocaleLowerCase().indexOf(this.filter.toLocaleLowerCase()) > -1
-      }
-
-      const fits = ({ isClosed, meta = {} }) => {
-        return !(isClosed || (meta.context && meta.context.resourceTypes))
-      }
-
-      return this.roles.filter(r => !this.value.includes(r.roleID) && fits(r) && match(r))
-    },
-  },
-
-  watch: {
-    currentRoles: {
-      immediate: true,
-      handler () {
-        this.filter = ''
-      },
+    getSelectedRoles () {
+      return this.selectedRoles.filter(({ roleID }) => this.value.includes(roleID))
     },
   },
 
   mounted () {
-    this.preload()
+    this.preloadSelected()
   },
 
   methods: {
-    addRole (r) {
-      if (!this.value.includes(r.roleID)) {
-        this.value.push(r.roleID)
+    addRole (role) {
+      if (!this.value.includes(role.roleID)) {
+        this.selectedRoles.push(role)
+        this.$emit('input', [...this.value, role.roleID])
       }
     },
 
-    removeRole (r) {
-      this.value.splice(this.value.indexOf(r.roleID), 1)
-      this.filter = ''
+    removeRole (roleID) {
+      this.selectedRoles = this.selectedRoles.filter(({ roleID: rID }) => rID !== roleID)
+      this.$emit('input', this.value.filter(v => v !== roleID))
     },
 
-    preload () {
-      return this.$SystemAPI.roleList()
-        .then(({ set }) => { this.roles = set || [] })
-        .catch(this.toastErrorHandler({}))
+    preloadSelected () {
+      if (!this.value.length) {
+        return
+      }
+
+      this.preloading = true
+
+      return this.$SystemAPI.roleList({ roleID: this.value })
+        .then(({ set }) => {
+          this.selectedRoles = set || []
+        })
+        .finally(() => {
+          this.preloading = false
+        })
+        .catch(this.toastErrorHandler(this.$t('notification:role.fetch.error')))
+    },
+
+    getRoleLabel ({ name, handle, roleID }) {
+      return name || handle || roleID
+    },
+
+    isRoleVisible ({ isClosed, meta = {} }) {
+      return !(isClosed || (meta.context && meta.context.resourceTypes))
     },
   },
 }
 </script>
+
 <style lang="scss">
 .results {
   z-index: 100;
   .filtered-role {
     cursor: pointer;
     &:hover {
-      background-color: $light;
+      background-color: var(--light);
     }
   }
 }

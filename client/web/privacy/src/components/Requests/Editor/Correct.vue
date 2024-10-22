@@ -10,14 +10,14 @@
         label-class="text-primary"
         class="mb-0"
       >
-        <vue-select
+        <c-input-select
           v-model="connection"
           :disabled="processing.connections"
           :options="connections"
           :clearable="false"
           :get-option-label="({ handle, meta }) => meta.name || handle"
+          :get-option-key="getOptionKey"
           :placeholder="$t('connection.placeholder')"
-          class="h-100 bg-white"
         />
       </b-form-group>
     </b-card>
@@ -75,7 +75,6 @@
 <script>
 import EditorToolbar from 'corteza-webapp-privacy/src/components/Common/EditorToolbar'
 import ModuleRecords from 'corteza-webapp-privacy/src/components/Common/ModuleRecords'
-import VueSelect from 'vue-select'
 
 export default {
   i18nOptions: {
@@ -84,7 +83,6 @@ export default {
   },
 
   components: {
-    VueSelect,
     EditorToolbar,
     ModuleRecords,
   },
@@ -202,6 +200,10 @@ export default {
         this.payload.modules[moduleID].records[recordID].values[field] = [value]
         this.valid = true
       }
+    },
+
+    getOptionKey ({ connectionID }) {
+      return connectionID
     },
   },
 }

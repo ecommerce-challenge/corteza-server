@@ -12,7 +12,6 @@
         data-test-id="button-manage-namespaces"
         variant="primary"
         size="sm"
-        class="mr-1 float-left"
         :to="{ name: 'namespace.manage' }"
       >
         {{ $t('manage-view.label') }}
@@ -29,7 +28,7 @@
       fluid="xl"
     >
       <b-row
-        class="wrap-with-vertical-gutters my-3"
+        class="my-3"
         no-gutters
       >
         <b-col
@@ -40,11 +39,11 @@
         >
           <c-input-search
             v-model.trim="query"
-            size="lg"
             :placeholder="$t('searchPlaceholder')"
           />
         </b-col>
       </b-row>
+
       <transition-group
         v-if="filtered && filtered.length"
         name="namespace-list"
@@ -63,6 +62,7 @@
         class="d-flex justify-content-center align-items-center h-50 w-100"
       >
         <h3
+          data-test-id="no-namespaces-found"
           class="text-left"
         >
           {{ $t('noResults') }}

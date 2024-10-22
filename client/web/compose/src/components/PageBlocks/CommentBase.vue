@@ -5,84 +5,94 @@
     @refreshBlock="refresh"
   >
     <div
-      v-if="processing"
-      class="d-flex align-items-center justify-content-center h-100"
+      v-if="!isBlockConfigured"
+      class="d-flex h-100 align-items-center justify-content-center"
     >
-      <b-spinner />
+      <p class="mb-0">
+        {{ $t('noConfiguration') }}
+      </p>
     </div>
-    <template v-else-if="roModule && contentField">
-      <section
-        v-if="canAddRecord"
-        class="d-flex flex-column px-3 py-2"
-      >
-        <b-form-input
-          v-if="titleField"
-          v-model="newRecord.title"
-          class="mb-2"
-          :placeholder="$t('comment.titleInput')"
-        />
-        <b-form-textarea
-          v-model.trim="newRecord.content"
-          :value="true"
-          :placeholder="$t('comment.contentInput')"
-        />
-        <b-button
-          variant="primary"
-          class="ml-auto mt-2 mb-2"
-          :disabled="!isValid"
-          @click="createNewRecord()"
-        >
-          {{ $t('comment.submit') }}
-        </b-button>
-      </section>
+    <template v-else>
       <div
-        v-if="sortableRecords.length && canAddRecord"
-        class="border w-100 mb-3"
-      />
-      <section v-if="sortableRecords.length">
-        <b-list-group class="px-3 py-2">
-          <b-list-group-item
-            v-for="record in sortableRecords"
-            :key="record.recordID"
-            class="p-0 pb-3 border-0"
+        v-if="processing"
+        class="d-flex align-items-center justify-content-center h-100"
+      >
+        <b-spinner />
+      </div>
+      <template v-else-if="roModule">
+        <section
+          v-if="canAddRecord"
+          class="d-flex flex-column px-3 py-2"
+        >
+          <b-form-input
+            v-if="titleField"
+            v-model="newRecord.title"
+            class="mb-2"
+            :placeholder="$t('comment.titleInput')"
+          />
+          <b-form-textarea
+            v-model.trim="newRecord.content"
+            :value="true"
+            :placeholder="$t('comment.contentInput')"
+          />
+          <b-button
+            variant="primary"
+            class="ml-auto mt-2 mb-2"
+            :disabled="!isValid"
+            @click="createNewRecord()"
           >
-            <div class="d-flex flex-wrap border p-2">
-              <div class="text-primary">
-                {{ getAuthor(record.ownedBy) }}
+            {{ $t('comment.submit') }}
+          </b-button>
+        </section>
+        <div
+          v-if="sortableRecords.length && canAddRecord"
+          class="border w-100 mb-3"
+        />
+        <section v-if="sortableRecords.length">
+          <b-list-group class="px-3 py-2">
+            <b-list-group-item
+              v-for="record in sortableRecords"
+              :key="record.recordID"
+              class="p-0 pb-3 border-0"
+            >
+              <div class="d-flex flex-wrap border p-2">
+                <div class="text-primary">
+                  {{ getAuthor(record.ownedBy) }}
+                </div>
+                <span class="ml-auto text-muted">
+                  {{ getFormattedDate((record || {}).updatedAt || (record || {}).createdAt) }}
+                </span>
               </div>
-              <span class="ml-auto text-muted">
-                {{ getFormattedDate((record || {}).updatedAt || (record || {}).createdAt) }}
-              </span>
-            </div>
-            <div class="border p-3 d-flex flex-column">
-              <field-viewer
-                v-if="titleField && titleField.canReadRecordValue"
-                class="mb-3 text-muted font-weight-bold"
-                :field="titleField"
-                :record="record"
-                :namespace="namespace"
-                value-only
-              />
-              <template v-else-if="!options.titleField" />
-              <i
-                v-else
-                class="text-secondary h6"
-              >{{ $t('field.noPermission') }}</i>
-              <field-viewer
-                v-if="contentField.canReadRecordValue"
-                :field="contentField"
-                :record="record"
-                :namespace="namespace"
-                value-only
-              />
-              <i
-                v-else
-                class="text-secondary h6"
-              >{{ $t('field.noPermission') }}</i>
-            </div>
-          </b-list-group-item>
-        </b-list-group>
-      </section>
+              <div class="border p-3 d-flex flex-column">
+                <field-viewer
+                  v-if="titleField && titleField.canReadRecordValue"
+                  class="mb-3 text-muted font-weight-bold"
+                  :field="titleField"
+                  :record="record"
+                  :namespace="namespace"
+                  value-only
+                />
+                <template v-else-if="!options.titleField" />
+                <i
+                  v-else
+                  class="text-secondary h6"
+                >{{ $t('field.noPermission') }}</i>
+                <field-viewer
+                  v-if="contentField.canReadRecordValue"
+                  :field="contentField"
+                  :record="record"
+                  :namespace="namespace"
+                  value-only
+                />
+                <i
+                  v-else
+                  class="text-secondary h6"
+                >{{ $t('field.noPermission') }}</i>
+              </div>
+            </b-list-group-item>
+          </b-list-group>
+        </section>
+      </template>
     </template>
   </wrap>
 </template>
@@ -92,7 +102,7 @@ import base from './base'
 import FieldViewer from 'corteza-webapp-compose/src/components/ModuleFields/Viewer'
 import users from 'corteza-webapp-compose/src/mixins/users'
 import { compose, NoID, fmt } from '@cortezaproject/corteza-js'
-import { evaluatePrefilter } from 'corteza-webapp-compose/src/lib/record-filter'
+import { evaluatePrefilter, isFieldInFilter } from 'corteza-webapp-compose/src/lib/record-filter'
 
 export default {
   i18nOptions: {
@@ -123,6 +133,8 @@ export default {
         title: '',
         content: '',
       },
+
+      abortableRequests: [],
     }
   },
 
@@ -200,11 +212,22 @@ export default {
       }
       return NoID
     },
+
+    isBlockConfigured () {
+      return !!this.contentField
+    },
   },
 
   watch: {
-    'record.recordID': {
+    'record.updatedAt': {
       immediate: true,
+      handler () {
+        this.refresh()
+      },
+    },
+
+    options: {
+      deep: true,
       handler () {
         this.refresh()
       },
@@ -215,7 +238,30 @@ export default {
     this.refreshBlock(this.refresh)
   },
 
+  mounted () {
+    this.createEvents()
+  },
+
+  beforeDestroy () {
+    this.abortRequests()
+    this.destroyEvents()
+    this.setDefaultValues()
+  },
+
   methods: {
+    createEvents () {
+      this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
+      this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
+    },
+
+    refetchOnPrefilterValueChange ({ fieldName }) {
+      const { filter } = this.options
+
+      if (isFieldInFilter(fieldName, filter)) {
+        this.refresh()
+      }
+    },
+
     getFormattedDate (date) {
       return fmt.fullDateTime(date)
     },
@@ -225,11 +271,10 @@ export default {
       return user.name || user.handle || user.email || ''
     },
 
-    fetchUsers () {
-      const userListID = this.records.map(r => {
-        return r.ownedBy
-      }).filter((x, i, r) => r.indexOf(x) === i)
-      this.$store.dispatch('user/fetchUsers', userListID)
+    refreshOnRelatedRecordsUpdate ({ moduleID, notPageID }) {
+      if (this.options.moduleID === moduleID && this.page.pageID !== notPageID) {
+        this.refresh()
+      }
     },
 
     refresh () {
@@ -242,13 +287,15 @@ export default {
         this.fetchRecords(this.roModule, this.expandFilter())
           .then(rr => {
             this.records = rr
-            this.fetchUsers()
+            this.fetchUsers([{ name: 'ownedBy', kind: 'User', isSystem: true, isMulti: false }], this.records)
           })
           .catch(e => {
             console.error(e)
           })
           .finally(() => {
-            this.processing = false
+            setTimeout(() => {
+              this.processing = false
+            }, 300)
           })
       }
     },
@@ -283,6 +330,9 @@ export default {
           this.newRecord.title = ''
           this.newRecord.content = ''
           this.refresh()
+
+          const { moduleID } = this.options
+          this.$root.$emit('module-records-updated', { moduleID })
         })
           .catch(this.toastErrorHandler(this.$t('notification:record.createFailed')))
       }
@@ -305,6 +355,7 @@ export default {
       if (this.options.filter) {
         return evaluatePrefilter(this.options.filter, {
           record: this.record,
+          user: this.$auth.user || {},
           recordID: (this.record || {}).recordID || NoID,
           ownerID: (this.record || {}).ownedBy || NoID,
           userID: (this.$auth.user || {}).userID || NoID,
@@ -341,9 +392,31 @@ export default {
         sort,
       }
 
-      return this.$ComposeAPI
-        .recordList(params)
+      const { response, cancel } = this.$ComposeAPI
+        .recordListCancellable(params)
+      this.abortableRequests.push(cancel)
+
+      return response()
         .then(({ set }) => set.map(r => Object.freeze(new compose.Record(module, r))))
+    },
+
+    setDefaultValues () {
+      this.processing = false
+      this.filter = false
+      this.records = []
+      this.newRecord = {}
+      this.abortableRequests = []
+    },
+
+    abortRequests () {
+      this.abortableRequests.forEach((cancel) => {
+        cancel()
+      })
+    },
+
+    destroyEvents () {
+      this.$root.$off('module-records-updated', this.refreshOnRelatedRecordsUpdate)
+      this.$root.$off('record-field-change', this.refetchOnPrefilterValueChange)
     },
   },
 }

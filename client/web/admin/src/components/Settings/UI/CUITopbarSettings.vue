@@ -1,13 +1,13 @@
 <template>
   <b-card
+    header-class="border-bottom"
+    footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
     class="shadow-sm"
-    header-bg-variant="white"
-    footer-bg-variant="white"
   >
     <template #header>
-      <h3 class="m-0">
+      <h4 class="m-0">
         {{ $t('title') }}
-      </h3>
+      </h4>
     </template>
 
     <b-form
@@ -36,6 +36,7 @@
 
       <div>
         <hr>
+
         <b-row>
           <b-col
             cols="12"
@@ -62,58 +63,52 @@
               </b-form-checkbox>
             </b-form-group>
           </b-col>
+
           <b-col>
             <b-form-group
-              label-class="pb-1"
+              :label="$t('links.title')"
+              label-class="text-primary"
             >
-              <template #label>
-                {{ $t('links.title') }}
-                <b-button
-                  variant="link"
-                  class="text-decoration-none"
-                  @click="topbarSettings.helpLinks.push({ handle: '', url: '', newTab: true })"
-                >
-                  {{ $t('general:label.plus-add') }}
-                </b-button>
-              </template>
-              <b-table
-                :fields="links.fields"
-                :items="topbarSettings.helpLinks"
-                table-variant="light"
-                responsive="sm"
-                small
-                class="mb-0"
+              <c-form-table-wrapper
+                :labels="{ addButton: $t('general:label.add') }"
+                @add-item="topbarSettings.helpLinks.push({ handle: '', url: '', newTab: true })"
               >
-                <template #cell(handle)="data">
-                  <b-form-input
-                    v-model="data.item.handle"
-                    size="sm"
-                  />
-                </template>
-                <template #cell(url)="data">
-                  <b-form-input
-                    v-model="data.item.url"
-                    type="url"
-                    size="sm"
-                  />
-                </template>
-                <template #cell(newTab)="data">
-                  <b-form-checkbox
-                    v-model="data.item.newTab"
-                  />
-                </template>
-                <template #cell(actions)="data">
-                  <b-button
-                    variant="outline-danger"
-                    class="border-0 px-1"
-                    @click="topbarSettings.helpLinks.splice(data.index, 1)"
-                  >
-                    <font-awesome-icon
-                      :icon="['far', 'trash-alt']"
+                <b-table
+                  :fields="links.fields"
+                  :items="topbarSettings.helpLinks"
+                  thead-tr-class="text-primary"
+                  responsive="sm"
+                  small
+                >
+                  <template #cell(handle)="data">
+                    <b-form-input
+                      v-model="data.item.handle"
+                      size="sm"
                     />
-                  </b-button>
-                </template>
-              </b-table>
+                  </template>
+
+                  <template #cell(url)="data">
+                    <b-form-input
+                      v-model="data.item.url"
+                      type="url"
+                      size="sm"
+                    />
+                  </template>
+
+                  <template #cell(newTab)="data">
+                    <b-form-checkbox
+                      v-model="data.item.newTab"
+                    />
+                  </template>
+
+                  <template #cell(actions)="data">
+                    <c-input-confirm
+                      show-icon
+                      @confirmed="topbarSettings.helpLinks.splice(data.index, 1)"
+                    />
+                  </template>
+                </b-table>
+              </c-form-table-wrapper>
             </b-form-group>
           </b-col>
         </b-row>
@@ -121,12 +116,14 @@
 
       <div>
         <hr>
+
         <b-row>
           <b-col
             cols="12"
             lg="3"
           >
             <h5>{{ $t('profile.title') }}</h5>
+
             <b-form-group>
               <b-form-checkbox
                 v-model="topbarSettings.hideProfileLink"
@@ -139,60 +136,60 @@
               >
                 {{ $t('profile.hide-change-password-link') }}
               </b-form-checkbox>
+
+              <b-form-checkbox
+                v-model="topbarSettings.hideThemeSelector"
+              >
+                {{ $t('profile.hide-theme-selector') }}
+              </b-form-checkbox>
             </b-form-group>
           </b-col>
+
           <b-col>
             <b-form-group
-              label-class="pb-1"
+              :label="$t('links.title')"
+              label-class="text-primary"
             >
-              <template #label>
-                {{ $t('links.title') }}
-                <b-button
-                  variant="link"
-                  class="text-decoration-none"
-                  @click="topbarSettings.profileLinks.push({ handle: '', url: '', newTab: true })"
-                >
-                  {{ $t('general:label.plus-add') }}
-                </b-button>
-              </template>
-              <b-table
-                :fields="links.fields"
-                :items="topbarSettings.profileLinks"
-                table-variant="light"
-                responsive="sm"
-                small
-                class="mb-0"
+              <c-form-table-wrapper
+                :labels="{ addButton: $t('general:label.add') }"
+                @add-item="topbarSettings.profileLinks.push({ handle: '', url: '', newTab: true })"
               >
-                <template #cell(handle)="data">
-                  <b-form-input
-                    v-model="data.item.handle"
-                    size="sm"
-                  />
-                </template>
-                <template #cell(url)="data">
-                  <b-form-input
-                    v-model="data.item.url"
-                    type="url"
-                    size="sm"
-                  />
-                </template>
-                <template #cell(newTab)="data">
-                  <b-form-checkbox
-                    v-model="data.item.newTab"
-                  />
-                </template>
-                <template #cell(actions)="data">
-                  <b-button
-                    variant="outline-danger"
-                    class="border-0 px-1"
-                    @click="topbarSettings.profileLinks.splice(data.index, 1)"
-                  >
-                    <font-awesome-icon
-                      :icon="['far', 'trash-alt']"
+                <b-table
+                  :fields="links.fields"
+                  :items="topbarSettings.profileLinks"
+                  thead-tr-class="text-primary"
+                  responsive="sm"
+                  small
+                >
+                  <template #cell(handle)="data">
+                    <b-form-input
+                      v-model="data.item.handle"
+                      size="sm"
                     />
-                  </b-button>
-                </template>
-              </b-table>
+                  </template>
+
+                  <template #cell(url)="data">
+                    <b-form-input
+                      v-model="data.item.url"
+                      type="url"
+                      size="sm"
+                    />
+                  </template>
+
+                  <template #cell(newTab)="data">
+                    <b-form-checkbox
+                      v-model="data.item.newTab"
+                    />
+                  </template>
+
+                  <template #cell(actions)="data">
+                    <c-input-confirm
+                      show-icon
+                      @confirmed="topbarSettings.profileLinks.splice(data.index, 1)"
+                    />
+                  </template>
+                </b-table>
+              </c-form-table-wrapper>
             </b-form-group>
           </b-col>
         </b-row>
@@ -200,11 +197,12 @@
     </b-form>
 
     <template #footer>
-      <c-submit-button
-        class="float-right"
-        :disabled="!canManage"
+      <c-button-submit
+        v-if="canManage"
         :processing="processing"
         :success="success"
+        :text="$t('admin:general.label.submit')"
+        class="ml-auto"
         @submit="onSubmit"
       />
     </template>
@@ -212,7 +210,6 @@
 </template>
 
 <script>
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
 
 export default {
   name: 'CUITopbarSettings',
@@ -220,10 +217,6 @@ export default {
   i18nOptions: {
     namespaces: 'ui.settings',
     keyPrefix: 'editor.topbar',
-  },
-
-  components: {
-    CSubmitButton,
   },
 
   props: {

@@ -1,6 +1,6 @@
 {{ template "inc_header.html.tpl" . }}
 <div class="card-body p-0">
-	<h4 class="card-title p-3 border-bottom">{{ tr "signup.template.title" }}</h4>
+	<h4 class="mb-0 p-3 border-bottom">{{ tr "signup.template.title" }}</h4>
 	<form
 		method="POST"
 		action="{{ links.Signup }}"
@@ -22,7 +22,7 @@
 				{{ tr "signup.template.form.email.label" }}
             </label>
             <input
-								data-test-id="input-email"
+				data-test-id="input-email"
                 type="email"
                 class="form-control"
                 name="email"
@@ -59,20 +59,6 @@
 				value="{{ .form.name }}"
 				autocomplete="name"
 				aria-label="{{ tr "signup.template.form.name.label" }}">
-        </div>
-        <div class="mb-3">
-            <label>
-                {{ tr "signup.template.form.nickname.label" }}
-            </label>
-			<input
-				data-test-id="input-handle"
-				type="text"
-				class="form-control handle-mask"
-				name="handle"
-				placeholder="{{ tr "signup.template.form.nickname.placeholder" }}"
-				value="{{ .form.handle }}"
-				autocomplete="handle"
-				aria-label="{{ tr "signup.template.form.nickname.label" }}">
         </div>
 		<div>
 			<button

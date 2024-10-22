@@ -23,8 +23,8 @@ func Run(ctx context.Context, log *zap.Logger, s store.Storer, provisionOpt opti
 	// Note,
 	ffn := []func() error{
 		// Migrations:
-		// (placeholder for all post 2022.3.x modifications)
-		func() error { return migrateReports(ctx, log.Named("reports"), s) },
+		// (placeholder for all post 2022.9.x modifications)
+		func() error { return migratePages(ctx, log.Named("pages"), s) },
 
 		// *************************************************************************************************************
 
@@ -40,6 +40,9 @@ func Run(ctx context.Context, log *zap.Logger, s store.Storer, provisionOpt opti
 		func() error { return oidcAutoDiscovery(ctx, log.Named("auth.oidc-auto-discovery"), s, authOpt) },
 		func() error { return defaultAuthClient(ctx, log.Named("auth.clients"), s, authOpt) },
 		func() error { return addAuthSuperUsers(ctx, log.Named("auth.super-users"), s, authOpt) },
+		func() error { return invalidateDedupRules(ctx, log.Named("compose.deduplication"), s) },
+		func() error { return setUsersTheme(ctx, log.Named("users.theme"), s) },
+		func() error { return updateWebappTheme(ctx, log.Named("webapp.themes"), s) },
 	}
 
 	for _, fn := range ffn {

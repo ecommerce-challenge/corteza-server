@@ -1,27 +1,9 @@
 <template>
   <b-container
-    class="py-3"
+    fluid="xl"
+    class="d-flex flex-column flex-fill pt-2 pb-3"
   >
-    <c-content-header
-      :title="$t('title')"
-    >
-      <b-button
-        v-if="canCreate"
-        variant="primary"
-        class="mr-2"
-        :to="{ name: 'federation.nodes.new' }"
-      >
-        {{ $t('new') }}
-      </b-button>
-
-      <b-button
-        v-if="canCreate"
-        variant="light"
-        @click="openPairModal()"
-      >
-        {{ $t('pair.label') }}
-      </b-button>
-    </c-content-header>
+    <c-content-header :title="$t('title')" />
 
     <c-resource-list
       :primary-key="primaryKey"
@@ -40,32 +22,65 @@
         prevPagination: $t('admin:general.pagination.prev'),
         nextPagination: $t('admin:general.pagination.next'),
       }"
+      clickable
+      sticky-header
       hide-total
+      class="custom-resource-list-height flex-fill"
+      @row-clicked="handleRowClicked"
       @search="filterList"
     >
-      <template #actions="{ item }">
+      <template #header>
         <b-button
-          v-if="item.nodeID === item.sharedNodeID && (item.status || '').toLowerCase() === 'pair_requested'"
-          size="sm"
-          variant="link"
-          class="p-0 pr-1"
-          @click="openConfirmPending(item)"
+          v-if="canCreate"
+          variant="primary"
+          size="lg"
+          :to="{ name: 'federation.nodes.new' }"
         >
-          <font-awesome-icon
-            :icon="['fas', 'exclamation-triangle']"
-            class="text-danger"
-          />
+          {{ $t('new') }}
         </b-button>
 
         <b-button
-          size="sm"
-          variant="link"
-          :to="{ name: editRoute, params: { [primaryKey]: item[primaryKey] } }"
+          v-if="canCreate"
+          variant="light"
+          size="lg"
+          @click="openPairModal()"
         >
-          <font-awesome-icon
-            :icon="['fas', 'pen']"
-          />
+          {{ $t('pair.label') }}
         </b-button>
+      </template>
+
+      <template #actions="{ item: n }">
+        <b-dropdown
+          v-if="n.nodeID === n.sharedNodeID && (n.status || '').toLowerCase() === 'pair_requested'"
+          variant="outline-extra-light"
+          toggle-class="d-flex align-items-center justify-content-center text-primary border-0 py-2"
+          no-caret
+          dropleft
+          menu-class="m-0"
+        >
+          <template #button-content>
+            <font-awesome-icon
+              :icon="['fas', 'ellipsis-v']"
+            />
+          </template>
+
+          <b-dropdown-item
+            link-class="p-0"
+          >
+            <b-button
+              size="sm"
+              variant="link"
+              class="text-decoration-none"
+              @click="openConfirmPending(n)"
+            >
+              <font-awesome-icon
+                :icon="['fas', 'exclamation-triangle']"
+                class="text-danger"
+              />
+              {{ $t('pair.confirm') }}
+            </b-button>
+          </b-dropdown-item>
+        </b-dropdown>
       </template>
     </c-resource-list>
 
@@ -103,17 +118,13 @@
             placeholder=""
           />
           <b-input-group-append>
-            <c-submit-button
-              button-class="px-4"
-              variant="outline-primary"
-              icon-variant="text-primary"
+            <c-button-submit
               :disabled="!pair.url"
+              :text="$t('pair.confirm')"
               :processing="pair.processing"
               :success="pair.success"
               @submit="pairNode()"
-            >
-              {{ $t('pair.confirm') }}
-            </c-submit-button>
+            />
           </b-input-group-append>
         </b-input-group>
 
@@ -157,16 +168,13 @@
             {{ $t(pair.node.email ? 'pair.status.confirmPending.description' : 'pair.status.confirmPending.descriptionNoMail', pair.node) }}
           </h2>
         </div>
-        <c-submit-button
-          button-class="px-5 mt-4"
-          variant="outline-primary"
-          icon-variant="text-primary"
+
+        <c-button-submit
           :processing="pair.processing"
           :success="pair.success"
+          :text="$t('pair.confirm')"
           @submit="confirmPending()"
-        >
-          {{ $t('pair.confirm') }}
-        </c-submit-button>
+        />
       </div>
     </b-modal>
   </b-container>
@@ -176,7 +184,6 @@
 import moment from 'moment'
 import { mapGetters } from 'vuex'
 import listHelpers from 'corteza-webapp-admin/src/mixins/listHelpers'
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
 import { components } from '@cortezaproject/corteza-vue'
 const { CResourceList } = components
 
@@ -189,7 +196,6 @@ export default {
   },
 
   components: {
-    CSubmitButton,
     CResourceList,
   },
 
@@ -252,8 +258,7 @@ export default {
         // },
         {
           key: 'actions',
-          label: '',
-          tdClass: 'text-right',
+          class: 'actions',
         },
       ].map(c => ({
         ...c,

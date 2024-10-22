@@ -32,7 +32,7 @@ export class Role {
   public handle = ''
   public members: string[] = []
   public labels: object = {}
-  public meta: Meta = defaultMeta
+  public meta: Meta = { ...defaultMeta }
 
   public createdAt?: Date = undefined
   public updatedAt?: Date = undefined
@@ -99,5 +99,9 @@ export class Role {
 
   get isContext (): boolean {
     return this.meta?.context?.expr?.length > 0
+  }
+
+  clone (): Role {
+    return new Role(JSON.parse(JSON.stringify(this)))
   }
 }

@@ -5,10 +5,20 @@
         v-if="reports.length"
         class="h-100"
       >
-        <c-input-search
-          v-model.trim="query"
-          :placeholder="$t('sidebar:search-reports')"
-        />
+        <div class="bg-white sticky-top py-2">
+          <b-button
+            data-test-id="button-report-list"
+            variant="light"
+            class="w-100 mb-2"
+            :to="{ name: 'report.list' }"
+          >
+            {{ $t('report-list') }}
+          </b-button>
+          <c-input-search
+            v-model.trim="query"
+            :placeholder="$t('search-reports')"
+          />
+        </div>
 
         <c-sidebar-nav-items
           :items="filteredReports"
@@ -22,7 +32,7 @@
         v-else
         class="d-flex justify-content-center mt-5"
       >
-        {{ $t('sidebar:no-reports') }}
+        {{ $t('no-reports') }}
       </h5>
     </portal>
   </div>
@@ -33,6 +43,10 @@ import { components } from '@cortezaproject/corteza-vue'
 const { CSidebarNavItems, CInputSearch } = components
 
 export default {
+  i18nOptions: {
+    namespaces: 'sidebar',
+  },
+
   components: {
     CSidebarNavItems,
     CInputSearch,
@@ -51,14 +65,14 @@ export default {
       let reports = this.reports
       if (this.query) {
         reports = this.reports.filter(({ reportID, handle, meta: { name = '' } }) => {
-          const reportString = `${reportID}${handle}$name}`.toLowerCase().trim()
+          const reportString = `${reportID}${handle}${name}`.toLowerCase().trim()
           return reportString.indexOf(this.query.toLowerCase().trim()) > -1
         })
       }
 
       return reports.map(({ reportID, handle, meta: { name = '' } }) => {
         return {
-          page: { pageID: reportID, name: 'report.view', title: name || handle },
+          page: { pageID: reportID, name: this.$route.name, title: name || handle },
           params: { reportID },
         }
       })
@@ -74,6 +88,14 @@ export default {
         }
       },
     },
+  },
+
+  created () {
+    this.$root.$on('refetch:reports', this.fetchReports)
+  },
+
+  beforeDestroy () {
+    this.$root.$off('refetch:reports', this.fetchReports)
   },
 
   methods: {
@@ -96,7 +118,7 @@ export default {
 
 // Using font-weight-bold moves the sidebar nav content; text-stroke keeps in nicely in place
 .nav-active {
-  color: $primary;
-  -webkit-text-stroke: 0.4px $primary;
+  color: var(--primary);
+  -webkit-text-stroke: 0.4px var(--primary);
 }
 </style>

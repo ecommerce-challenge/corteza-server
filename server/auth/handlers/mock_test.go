@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"context"
+	"go.uber.org/zap"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -16,7 +18,6 @@ import (
 	"github.com/go-oauth2/oauth2/v4"
 	"github.com/go-oauth2/oauth2/v4/server"
 	"github.com/gorilla/sessions"
-	"go.uber.org/zap"
 )
 
 type (
@@ -73,8 +74,11 @@ type (
 	}
 
 	userServiceMocked struct {
-		update    func(context.Context, *types.User) (*types.User, error)
-		findByAny func(context.Context, interface{}) (*types.User, error)
+		update         func(context.Context, *types.User) (*types.User, error)
+		findByAny      func(context.Context, interface{}) (*types.User, error)
+		uploadAvatar   func(context.Context, uint64, *multipart.FileHeader) error
+		generateAvatar func(context.Context, uint64, string, string) error
+		deleteAvatar   func(context.Context, uint64) error
 	}
 
 	authServiceMocked struct {
@@ -97,12 +101,24 @@ type (
 		sendEmailOTP                      func(context.Context) (err error)
 		configureEmailOTP                 func(context.Context, uint64, bool) (u *types.User, err error)
 		validateEmailOTP                  func(context.Context, string) (err error)
+		sendInviteEmail                   func(context.Context, string) (err error)
+		validateEmailToken                func(context.Context, string) (user *types.User, err error)
 	}
 )
 
-//
+func (u userServiceMocked) UploadAvatar(ctx context.Context, userID uint64, upload *multipart.FileHeader) (err error) {
+	return u.uploadAvatar(ctx, userID, upload)
+}
+
+func (u userServiceMocked) GenerateAvatar(ctx context.Context, userID uint64, bgColor string, initialColor string) (err error) {
+	return u.generateAvatar(ctx, userID, bgColor, initialColor)
+}
+
+func (u userServiceMocked) DeleteAvatar(ctx context.Context, userID uint64) (err error) {
+	return u.deleteAvatar(ctx, userID)
+}
+
 // Mocking userService
-//
 func (u userServiceMocked) Update(ctx context.Context, user *types.User) (*types.User, error) {
 	return u.update(ctx, user)
 }
@@ -111,9 +127,7 @@ func (u userServiceMocked) FindByAny(ctx context.Context, any interface{}) (*typ
 	return u.findByAny(ctx, any)
 }
 
-//
 // Mocking authService
-//
 func (s authServiceMocked) External(ctx context.Context, profile types.ExternalAuthUser) (u *types.User, err error) {
 	return s.external(ctx, profile)
 }
@@ -186,14 +200,20 @@ func (s authServiceMocked) ValidateEmailOTP(ctx context.Context, code string) (e
 	return s.validateEmailOTP(ctx, code)
 }
 
+func (s authServiceMocked) SendInviteEmail(ctx context.Context, email string) (err error) {
+	return s.sendInviteEmail(ctx, email)
+}
+
+func (s authServiceMocked) ValidateInviteEmailToken(ctx context.Context, token string) (user *types.User, err error) {
+	return s.validateEmailToken(ctx, token)
+}
+
 func (s authServiceMocked) LoadRoleMemberships(ctx context.Context, u *types.User) error {
 	// no-op for now
 	return nil
 }
 
-//
 // Mocking oauth2Service
-//
 func (s *oauth2ServiceMocked) GetRedirectURI(req *server.AuthorizeRequest, data map[string]interface{}) (string, error) {
 	return s.GetRedirectURI(req, data)
 }
@@ -254,16 +274,12 @@ func (s *oauth2ServiceMocked) ValidationBearerToken(r *http.Request) (oauth2.Tok
 	return s.validationBearerToken(r)
 }
 
-//
 // Mocking authService
-//
 func (ma mockAuthService) ValidatePasswordResetToken(ctx context.Context, token string) (*types.User, error) {
 	return &types.User{ID: 123}, nil
 }
 
-//
 // Mocking authService
-//
 func (ma mockAuthService) ValidatePasswordCreateToken(ctx context.Context, token string) (*types.User, error) {
 	return &types.User{ID: 123}, nil
 }
@@ -277,9 +293,16 @@ func (ma mockAuthService) ValidateTOTP(ctx context.Context, code string) (err er
 	return
 }
 
-//
+func (ma mockAuthService) SendInviteEmail(ctx context.Context, email string) (err error) {
+	err = nil
+	return
+}
+
+func (ma mockAuthService) ValidateInviteEmailToken(ctx context.Context, token string) (*types.User, error) {
+	return &types.User{ID: 123}, nil
+}
+
 // Mocking notification service
-//
 func (m mockNotificationService) EmailConfirmation(ctx context.Context, emailAddress string, token string) error {
 	return nil
 }
@@ -296,9 +319,11 @@ func (m mockNotificationService) EmailOTP(ctx context.Context, emailAddress stri
 	return nil
 }
 
-//
+func (m mockNotificationService) InviteEmail(ctx context.Context, emailAddress string, token string) error {
+	return nil
+}
+
 // Mocking gorilla session
-//
 func (ms mockSession) Get(r *http.Request, name string) (*sessions.Session, error) {
 	return ms.get(r, name)
 }
@@ -309,9 +334,7 @@ func (ms mockSession) Save(r *http.Request, w http.ResponseWriter, s *sessions.S
 	return ms.save(r, w, s)
 }
 
-//
 // Helpers
-//
 func makeMockAuthService() *mockAuthService {
 	service.DefaultAuthNotification = mockNotificationService{
 		settings: service.CurrentSettings,

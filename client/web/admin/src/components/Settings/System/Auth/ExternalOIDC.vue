@@ -1,6 +1,6 @@
 <template>
   <div>
-    <b-form-group label-cols="2">
+    <b-form-group>
       <b-form-checkbox
         v-model="value.enabled"
         :value="true"
@@ -12,7 +12,7 @@
 
     <b-form-group
       :label="$t('handle')"
-      label-cols="2"
+      label-class="text-primary"
     >
       <b-input-group>
         <b-form-input
@@ -25,7 +25,7 @@
 
     <b-form-group
       :label="$t('issuer')"
-      label-cols="2"
+      label-class="text-primary"
     >
       <b-input-group>
         <b-form-input
@@ -40,7 +40,7 @@
 
     <b-form-group
       :label="$t('clientKey')"
-      label-cols="2"
+      label-class="text-primary"
     >
       <b-input-group>
         <b-form-input v-model.trim="value.key" />
@@ -49,7 +49,7 @@
 
     <b-form-group
       :label="$t('clientSecret')"
-      label-cols="2"
+      label-class="text-primary"
     >
       <b-input-group>
         <b-form-input v-model.trim="value.secret" />
@@ -58,7 +58,7 @@
 
     <b-form-group
       :label="$t('scope')"
-      label-cols="2"
+      label-class="text-primary"
     >
       <b-input-group>
         <b-form-input

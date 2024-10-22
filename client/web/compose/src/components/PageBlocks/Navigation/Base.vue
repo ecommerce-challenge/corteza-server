@@ -6,28 +6,33 @@
   >
     <div class="h-100 w-100 card overflow-hidden bg-transparent">
       <b-nav
-        :tabs="options.display.appearance === 'tabs'"
-        :pills="options.display.appearance === 'pills'"
-        :small="options.display.appearance === 'small'"
-        :fill="options.display.fillJustify === 'fill'"
-        :justify="options.display.fillJustify === 'justify'"
+        v-bind="{
+          tabs: options.display.appearance === 'tabs',
+          pills: options.display.appearance === 'pills',
+          small: options.display.appearance === 'small',
+          justified: options.display.justify === 'justify'
+        }"
         :align="options.display.alignment"
-        class="border-0 h-100"
+        class="border-0 h-100 overflow-auto"
       >
         <b-nav-item
           v-for="(navItem, index) in options.navigationItems"
           :key="`navItem-${index}`"
           :disabled="!navItem.options.enabled"
           :style="{ order: index, color: navItem.options.textColor, background: navItem.options.backgroundColor, justifyContent: options.display.alignment }"
-          :link-attrs="{ style: `color: ${navItem.options.textColor}` }"
+          :link-attrs="{
+            style: `color: ${navItem.options.textColor}`,
+          }"
+          link-classes="h-100 w-100 d-flex align-items-center justify-content-center"
+          :href="generateHrefAttributeLink(navItem)"
+          :to="generateToAttributeLink(navItem)"
           :target="selectTargetOption(navItem.options.item.target)"
-          :href="redirectForNavItem(navItem)"
           class="d-flex align-items-center"
         >
           <template v-if="navItem.type === 'dropdown' || isComposeDropdownPage(navItem)">
             <b-button
               :id="`dropdown-popover-${index}-${block.blockID}`"
-              class="text-decoration-none"
+              class="text-decoration-none p-0 w-100 h-100"
               variant="link"
               :style="{ color: navItem.options.textColor, background: navItem.options.backgroundColor }"
             >
@@ -57,7 +62,7 @@
                 >
                   <a
                     class="dropdown-item"
-                    :href="dropdown.url"
+                    :href="dropdown.url | checkValidURL"
                     :disabled="navItem.options.disabled"
                     :target="selectTargetOption(dropdown.target)"
                     :style="{ order: dIndex * 2 }"
@@ -74,6 +79,21 @@
               </template>
 
               <template v-else>
+                <b-link
+                  :to="{ name: 'page', params: { pageID: navItem.options.item.pageID } }"
+                  :target="selectTargetOption(navItem.options.item.target)"
+                  :disabled="navItem.options.disabled"
+                  class="dropdown-item"
+                  style="white-space: normal;"
+                >
+                  {{ navItem.options.item.label }}
+                </b-link>
+
+                <hr
+                  v-if="getSubPages(navItem.options.item.pageID).length > 0"
+                  class="my-1"
+                >
+
                 <div
                   v-for="(dropdown, dIndex) in getSubPages(navItem.options.item.pageID)"
                   :key="`dropdown-${dIndex}`"
@@ -101,6 +121,7 @@
     </div>
   </wrap>
 </template>
+
 <script>
 import { NoID } from '@cortezaproject/corteza-js'
 import { mapGetters } from 'vuex'
@@ -120,8 +141,8 @@ export default {
       return (navItem.type === 'compose' && navItem.options.item.displaySubPages)
     },
 
-    getSubPages (selfID) {
-      return this.pages.filter(value => value.selfID === selfID && value.moduleID === NoID) || []
+    getSubPages (pageID) {
+      return this.pages.filter(value => value.selfID === pageID && value.moduleID === NoID) || []
     },
 
     selectTargetOption (target) {
@@ -141,17 +162,28 @@ export default {
       return navItem.options.item.label
     },
 
-    redirectForNavItem (navItem) {
-      if (navItem.type === 'dropdown' || this.isComposeDropdownPage(navItem)) {
+    generateToAttributeLink (navItem) {
+      if (['dropdown', 'text-section'].includes(navItem.type) || this.isComposeDropdownPage(navItem)) {
         return
-      } else if (navItem.type === 'compose') {
-        const slug = this.$route.params.slug
-        const pageID = navItem.options.item.pageID
-
-        return `ns/${slug}/pages/${pageID}`
       }
 
-      return navItem.options.item.url
+      let to = ''
+
+      if (navItem.type === 'compose') {
+        const pageID = navItem.options.item.pageID
+
+        to = { name: 'page', params: { pageID } }
+      }
+
+      return to
+    },
+
+    generateHrefAttributeLink (navItem) {
+      if (['dropdown', 'text-section'].includes(navItem.type) || this.isComposeDropdownPage(navItem)) {
+        return
+      }
+
+      return navItem.type === 'url' ? this.$options.filters.checkValidURL(navItem.options.item.url) : ''
     },
   },
 }

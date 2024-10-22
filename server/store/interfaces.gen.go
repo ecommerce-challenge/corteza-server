@@ -10,10 +10,10 @@ import (
 	"context"
 	automationType "github.com/cortezaproject/corteza/server/automation/types"
 	composeType "github.com/cortezaproject/corteza/server/compose/types"
+	discoveryType "github.com/cortezaproject/corteza/server/discovery/types"
 	federationType "github.com/cortezaproject/corteza/server/federation/types"
 	actionlogType "github.com/cortezaproject/corteza/server/pkg/actionlog"
 	"github.com/cortezaproject/corteza/server/pkg/dal"
-	discoveryType "github.com/cortezaproject/corteza/server/pkg/discovery/types"
 	flagType "github.com/cortezaproject/corteza/server/pkg/flag/types"
 	labelsType "github.com/cortezaproject/corteza/server/pkg/label/types"
 	"github.com/cortezaproject/corteza/server/pkg/locale"
@@ -62,8 +62,10 @@ type (
 		ComposeModuleFields
 		ComposeNamespaces
 		ComposePages
+		ComposePageLayouts
 		Credentials
 		DalConnections
+		DalSchemaAlterations
 		DalSensitivityLevels
 		DataPrivacyRequests
 		DataPrivacyRequestComments
@@ -328,6 +330,21 @@ type (
 		ReorderComposePages(ctx context.Context, namespace_id uint64, parent_id uint64, page_ids []uint64) error
 	}
 
+	ComposePageLayouts interface {
+		SearchComposePageLayouts(ctx context.Context, f composeType.PageLayoutFilter) (composeType.PageLayoutSet, composeType.PageLayoutFilter, error)
+		CreateComposePageLayout(ctx context.Context, rr ...*composeType.PageLayout) error
+		UpdateComposePageLayout(ctx context.Context, rr ...*composeType.PageLayout) error
+		UpsertComposePageLayout(ctx context.Context, rr ...*composeType.PageLayout) error
+		DeleteComposePageLayout(ctx context.Context, rr ...*composeType.PageLayout) error
+
+		DeleteComposePageLayoutByID(ctx context.Context, id uint64) error
+		TruncateComposePageLayouts(ctx context.Context) error
+		LookupComposePageLayoutByNamespaceIDHandle(ctx context.Context, namespaceID uint64, handle string) (*composeType.PageLayout, error)
+		LookupComposePageLayoutByNamespaceIDPageIDHandle(ctx context.Context, namespaceID uint64, pageID uint64, handle string) (*composeType.PageLayout, error)
+		LookupComposePageLayoutByID(ctx context.Context, id uint64) (*composeType.PageLayout, error)
+		ReorderComposePageLayouts(ctx context.Context, namespace_id uint64, page_id uint64, page_layout_ids []uint64) error
+	}
+
 	Credentials interface {
 		SearchCredentials(ctx context.Context, f systemType.CredentialFilter) (systemType.CredentialSet, systemType.CredentialFilter, error)
 		CreateCredential(ctx context.Context, rr ...*systemType.Credential) error
@@ -351,6 +368,18 @@ type (
 		TruncateDalConnections(ctx context.Context) error
 		LookupDalConnectionByID(ctx context.Context, id uint64) (*systemType.DalConnection, error)
 		LookupDalConnectionByHandle(ctx context.Context, handle string) (*systemType.DalConnection, error)
+	}
+
+	DalSchemaAlterations interface {
+		SearchDalSchemaAlterations(ctx context.Context, f systemType.DalSchemaAlterationFilter) (systemType.DalSchemaAlterationSet, systemType.DalSchemaAlterationFilter, error)
+		CreateDalSchemaAlteration(ctx context.Context, rr ...*systemType.DalSchemaAlteration) error
+		UpdateDalSchemaAlteration(ctx context.Context, rr ...*systemType.DalSchemaAlteration) error
+		UpsertDalSchemaAlteration(ctx context.Context, rr ...*systemType.DalSchemaAlteration) error
+		DeleteDalSchemaAlteration(ctx context.Context, rr ...*systemType.DalSchemaAlteration) error
+
+		DeleteDalSchemaAlterationByID(ctx context.Context, id uint64) error
+		TruncateDalSchemaAlterations(ctx context.Context) error
+		LookupDalSchemaAlterationByID(ctx context.Context, id uint64) (*systemType.DalSchemaAlteration, error)
 	}
 
 	DalSensitivityLevels interface {
@@ -1833,6 +1862,85 @@ func ReorderComposePages(ctx context.Context, s ComposePages, namespace_id uint6
 	return s.ReorderComposePages(ctx, namespace_id, parent_id, page_ids)
 }
 
+// SearchComposePageLayouts returns all matching ComposePageLayouts from store
+//
+// This function is auto-generated
+func SearchComposePageLayouts(ctx context.Context, s ComposePageLayouts, f composeType.PageLayoutFilter) (composeType.PageLayoutSet, composeType.PageLayoutFilter, error) {
+	return s.SearchComposePageLayouts(ctx, f)
+}
+
+// CreateComposePageLayout creates one or more ComposePageLayouts in store
+//
+// This function is auto-generated
+func CreateComposePageLayout(ctx context.Context, s ComposePageLayouts, rr ...*composeType.PageLayout) error {
+	return s.CreateComposePageLayout(ctx, rr...)
+}
+
+// UpdateComposePageLayout updates one or more (existing) ComposePageLayouts in store
+//
+// This function is auto-generated
+func UpdateComposePageLayout(ctx context.Context, s ComposePageLayouts, rr ...*composeType.PageLayout) error {
+	return s.UpdateComposePageLayout(ctx, rr...)
+}
+
+// UpsertComposePageLayout creates new or updates existing one or more ComposePageLayouts in store
+//
+// This function is auto-generated
+func UpsertComposePageLayout(ctx context.Context, s ComposePageLayouts, rr ...*composeType.PageLayout) error {
+	return s.UpsertComposePageLayout(ctx, rr...)
+}
+
+// DeleteComposePageLayout deletes one or more ComposePageLayouts from store
+//
+// This function is auto-generated
+func DeleteComposePageLayout(ctx context.Context, s ComposePageLayouts, rr ...*composeType.PageLayout) error {
+	return s.DeleteComposePageLayout(ctx, rr...)
+}
+
+// DeleteComposePageLayoutByID deletes one or more ComposePageLayouts from store
+//
+// This function is auto-generated
+func DeleteComposePageLayoutByID(ctx context.Context, s ComposePageLayouts, id uint64) error {
+	return s.DeleteComposePageLayoutByID(ctx, id)
+}
+
+// TruncateComposePageLayouts Deletes all ComposePageLayouts from store
+//
+// This function is auto-generated
+func TruncateComposePageLayouts(ctx context.Context, s ComposePageLayouts) error {
+	return s.TruncateComposePageLayouts(ctx)
+}
+
+// LookupComposePageLayoutByNamespaceIDHandle searches for page layour by handle (case-insensitive)
+//
+// This function is auto-generated
+func LookupComposePageLayoutByNamespaceIDHandle(ctx context.Context, s ComposePageLayouts, namespaceID uint64, handle string) (*composeType.PageLayout, error) {
+	return s.LookupComposePageLayoutByNamespaceIDHandle(ctx, namespaceID, handle)
+}
+
+// LookupComposePageLayoutByNamespaceIDPageIDHandle searches for page layour by handle (case-insensitive)
+//
+// This function is auto-generated
+func LookupComposePageLayoutByNamespaceIDPageIDHandle(ctx context.Context, s ComposePageLayouts, namespaceID uint64, pageID uint64, handle string) (*composeType.PageLayout, error) {
+	return s.LookupComposePageLayoutByNamespaceIDPageIDHandle(ctx, namespaceID, pageID, handle)
+}
+
+// LookupComposePageLayoutByID searches for compose page layour by ID
+//
+// It returns compose page layour even if deleted
+//
+// This function is auto-generated
+func LookupComposePageLayoutByID(ctx context.Context, s ComposePageLayouts, id uint64) (*composeType.PageLayout, error) {
+	return s.LookupComposePageLayoutByID(ctx, id)
+}
+
+// ReorderComposePageLayouts
+//
+// This function is auto-generated
+func ReorderComposePageLayouts(ctx context.Context, s ComposePageLayouts, namespace_id uint64, page_id uint64, page_layout_ids []uint64) error {
+	return s.ReorderComposePageLayouts(ctx, namespace_id, page_id, page_layout_ids)
+}
+
 // SearchCredentials returns all matching Credentials from store
 //
 // This function is auto-generated
@@ -1956,6 +2064,63 @@ func LookupDalConnectionByID(ctx context.Context, s DalConnections, id uint64) (
 // This function is auto-generated
 func LookupDalConnectionByHandle(ctx context.Context, s DalConnections, handle string) (*systemType.DalConnection, error) {
 	return s.LookupDalConnectionByHandle(ctx, handle)
+}
+
+// SearchDalSchemaAlterations returns all matching DalSchemaAlterations from store
+//
+// This function is auto-generated
+func SearchDalSchemaAlterations(ctx context.Context, s DalSchemaAlterations, f systemType.DalSchemaAlterationFilter) (systemType.DalSchemaAlterationSet, systemType.DalSchemaAlterationFilter, error) {
+	return s.SearchDalSchemaAlterations(ctx, f)
+}
+
+// CreateDalSchemaAlteration creates one or more DalSchemaAlterations in store
+//
+// This function is auto-generated
+func CreateDalSchemaAlteration(ctx context.Context, s DalSchemaAlterations, rr ...*systemType.DalSchemaAlteration) error {
+	return s.CreateDalSchemaAlteration(ctx, rr...)
+}
+
+// UpdateDalSchemaAlteration updates one or more (existing) DalSchemaAlterations in store
+//
+// This function is auto-generated
+func UpdateDalSchemaAlteration(ctx context.Context, s DalSchemaAlterations, rr ...*systemType.DalSchemaAlteration) error {
+	return s.UpdateDalSchemaAlteration(ctx, rr...)
+}
+
+// UpsertDalSchemaAlteration creates new or updates existing one or more DalSchemaAlterations in store
+//
+// This function is auto-generated
+func UpsertDalSchemaAlteration(ctx context.Context, s DalSchemaAlterations, rr ...*systemType.DalSchemaAlteration) error {
+	return s.UpsertDalSchemaAlteration(ctx, rr...)
+}
+
+// DeleteDalSchemaAlteration deletes one or more DalSchemaAlterations from store
+//
+// This function is auto-generated
+func DeleteDalSchemaAlteration(ctx context.Context, s DalSchemaAlterations, rr ...*systemType.DalSchemaAlteration) error {
+	return s.DeleteDalSchemaAlteration(ctx, rr...)
+}
+
+// DeleteDalSchemaAlterationByID deletes one or more DalSchemaAlterations from store
+//
+// This function is auto-generated
+func DeleteDalSchemaAlterationByID(ctx context.Context, s DalSchemaAlterations, id uint64) error {
+	return s.DeleteDalSchemaAlterationByID(ctx, id)
+}
+
+// TruncateDalSchemaAlterations Deletes all DalSchemaAlterations from store
+//
+// This function is auto-generated
+func TruncateDalSchemaAlterations(ctx context.Context, s DalSchemaAlterations) error {
+	return s.TruncateDalSchemaAlterations(ctx)
+}
+
+// LookupDalSchemaAlterationByID searches for resource translation by ID
+// It also returns deleted resource translations.
+//
+// This function is auto-generated
+func LookupDalSchemaAlterationByID(ctx context.Context, s DalSchemaAlterations, id uint64) (*systemType.DalSchemaAlteration, error) {
+	return s.LookupDalSchemaAlterationByID(ctx, id)
 }
 
 // SearchDalSensitivityLevels returns all matching DalSensitivityLevels from store

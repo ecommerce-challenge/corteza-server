@@ -16,6 +16,7 @@
           <b-form-group
             :label="$t('progress.value.default.label')"
             :description="$t('progress.value.default.description')"
+            label-class="text-primary"
           >
             <b-form-input
               v-model="options.value.default"
@@ -30,54 +31,61 @@
         >
           <b-form-group
             :label="$t('progress.module.label')"
+            label-class="text-primary"
           >
-            <vue-select
+            <c-input-select
               v-model="options.value.moduleID"
               label="name"
               :placeholder="$t('progress.module.select')"
               :options="modules"
+              :get-option-key="getOptionModuleKey"
               :reduce="m => m.moduleID"
-              class="bg-white"
             />
           </b-form-group>
         </b-col>
 
         <template v-if="options.value.moduleID">
-          <b-col
-            cols="12"
-          >
-            <b-form-group :label="$t('metric.edit.filterLabel')">
-              <b-form-textarea
+          <b-col cols="12">
+            <b-form-group
+              :label="$t('metric.edit.filterLabel')"
+              label-class="text-primary"
+            >
+              <c-input-expression
                 v-model="options.value.filter"
+                height="3.688rem"
+                lang="javascript"
                 placeholder="(A > B) OR (A < C)"
                 class="mb-1"
+                :suggestion-params="recordAutoCompleteParams.value"
               />
-              <b-form-text>
-                <i18next
-                  path="metric.edit.filterFootnote"
-                  tag="label"
-                >
-                  <code>${recordID}</code>
-                  <code>${ownerID}</code>
-                  <code>${userID}</code>
-                </i18next>
-              </b-form-text>
+              <i18next
+                path="metric.edit.filterFootnote"
+                tag="small"
+                class="text-muted"
+              >
+                <code>${record.values.fieldName}</code>
+                <code>${recordID}</code>
+                <code>${ownerID}</code>
+                <span><code>${userID}</code>, <code>${user.name}</code></span>
+              </i18next>
             </b-form-group>
           </b-col>
 
           <b-col
             cols="12"
-            sm="6"
+            lg="6"
           >
             <b-form-group
               :label="$t('progress.field.label')"
+              label-class="text-primary"
             >
-              <vue-select
+              <c-input-select
                 v-model="options.value.field"
                 :placeholder="$t('progress.field.select')"
                 :options="valueModuleFields"
+                :get-option-key="getOptionModuleFieldKey"
+                :get-option-label="getOptionModuleFieldLabel"
                 :reduce="f => f.name"
-                class="bg-white"
                 @input="fieldChanged($event, options.value)"
               />
             </b-form-group>
@@ -85,19 +93,20 @@
 
           <b-col
             cols="12"
-            sm="6"
+            lg="6"
           >
             <b-form-group
               :label="$t('progress.aggregate.label')"
+              label-class="text-primary"
             >
-              <vue-select
+              <c-input-select
                 v-model="options.value.operation"
                 label="name"
                 :disabled="!options.value.field || options.value.field === 'count'"
                 :placeholder="$t('progress.aggregate.select')"
                 :options="aggregationOperations"
+                :get-option-key="getOptionAggregationOperationKey"
                 :reduce="a => a.operation"
-                class="bg-white"
               />
             </b-form-group>
           </b-col>
@@ -120,6 +129,7 @@
           <b-form-group
             :label="$t('progress.value.default.label')"
             :description="$t('progress.value.default.description')"
+            label-class="text-primary"
           >
             <b-form-input
               v-model="options.minValue.default"
@@ -134,54 +144,61 @@
         >
           <b-form-group
             :label="$t('progress.module.label')"
+            label-class="text-primary"
           >
-            <vue-select
+            <c-input-select
               v-model="options.minValue.moduleID"
               label="name"
               :placeholder="$t('progress.module.select')"
               :options="modules"
+              :get-option-key="getOptionModuleKey"
               :reduce="m => m.moduleID"
-              class="bg-white"
             />
           </b-form-group>
         </b-col>
 
         <template v-if="options.minValue.moduleID">
-          <b-col
-            cols="12"
-          >
-            <b-form-group :label="$t('metric.edit.filterLabel')">
-              <b-form-textarea
+          <b-col cols="12">
+            <b-form-group
+              :label="$t('metric.edit.filterLabel')"
+              label-class="text-primary"
+            >
+              <c-input-expression
                 v-model="options.minValue.filter"
+                height="3.688rem"
+                lang="javascript"
                 placeholder="(A > B) OR (A < C)"
                 class="mb-1"
+                :suggestion-params="recordAutoCompleteParams.min"
               />
-              <b-form-text>
-                <i18next
-                  path="metric.edit.filterFootnote"
-                  tag="label"
-                >
-                  <code>${recordID}</code>
-                  <code>${ownerID}</code>
-                  <code>${userID}</code>
-                </i18next>
-              </b-form-text>
+              <i18next
+                path="metric.edit.filterFootnote"
+                tag="small"
+                class="text-muted"
+              >
+                <code>${record.values.fieldName}</code>
+                <code>${recordID}</code>
+                <code>${ownerID}</code>
+                <span><code>${userID}</code>, <code>${user.name}</code></span>
+              </i18next>
             </b-form-group>
           </b-col>
 
           <b-col
             cols="12"
-            sm="6"
+            lg="6"
           >
             <b-form-group
               :label="$t('progress.field.label')"
+              label-class="text-primary"
             >
-              <vue-select
+              <c-input-select
                 v-model="options.minValue.field"
                 :placeholder="$t('progress.field.select')"
                 :options="minValueModuleFields"
+                :get-option-key="getOptionModuleFieldKey"
+                :get-option-label="getOptionModuleFieldLabel"
                 :reduce="f => f.name"
-                class="bg-white"
                 @input="fieldChanged($event, options.minValue)"
               />
             </b-form-group>
@@ -189,19 +206,20 @@
 
           <b-col
             cols="12"
-            sm="6"
+            lg="6"
           >
             <b-form-group
               :label="$t('progress.aggregate.label')"
+              label-class="text-primary"
             >
-              <vue-select
+              <c-input-select
                 v-model="options.minValue.operation"
                 label="name"
                 :disabled="!options.minValue.field || options.minValue.field === 'count'"
                 :placeholder="$t('progress.aggregate.select')"
                 :options="aggregationOperations"
+                :get-option-key="getOptionAggregationOperationKey"
                 :reduce="a => a.operation"
-                class="bg-white"
               />
             </b-form-group>
           </b-col>
@@ -224,6 +242,7 @@
           <b-form-group
             :label="$t('progress.value.default.label')"
             :description="$t('progress.value.default.description')"
+            label-class="text-primary"
           >
             <b-form-input
               v-model="options.maxValue.default"
@@ -238,54 +257,61 @@
         >
           <b-form-group
             :label="$t('progress.module.label')"
+            label-class="text-primary"
           >
-            <vue-select
+            <c-input-select
               v-model="options.maxValue.moduleID"
               label="name"
               :placeholder="$t('progress.module.select')"
               :options="modules"
+              :get-option-key="getOptionModuleKey"
               :reduce="m => m.moduleID"
-              class="bg-white"
             />
           </b-form-group>
         </b-col>
 
         <template v-if="options.maxValue.moduleID">
-          <b-col
-            cols="12"
-          >
-            <b-form-group :label="$t('metric.edit.filterLabel')">
-              <b-form-textarea
+          <b-col cols="12">
+            <b-form-group
+              :label="$t('metric.edit.filterLabel')"
+              label-class="text-primary"
+            >
+              <c-input-expression
                 v-model="options.maxValue.filter"
+                height="3.688rem"
+                lang="javascript"
                 placeholder="(A > B) OR (A < C)"
                 class="mb-1"
+                :suggestion-params="recordAutoCompleteParams.max"
               />
-              <b-form-text>
-                <i18next
-                  path="metric.edit.filterFootnote"
-                  tag="label"
-                >
-                  <code>${recordID}</code>
-                  <code>${ownerID}</code>
-                  <code>${userID}</code>
-                </i18next>
-              </b-form-text>
+              <i18next
+                path="metric.edit.filterFootnote"
+                tag="small"
+                class="text-muted"
+              >
+                <code>${record.values.fieldName}</code>
+                <code>${recordID}</code>
+                <code>${ownerID}</code>
+                <span><code>${userID}</code>, <code>${user.name}</code></span>
+              </i18next>
             </b-form-group>
           </b-col>
 
           <b-col
             cols="12"
-            sm="6"
+            lg="6"
           >
             <b-form-group
               :label="$t('progress.field.label')"
+              label-class="text-primary"
             >
-              <vue-select
+              <c-input-select
                 v-model="options.maxValue.field"
                 :placeholder="$t('progress.field.select')"
                 :options="maxValueModuleFields"
+                :get-option-key="getOptionModuleFieldKey"
+                :get-option-label="getOptionModuleFieldLabel"
                 :reduce="f => f.name"
-                class="bg-white"
                 @input="fieldChanged($event, options.maxValue)"
               />
             </b-form-group>
@@ -293,19 +319,20 @@
 
           <b-col
             cols="12"
-            sm="6"
+            lg="6"
           >
             <b-form-group
               :label="$t('progress.aggregate.label')"
+              label-class="text-primary"
             >
-              <vue-select
+              <c-input-select
                 v-model="options.maxValue.operation"
                 label="name"
                 :disabled="!options.maxValue.field || options.maxValue.field === 'count'"
                 :placeholder="$t('progress.aggregate.select')"
                 :options="aggregationOperations"
+                :get-option-key="getOptionAggregationOperationKey"
                 :reduce="a => a.operation"
-                class="bg-white"
               />
             </b-form-group>
           </b-col>
@@ -325,14 +352,17 @@
       >
         <b-col
           cols="12"
-          sm="6"
+          lg="6"
         >
           <b-form-group
             :label="$t('progress.default-variant')"
+            label-class="text-primary"
           >
-            <b-form-select
+            <c-input-select
               v-model="options.display.variant"
               :options="variants"
+              label="text"
+              :reduce="v => v.value"
             />
           </b-form-group>
         </b-col>
@@ -406,6 +436,7 @@
                 {{ $t('progress.threshold.variant') }}
               </small>
             </template>
+
             <b-row
               v-for="(t, i) in options.display.thresholds"
               :key="i"
@@ -424,6 +455,7 @@
                   />
                 </b-input-group>
               </b-col>
+
               <b-col
                 class="d-flex align-items-center justify-content-center"
               >
@@ -451,9 +483,7 @@
         </h6>
 
         <b-row>
-          <b-col
-            cols="12"
-          >
+          <b-col cols="12">
             <field-viewer
               value-only
               v-bind="mock"
@@ -511,9 +541,12 @@
 <script>
 import base from './base'
 import { mapGetters } from 'vuex'
+import { components } from '@cortezaproject/corteza-vue'
 import { compose, validator } from '@cortezaproject/corteza-js'
-import { VueSelect } from 'vue-select'
+import autocomplete from 'corteza-webapp-compose/src/mixins/autocomplete.js'
 import FieldViewer from '../ModuleFields/Viewer'
+
+const { CInputExpression } = components
 
 export default {
   i18nOptions: {
@@ -523,11 +556,13 @@ export default {
   name: 'ProgressConfigurator',
 
   components: {
-    VueSelect,
     FieldViewer,
+    CInputExpression,
   },
 
   extends: base,
+
+  mixins: [autocomplete],
 
   data () {
     return {
@@ -584,24 +619,35 @@ export default {
     },
 
     valueModuleFields () {
-      return [
-        ...this.sharedModuleFields,
-        ...this.moduleByID(this.options.value.moduleID).fields.filter(f => f.kind === 'Number').sort((a, b) => a.label.localeCompare(b.label)),
-      ]
+      return this.returnValueModuleFields(this.options.value.moduleID)
+    },
+
+    valueModule () {
+      return this.moduleByID(this.options.value.moduleID)
     },
 
     minValueModuleFields () {
-      return [
-        ...this.sharedModuleFields,
-        ...this.moduleByID(this.options.minValue.moduleID).fields.filter(f => f.kind === 'Number').sort((a, b) => a.label.localeCompare(b.label)),
-      ]
+      return this.returnValueModuleFields(this.options.minValue.moduleID)
+    },
+
+    minValueModule () {
+      return this.moduleByID(this.options.minValue.moduleID)
     },
 
     maxValueModuleFields () {
-      return [
-        ...this.sharedModuleFields,
-        ...this.moduleByID(this.options.maxValue.moduleID).fields.filter(f => f.kind === 'Number').sort((a, b) => a.label.localeCompare(b.label)),
-      ]
+      return this.returnValueModuleFields(this.options.maxValue.moduleID)
+    },
+
+    maxValueModule () {
+      return this.moduleByID(this.options.maxValue.moduleID)
+    },
+
+    recordAutoCompleteParams () {
+      return {
+        value: this.processRecordAutoCompleteParams({ module: this.valueModule, operators: true }),
+        min: this.processRecordAutoCompleteParams({ module: this.minValueModule, operators: true }),
+        max: this.processRecordAutoCompleteParams({ module: this.maxValueModule, operators: true }),
+      }
     },
   },
 
@@ -633,6 +679,10 @@ export default {
     this.mock.record = new compose.Record(this.mock.module, { mockField: 15 })
   },
 
+  beforeDestroy () {
+    this.setDefaultValues()
+  },
+
   methods: {
     addThreshold () {
       this.options.display.thresholds.push({ value: 0, variant: 'success' })
@@ -648,6 +698,37 @@ export default {
       if (!value || value === 'count') {
         optionsType.operation = ''
       }
+    },
+
+    getOptionModuleKey ({ moduleID }) {
+      return moduleID
+    },
+
+    getOptionModuleFieldKey ({ name }) {
+      return name
+    },
+
+    getOptionModuleFieldLabel ({ name, label }) {
+      return label || name
+    },
+
+    getOptionAggregationOperationKey ({ operation }) {
+      return operation
+    },
+
+    setDefaultValues () {
+      this.aggregationOperations = []
+      this.variants = []
+      this.mock = {}
+    },
+
+    returnValueModuleFields (moduleID) {
+      return [
+        ...this.sharedModuleFields,
+        ...this.moduleByID(moduleID).fields
+          .filter(f => f.kind === 'Number')
+          .sort((a, b) => a.label.localeCompare(b.label)),
+      ]
     },
   },
 }

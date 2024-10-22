@@ -21,10 +21,9 @@
           v-for="(v, i) in formatResponse(m, mi)"
           :key="i"
           class="w-100 h-100 px-2 py-1"
+          :class="m.drillDown.enabled ? 'pointer' : ''"
+          @click="drillDown(m, mi)"
         >
-          <!-- <h3 :style="genStyle(m.labelStyle)">
-            {{ v.label }}
-          </h3> -->
           <metric-item
             :metric="m"
             :value="v"
@@ -39,11 +38,16 @@
 import base from './base'
 import numeral from 'numeral'
 import moment from 'moment'
+import { debounce } from 'lodash'
 import MetricItem from './Metric/Item'
-import { NoID } from '@cortezaproject/corteza-js'
-import { evaluatePrefilter } from 'corteza-webapp-compose/src/lib/record-filter'
+import { NoID, compose } from '@cortezaproject/corteza-js'
+import { evaluatePrefilter, isFieldInFilter } from 'corteza-webapp-compose/src/lib/record-filter'
 
 export default {
+  i18nOptions: {
+    namespaces: 'block',
+  },
+
   components: {
     MetricItem,
   },
@@ -63,26 +67,35 @@ export default {
     return {
       processing: false,
       reports: [],
+
+      abortableRequests: [],
     }
   },
 
   watch: {
-    'record.recordID': {
+    'record.updatedAt': {
       immediate: true,
       handler () {
         this.refresh()
       },
     },
+
+    options: {
+      deep: true,
+      handler: debounce(function () {
+        this.refresh()
+      }, 300),
+    },
   },
 
   mounted () {
-    this.$root.$on('metric.update', this.refresh)
-    this.$root.$on(`refetch-non-record-blocks:${this.page.pageID}`, this.refresh)
+    this.createEvents()
   },
 
   beforeDestroy () {
-    this.$root.$off('metric.update', this.refresh)
-    this.$root.$off(`refetch-non-record-blocks:${this.page.pageID}`)
+    this.abortRequests()
+    this.destroyEvents()
+    this.setDefaultValues()
   },
 
   created () {
@@ -90,6 +103,22 @@ export default {
   },
 
   methods: {
+    createEvents () {
+      this.$root.$on('metric.update', this.refresh)
+      this.$root.$on(`refetch-non-record-blocks:${this.page.pageID}`, this.refresh)
+      this.$root.$on('drill-down-chart', this.drillDown)
+      this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
+      this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
+    },
+
+    refetchOnPrefilterValueChange ({ fieldName }) {
+      const { metrics } = this.options
+
+      if (metrics.some(({ filter }) => isFieldInFilter(fieldName, filter))) {
+        this.refresh()
+      }
+    },
+
     /**
      * Performs some post processing on the provided data
      */
@@ -124,7 +153,14 @@ export default {
       try {
         const rtr = []
         const namespaceID = this.namespace.namespaceID
-        const reporter = r => this.$ComposeAPI.recordReport({ ...r, namespaceID })
+        const reporter = r => {
+          const { response, cancel } = this.$ComposeAPI
+            .recordReportCancellable({ ...r, namespaceID })
+
+          this.abortableRequests.push(cancel)
+
+          return response()
+        }
 
         for (const m of this.options.metrics) {
           if (m.moduleID) {
@@ -133,6 +169,17 @@ export default {
             if (auxM.filter) {
               auxM.filter = evaluatePrefilter(auxM.filter, {
                 record: this.record,
+                user: this.$auth.user || {},
+                recordID: (this.record || {}).recordID || NoID,
+                ownerID: (this.record || {}).ownedBy || NoID,
+                userID: (this.$auth.user || {}).userID || NoID,
+              })
+            }
+
+            if (auxM.transformFx) {
+              auxM.transformFx = evaluatePrefilter(auxM.transformFx, {
+                record: this.record,
+                user: this.$auth.user || {},
                 recordID: (this.record || {}).recordID || NoID,
                 ownerID: (this.record || {}).ownedBy || NoID,
                 userID: (this.$auth.user || {}).userID || NoID,
@@ -145,12 +192,98 @@ export default {
         }
 
         this.reports = rtr
-        this.processing = false
+        setTimeout(() => {
+          this.processing = false
+        }, 300)
       } catch {
-        this.processing = false
+        setTimeout(() => {
+          this.processing = false
+        }, 300)
+      }
+    },
+    /**
+     *
+     * @param {*} name
+     * Based on drill down configuration, either changes the linked block on the page
+     * or opens it in a modal wit the filter and dimensions from the chart and the clicked value
+     */
+    drillDown ({ label: name = '', filter, moduleID, drillDown }, metricIndex) {
+      if (!drillDown.enabled) {
+        return
+      }
+
+      if (drillDown.blockID) {
+        // Use linked record list to display drill down data
+        const { pageID = NoID } = this.page
+        const { recordID = NoID } = this.record || {}
+        // Construct its uniqueID to identify it
+        const recordListUniqueID = [pageID, recordID, drillDown.blockID, false].map(v => v || NoID).join('-')
+        this.$root.$emit(`drill-down-recordList:${recordListUniqueID}`, filter)
+      } else {
+        // Open in modal
+        const metricID = `${this.block.blockID}-${name.replace(/\s+/g, '-').toLowerCase()}-${moduleID}-${metricIndex}`
+        const { fields = [] } = this.options.metrics[metricIndex].drillDown.recordListOptions || {}
+
+        const block = new compose.PageBlockRecordList({
+          title: name || this.$t('metric.metricDrillDown'),
+          blockID: `drillDown-${metricID}`,
+          options: {
+            moduleID,
+            fields,
+            prefilter: filter,
+            presort: 'createdAt DESC',
+            hideRecordReminderButton: true,
+            hideRecordViewButton: false,
+            hideConfigureFieldsButton: false,
+            hideImportButton: true,
+            enableRecordPageNavigation: true,
+            selectable: true,
+            allowExport: true,
+            perPage: 14,
+            showTotalCount: true,
+            recordDisplayOption: 'modal',
+          },
+        })
+
+        this.$root.$emit('magnify-page-block', { block })
       }
     },
 
+    setDefaultValues () {
+      this.processing = false
+      this.reports = []
+      this.abortableRequests = []
+    },
+
+    abortRequests () {
+      this.abortableRequests.forEach((cancel) => {
+        cancel()
+      })
+    },
+
+    refreshOnRelatedRecordsUpdate ({ moduleID, notPageID }) {
+      if (this.page.pageID === notPageID) {
+        return
+      }
+
+      const metrics = this.options.metrics
+
+      const hasMatchingModule = metrics.some((m) => {
+        return m.moduleID === moduleID
+      })
+
+      if (hasMatchingModule) {
+        this.refresh()
+      }
+    },
+
+    destroyEvents () {
+      this.$root.$off('metric.update', this.refresh)
+      this.$root.$off(`refetch-non-record-blocks:${this.page.pageID}`, this.refresh)
+      this.$root.$off('drill-down-chart', this.drillDown)
+      this.$root.$off('module-records-updated', this.refreshOnRelatedRecordsUpdate)
+      this.$root.$off('record-field-change', this.refetchOnPrefilterValueChange)
+    },
   },
 }
 </script>

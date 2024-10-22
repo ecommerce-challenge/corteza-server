@@ -1,30 +1,34 @@
 <template>
   <b-card
+    v-if="value && value.length > 0"
     data-test-id="card-external-auth-providers"
+    header-class="border-bottom"
+    body-class="p-0"
     class="shadow-sm"
-    header-bg-variant="white"
-    footer-bg-variant="white"
   >
+    <template #header>
+      <h4 class="m-0">
+        {{ $t('title') }}
+      </h4>
+    </template>
+
     <b-table
       :items="value"
       :fields="fields"
+      head-variant="light"
+      responsive
+      hover
+      class="mb-0"
+      style="min-height: 200px;"
     >
       <template #cell(editor)="{ item }">
-        <b-button
+        <c-input-confirm
           data-test-id="button-remove-provider"
-          variant="link"
-          class="pr-0"
-          @click="$emit('delete', item.credentialsID)"
-        >
-          <font-awesome-icon :icon="['far', 'trash-alt']" />
-        </b-button>
+          show-icon
+          @confirmed="$emit('delete', item.credentialsID)"
+        />
       </template>
     </b-table>
-    <template #header>
-      <h3 class="m-0">
-        {{ $t('title') }}
-      </h3>
-    </template>
   </b-card>
 </template>
 

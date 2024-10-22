@@ -37,7 +37,7 @@
 import base from './base'
 import { NoID } from '@cortezaproject/corteza-js'
 import { components } from '@cortezaproject/corteza-vue'
-import { evaluatePrefilter } from 'corteza-webapp-compose/src/lib/record-filter'
+import { evaluatePrefilter, isFieldInFilter } from 'corteza-webapp-compose/src/lib/record-filter'
 const { CProgress } = components
 
 export default {
@@ -57,7 +57,7 @@ export default {
   },
 
   watch: {
-    'record.recordID': {
+    'record.updatedAt': {
       immediate: true,
       handler () {
         this.refresh()
@@ -77,14 +77,29 @@ export default {
   },
 
   mounted () {
-    this.$root.$on(`refetch-non-record-blocks:${this.page.pageID}`, this.refresh)
+    this.createEvents()
   },
 
   beforeDestroy () {
-    this.$root.$off(`refetch-non-record-blocks:${this.page.pageID}`)
+    this.destroyEvents()
+    this.setDefaultValues()
   },
 
   methods: {
+    createEvents () {
+      this.$root.$on(`refetch-non-record-blocks:${this.page.pageID}`, this.refresh)
+      this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
+      this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
+    },
+
+    refetchOnPrefilterValueChange ({ fieldName }) {
+      const { value } = this.options
+
+      if (isFieldInFilter(fieldName, value.filter)) {
+        this.refresh()
+      }
+    },
+
     /**
      * Pulls fresh data from the API
      */
@@ -97,6 +112,7 @@ export default {
         value: {
           filter: evaluatePrefilter(this.options.value.filter, {
             record: this.record,
+            user: this.$auth.user || {},
             recordID: (this.record || {}).recordID || NoID,
             ownerID: (this.record || {}).ownedBy || NoID,
             userID: (this.$auth.user || {}).userID || NoID,
@@ -105,6 +121,7 @@ export default {
         minValue: {
           filter: evaluatePrefilter(this.options.minValue.filter, {
             record: this.record,
+            user: this.$auth.user || {},
             recordID: (this.record || {}).recordID || NoID,
             ownerID: (this.record || {}).ownedBy || NoID,
             userID: (this.$auth.user || {}).userID || NoID,
@@ -113,6 +130,7 @@ export default {
         maxValue: {
           filter: evaluatePrefilter(this.options.maxValue.filter, {
             record: this.record,
+            user: this.$auth.user || {},
             recordID: (this.record || {}).recordID || NoID,
             ownerID: (this.record || {}).ownedBy || NoID,
             userID: (this.$auth.user || {}).userID || NoID,
@@ -127,8 +145,29 @@ export default {
           this.value = value
         }).catch(this.toastErrorHandler(this.$t('progress.fetch-failed')))
         .finally(() => {
-          this.processing = false
+          setTimeout(() => {
+            this.processing = false
+          }, 300)
         })
+    },
+
+    refreshOnRelatedRecordsUpdate ({ moduleID, notPageID }) {
+      if (this.options.value.moduleID === moduleID && this.page.pageID !== notPageID) {
+        this.refresh()
+      }
+    },
+
+    setDefaultValues () {
+      this.processing = false
+      this.value = undefined
+      this.min = undefined
+      this.max = undefined
+    },
+
+    destroyEvents () {
+      this.$root.$off(`refetch-non-record-blocks:${this.page.pageID}`, this.refresh)
+      this.$root.$off('module-records-updated', this.refreshOnRelatedRecordsUpdate)
+      this.$root.$off('record-field-change', this.refetchOnPrefilterValueChange)
     },
   },
 }

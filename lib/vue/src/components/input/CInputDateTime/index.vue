@@ -1,52 +1,43 @@
 <template>
-  <b-row
-    align-v="stretch"
-    no-gutters
-    class="c-input-date-time"
-  >
-    <b-col
-      :lg="noTime ? 12 : 6"
-      class="position-static overflow-hidden"
-    >
-      <b-form-datepicker
-        v-if="!noDate"
-        v-model="date"
-        :placeholder="labels.none"
-        :date-format-options="{ year: 'numeric', month: 'numeric', day: 'numeric' }"
-        :min="minDate"
-        :max="maxDate"
-        :label-reset-button="labels.clear"
-        :label-today-button="labels.today"
-        label-help=""
-        today-variant="info"
-        selected-variant="secondary"
-        boundary="window"
-        hide-header
-        reset-button
-        today-button
-        class="h-100 overflow-hidden"
-      />
-    </b-col>
-    <b-col
-      :lg="noDate ? 12 : 6"
-      class="position-static overflow-hidden"
-      :class="{ 'mt-1 mt-lg-0 pl-lg-1': !noDate }"
-    >
-      <b-form-timepicker
-        v-if="!noTime"
-        v-model="time"
-        :placeholder="labels.none"
-        :label-reset-button="labels.clear"
-        :label-now-button="labels.now"
-        boundary="window"
-        hide-header
-        no-close-button
-        reset-button
-        now-button
-        class="h-100 overflow-hidden"
-      />
-    </b-col>
-  </b-row>
+  <div class="c-input-date-time d-flex flex-wrap w-100 gap-1">
+    <b-form-datepicker
+      v-if="!noDate"
+      v-model="date"
+      data-test-id="picker-date"
+      :placeholder="labels.none"
+      :date-format-options="{ year: 'numeric', month: 'numeric', day: 'numeric' }"
+      :min="minDate"
+      :max="maxDate"
+      :label-reset-button="labels.clear"
+      :label-today-button="labels.today"
+      label-help=""
+      today-variant="info"
+      selected-variant="extra-light"
+      boundary="window"
+      hide-header
+      reset-button
+      today-button
+      show-decade-nav
+      class="h-100 overflow-hidden"
+    />
+
+    <b-form-timepicker
+      v-if="!noTime"
+      v-model="time"
+      data-test-id="picker-time"
+      :placeholder="labels.none"
+      :label-reset-button="labels.clear"
+      :label-now-button="labels.now"
+      boundary="window"
+      hide-header
+      no-close-button
+      reset-button
+      now-button
+      class="h-100 overflow-hidden"
+    />
+
+    <slot />
+  </div>
 </template>
 <script lang="js">
 import { getDate, setDate, getTime, setTime } from './lib/index.ts'
@@ -54,7 +45,7 @@ import { getDate, setDate, getTime, setTime } from './lib/index.ts'
 export default {
   props: {
     value: {
-      type: String,
+      type: [String, Date],
       required: false,
     },
 
@@ -124,22 +115,29 @@ export default {
 <style lang="scss">
 .c-input-date-time {
   min-width: 120px;
+
   .btn {
     padding: 0.25rem 0.5rem;
   }
+
   label {
-    font-family: "Poppins-Regular";
-    color: #495057 !important;
+    font-family: var(--font-regular);
+    color: var(--black) !important;
   }
-}
 
-.b-calendar-inner {
-  background-color: white;
-}
+  .b-form-datepicker, .b-form-timepicker {
+    flex: 1 0 130px;
+  }
 
-@media (min-width: 992px) { 
-  .c-input-date-time {
-    min-width: 250px;
+  .b-calendar-inner {
+    background-color: var(--white);
+
+    .b-calendar-grid-body {
+      height: 14rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
   }
 }
 </style>

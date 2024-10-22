@@ -43,6 +43,11 @@ export default {
       type: Boolean,
       required: false,
     },
+
+    extraOptions: {
+      type: Object,
+      default: () => ({}),
+    },
   },
 
   computed: {
@@ -62,14 +67,28 @@ export default {
     },
 
     classes () {
+      const classes = []
+      const { fieldID } = this.field
+      const { textStyles = {} } = this.extraOptions
+
       if (this.field.isMulti) {
-        return ['multiline']
+        classes.push('multiline')
+      } else if (textStyles.noWrapFields && textStyles.noWrapFields.includes(fieldID)) {
+        classes.push('text-nowrap')
       }
-      return []
+
+      return classes
     },
 
     options () {
       return this.field.options
+    },
+
+    // detect when a page block is opened in a modal through magnification or record open type
+    inModal () {
+      const { recordPageID, magnifiedBlockID } = this.$route.query
+
+      return !!recordPageID || !!magnifiedBlockID
     },
   },
 }

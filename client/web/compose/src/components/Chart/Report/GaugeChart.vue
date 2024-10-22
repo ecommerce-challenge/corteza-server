@@ -9,7 +9,7 @@
     <template #dimension-options="{ dimension }">
       <b-form-group
         :label="$t('edit.dimension.gaugeSteps')"
-        :label-cols="3"
+        label-class="text-primary"
       >
         <b-input-group
           v-for="(step, i) in dimension.meta.steps"
@@ -28,7 +28,6 @@
               :chart="chart"
               :disabled="isNew"
               :highlight-key="`dimensions.${dimension.dimensionID}.meta.steps.${step.stepID}.label`"
-              button-variant="light"
             />
           </b-input-group-append>
 
@@ -40,13 +39,10 @@
           />
 
           <b-input-group-append>
-            <b-button
-              variant="link"
-              class="border-0 text-danger"
-              @click.prevent="dimension.meta.steps.splice(i, 1)"
-            >
-              <font-awesome-icon :icon="['far', 'trash-alt']" />
-            </b-button>
+            <c-input-confirm
+              show-icon
+              @confirmed="dimension.meta.steps.splice(i, 1)"
+            />
           </b-input-group-append>
         </b-input-group>
 
@@ -61,23 +57,140 @@
     </template>
 
     <template #metric-options="{ metric }">
-      <b-form-group
-        :label="$t('edit.metric.fx.label')"
-        :description="$t('edit.metric.fx.description')"
-      >
-        <b-form-textarea
-          v-model="metric.fx"
-          placeholder="n"
-        />
-      </b-form-group>
+      <b-row>
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('edit.metric.fx.label')"
+            :description="$t('edit.metric.fx.description')"
+            label-class="text-primary"
+          >
+            <b-form-textarea
+              v-model="metric.fx"
+              placeholder="n"
+            />
+          </b-form-group>
+        </b-col>
 
-      <b-form-checkbox
-        v-model="metric.fixTooltips"
-        :value="true"
-        :unchecked-value="false"
-      >
-        {{ $t('edit.metric.fixTooltips') }}
-      </b-form-checkbox>
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('edit.metric.options.label')"
+            label-class="text-primary"
+          >
+            <b-form-checkbox
+              v-model="metric.fixTooltips"
+            >
+              {{ $t('edit.metric.fixTooltips') }}
+            </b-form-checkbox>
+          </b-form-group>
+        </b-col>
+      </b-row>
+
+      <b-row>
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('edit.metric.angle.start')"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="metric.startAngle"
+              type="number"
+              number
+            />
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('edit.metric.angle.end')"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="metric.endAngle"
+              type="number"
+              number
+            />
+          </b-form-group>
+        </b-col>
+      </b-row>
+
+      <hr>
+
+      <b-row>
+        <b-col
+          cols="12"
+          md="6"
+        >
+          <b-form-group
+            :label="$t('edit.formatting.prefix.label')"
+            label-class="text-primary"
+          >
+            <b-input
+              v-model="metric.formatting.prefix"
+              :placeholder="$t('edit.formatting.prefix.placeholder')"
+            />
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          md="6"
+        >
+          <b-form-group
+            :label="$t('edit.formatting.suffix.label')"
+            label-class="text-primary"
+          >
+            <b-input
+              v-model="metric.formatting.suffix"
+              :placeholder="$t('edit.formatting.suffix.placeholder')"
+            />
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          md="6"
+        >
+          <b-form-group
+            :label="$t('edit.formatting.presetFormats.label')"
+            label-class="text-primary"
+            :description="$t(`edit.formatting.presetFormats.description.${metric.formatting.presetFormat}`)"
+            style="white-space: pre-line;"
+          >
+            <b-form-select
+              v-model="metric.formatting.presetFormat"
+              :options="formatOptions"
+            />
+          </b-form-group>
+        </b-col>
+
+        <b-col
+          cols="12"
+          md="6"
+        >
+          <b-form-group
+            :label="$t('edit.formatting.format.label')"
+            label-class="text-primary"
+          >
+            <b-input
+              v-model="metric.formatting.format"
+              :disabled="metric.formatting.presetFormat !== 'custom'"
+              :placeholder="$t('edit.formatting.format.placeholder')"
+            />
+          </b-form-group>
+        </b-col>
+      </b-row>
     </template>
   </report-edit>
 </template>
@@ -89,9 +202,7 @@ import { compose, NoID } from '@cortezaproject/corteza-js'
 import base from './base'
 
 export default {
-  i18nOptions: {
-    namespaces: 'chart',
-  },
+  name: 'GaugeChart',
 
   components: {
     ChartTranslator,

@@ -6,6 +6,7 @@ import (
 
 	"github.com/cortezaproject/corteza/server/store/adapters/rdbms/ddl"
 	"github.com/cortezaproject/corteza/server/store/adapters/rdbms/ql"
+	"github.com/spf13/cast"
 
 	"github.com/cortezaproject/corteza/server/pkg/cast2"
 	"github.com/cortezaproject/corteza/server/pkg/dal"
@@ -60,6 +61,12 @@ func Dialect() *mssqlDialect {
 
 func (mssqlDialect) Nuances() drivers.Nuances {
 	return nuances
+}
+
+func (d mssqlDialect) AggregateBase(t drivers.TableCodec, groupBy []dal.AggregateAttr, out []dal.AggregateAttr) (slct *goqu.SelectDataset) {
+	// @todo as is, aggregation is not offloaded to mssql
+	panic("not implemented")
+	return nil
 }
 
 func (mssqlDialect) GOQU() goqu.DialectWrapper                 { return goquDialectWrapper }
@@ -161,6 +168,10 @@ func (mssqlDialect) AttributeCast(attr *dal.Attribute, val exp.Expression) (expr
 	return
 }
 
+func (mssqlDialect) AttributeExpression(attr *dal.Attribute, modelIdent string, ident string) (expr exp.Expression, err error) {
+	return exp.NewLiteralExpression("?", exp.NewIdentifierExpression("", modelIdent, ident)), nil
+}
+
 func (mssqlDialect) AttributeToColumn(attr *dal.Attribute) (col *ddl.Column, err error) {
 	col = &ddl.Column{
 		Ident:   attr.StoreIdent(),
@@ -207,6 +218,9 @@ func (mssqlDialect) AttributeToColumn(attr *dal.Attribute) (col *ddl.Column, err
 			col.Default = fmt.Sprintf("%q", t.DefaultValue)
 		}
 
+	case *dal.TypeEnum:
+		col.Type.Name = "VARCHAR(MAX)"
+
 	case *dal.TypeJSON:
 		col.Type.Name = "VARCHAR(MAX)"
 
@@ -227,6 +241,93 @@ func (mssqlDialect) AttributeToColumn(attr *dal.Attribute) (col *ddl.Column, err
 	}
 
 	return
+}
+
+func (mssqlDialect) ColumnFits(target, assert *ddl.Column) bool {
+	targetType, targetName, targetMeta := ddl.ParseColumnTypes(target)
+	assertType, assertName, assertMeta := ddl.ParseColumnTypes(assert)
+
+	// If everything matches up perfectly use that
+	if assertType == targetType {
+		return true
+	}
+
+	// See if we can guess it
+	// [the type of the target column][what types fit the target col. type]
+	matches := map[string]map[string]bool{
+		"bigint": {
+			"varchar": true,
+		},
+		"datetime": {
+			"varchar": true,
+		},
+		"time": {
+			"varchar": true,
+		},
+		"date": {
+			"varchar": true,
+		},
+		"decimal": {
+			"varchar": true,
+		},
+		"varchar":   {},
+		"varbinary": {},
+		"bit":       {},
+		"char": {
+			"varchar": true,
+		},
+	}
+
+	baseMatch := assertName == targetName || matches[assertName][targetName]
+
+	// Special cases
+	switch {
+	case assertName == "varchar" && targetName == "varchar":
+		// @note mssql represents max as -1 so we're just going with this
+		if assertMeta[0] == "max" {
+			assertMeta[0] = "-1"
+		}
+		if targetMeta[0] == "max" {
+			targetMeta[0] = "-1"
+		}
+
+		// Check varchar size
+		for i := len(assertMeta); i < 1; i++ {
+			assertMeta = append(assertMeta, "0")
+		}
+		assertA := cast.ToInt(assertMeta[0])
+
+		for i := len(targetMeta); i < 1; i++ {
+			targetMeta = append(targetMeta, "0")
+		}
+		targetA := cast.ToInt(targetMeta[0])
+
+		// -1 means no limit so it can fit any length
+		// - if target is max, any varchar fits
+		if targetA == -1 {
+			return baseMatch
+		}
+		// - if assert is max, only max fits
+		if assertA == -1 {
+			return baseMatch && targetA == -1
+		}
+
+		return baseMatch && assertA <= targetA
+
+	case assertName == "decimal" && targetName == "decimal":
+		// Check decimal size and precision
+		for i := len(assertMeta); i < 2; i++ {
+			assertMeta = append(assertMeta, "0")
+		}
+
+		for i := len(targetMeta); i < 2; i++ {
+			targetMeta = append(targetMeta, "0")
+		}
+
+		return baseMatch && cast.ToInt(assertMeta[0]) <= cast.ToInt(targetMeta[0]) && cast.ToInt(assertMeta[1]) <= cast.ToInt(targetMeta[1])
+	}
+
+	return baseMatch
 }
 
 // @todo untested

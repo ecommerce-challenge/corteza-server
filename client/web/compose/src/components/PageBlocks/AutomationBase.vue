@@ -40,6 +40,8 @@ export default {
       processing: false,
 
       automationScripts: [],
+
+      abortableRequests: [],
     }
   },
 
@@ -49,19 +51,50 @@ export default {
     },
   },
 
+  beforeDestroy () {
+    this.abortRequests()
+    this.setDefaultValues()
+  },
+
   created () {
     if (this.$UIHooks.set && !!this.$UIHooks.set.length) {
       return
     }
 
-    this.processing = true
-    return this.$ComposeAPI.automationList({ eventTypes: ['onManual'], excludeInvalid: true })
-      .then(({ set = [] }) => {
-        this.automationScripts = set
+    this.fetchAutomationLists()
+  },
+
+  methods: {
+    fetchAutomationLists () {
+      this.processing = true
+
+      const { response, cancel } = this.$ComposeAPI
+        .automationListCancellable({ eventTypes: ['onManual'], excludeInvalid: true })
+
+      this.abortableRequests.push(cancel)
+
+      return response()
+        .then(({ set = [] }) => {
+          this.automationScripts = set
+        })
+        .finally(() => {
+          setTimeout(() => {
+            this.processing = false
+          }, 300)
+        })
+    },
+
+    setDefaultValues () {
+      this.processing = false
+      this.automationScripts = []
+      this.abortableRequests = []
+    },
+
+    abortRequests () {
+      this.abortableRequests.forEach((cancel) => {
+        cancel()
       })
-      .finally(() => {
-        this.processing = false
-      })
+    },
   },
 }
 </script>

@@ -1,8 +1,8 @@
 <template>
   <c-translator-button
     v-if="canManageResourceTranslations && resourceTranslationsEnabled"
-    v-bind="$props"
-    :title="$t('tooltip')"
+    :tooltip="$t('tooltip')"
+    v-bind="{ ...$attrs, ...$props }"
     :resource="resource"
     :titles="titles"
     :fetcher="fetcher"
@@ -34,11 +34,6 @@ export default {
     disabled: {
       type: Boolean,
       default: () => false,
-    },
-
-    buttonVariant: {
-      type: String,
-      default: () => 'primary',
     },
 
     highlightKey: {
@@ -104,16 +99,19 @@ export default {
 
             tr = find('name')
             if (tr !== undefined) {
+              // eslint-disable-next-line vue/no-side-effects-in-computed-properties
               this.namespace.name = tr.message
             }
 
             tr = find('meta.subtitle')
             if (tr !== undefined) {
+              // eslint-disable-next-line vue/no-side-effects-in-computed-properties
               this.namespace.meta.subtitle = tr.message
             }
 
             tr = find('meta.description')
             if (tr !== undefined) {
+              // eslint-disable-next-line vue/no-side-effects-in-computed-properties
               this.namespace.meta.description = tr.message
             }
           })

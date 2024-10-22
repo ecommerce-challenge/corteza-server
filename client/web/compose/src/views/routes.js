@@ -1,10 +1,12 @@
 // public route builder/helper
-function r (name, path, component) {
+function r (name, path, component, defaultProps = {}) {
   return {
     path,
     name,
     component: () => import('./' + component + '.vue'),
-    props: true,
+    props: r => {
+      return { ...defaultProps, ...r.params }
+    },
   }
 }
 
@@ -25,7 +27,6 @@ export default [
           r('namespace.manage', '/namespaces/manage', 'Namespace/Manage'),
           r('namespace.create', '/admin/namespace/create', 'Namespace/Edit'),
           r('namespace.edit', '/admin/namespace/edit/:namespaceID', 'Namespace/Edit'),
-          r('namespace.clone', '/admin/namespace/clone/:namespaceID', 'Namespace/Edit'),
           {
             ...r('namespace', '/ns/:slug', 'Namespace/View'),
             redirect: { name: 'pages' },
@@ -38,9 +39,9 @@ export default [
                     ...r('page', ':pageID?', 'Public/Pages/View'),
 
                     children: [
-                      r('page.record.edit', 'record/:recordID/edit', 'Public/Pages/Records/Edit'),
-                      r('page.record', 'record/:recordID', 'Public/Pages/Records/View'),
-                      r('page.record.create', 'record', 'Public/Pages/Records/Create'),
+                      r('page.record', 'record/:recordID', 'Public/Pages/Records/View', { edit: false }),
+                      r('page.record.edit', 'record/:recordID/edit', 'Public/Pages/Records/View', { edit: true }),
+                      r('page.record.create', 'record', 'Public/Pages/Records/View', { edit: true }),
                     ],
                   },
                 ],
@@ -54,9 +55,9 @@ export default [
                   r('admin.modules.create', 'modules/new', 'Admin/Modules/Edit'),
                   r('admin.modules.edit', 'modules/:moduleID/edit', 'Admin/Modules/Edit'),
                   r('admin.modules.record.list', 'modules/:moduleID/record/list', 'Admin/Modules/Records/List'),
-                  r('admin.modules.record.view', 'modules/:moduleID/record/:recordID', 'Admin/Modules/Records/View'),
-                  r('admin.modules.record.create', 'modules/:moduleID/record', 'Admin/Modules/Records/Create'),
-                  r('admin.modules.record.edit', 'modules/:moduleID/record/:recordID/edit', 'Admin/Modules/Records/Edit'),
+                  r('admin.modules.record.view', 'modules/:moduleID/record/:recordID', 'Admin/Modules/Records/View', { edit: false }),
+                  r('admin.modules.record.create', 'modules/:moduleID/record', 'Admin/Modules/Records/View', { edit: true }),
+                  r('admin.modules.record.edit', 'modules/:moduleID/record/:recordID/edit', 'Admin/Modules/Records/View', { edit: true }),
 
                   r('admin.pages', 'pages', 'Admin/Pages/List'),
                   r('admin.pages.edit', 'pages/:pageID/edit', 'Admin/Pages/Edit'),

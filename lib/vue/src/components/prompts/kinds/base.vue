@@ -15,12 +15,12 @@ export default {
 
   computed: {
     message () {
-      return this.pVal('message', '<i>Default prompt message.</i>')
+      return this.pVal('message', '')
     },
   },
 
   methods: {
-     pVal (k, def = undefined) {
+    pVal (k, def = undefined) {
       return pVal(this.payload, k, def)
     },
 

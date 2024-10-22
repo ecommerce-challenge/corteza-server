@@ -1,68 +1,99 @@
 <template>
   <b-form-group
-    label-class="text-primary"
+    :label-cols-md="horizontal && '5'"
+    :label-cols-xl="horizontal && '4'"
+    :content-cols-md="horizontal && '7'"
+    :content-cols-xl="horizontal && '8'"
     :state="state"
     :class="formGroupStyleClasses"
   >
     <template
-      v-if="!valueOnly"
       #label
     >
       <div
-        class="d-flex align-items-top"
+        v-if="!valueOnly"
+        class="d-flex align-items-center text-primary p-0"
       >
-        <label
-          class="mb-0"
+        <span
+          :title="label"
+          class="d-inline-block mw-100"
         >
           {{ label }}
-        </label>
+        </span>
 
-        <hint
-          :id="field.fieldID"
-          :text="hint"
-        />
+        <c-hint :tooltip="hint" />
+
+        <slot name="tools" />
       </div>
-      <small
-        class="form-text font-weight-light text-muted"
+      <div
+        class="small text-muted"
+        :class="{ 'mb-1': description }"
       >
         {{ description }}
-      </small>
+      </div>
     </template>
 
-    <div class="d-flex w-100">
-      <b-button
-        v-if="field.isMulti"
-        variant="primary"
-        rounded
-        class="w-100"
-        @click="openMap"
-      >
-        <font-awesome-icon
-          :icon="['fas', 'map-marked-alt']"
-        />
-      </b-button>
-    </div>
+    <b-button
+      v-if="field.isMulti"
+      v-b-tooltip.noninteractive.hover="{ title: $t('tooltip.openMap'), container: '#body' }"
+      variant="light"
+      class="w-100 mb-3"
+      @click="openMap()"
+    >
+      <font-awesome-icon
+        :icon="['fas', 'map-marked-alt']"
+        class="text-primary"
+      />
+    </b-button>
 
     <multi
       v-if="field.isMulti"
       v-slot="ctx"
       :value.sync="localValue"
       :errors="errors"
-      single-input
+      :default-value="{ coordinates: [] }"
     >
       <b-input-group>
         <b-form-input
           v-model="localValue[ctx.index].coordinates[0]"
           type="number"
+          step="0.000001"
           number
           :placeholder="$t('latitude')"
         />
         <b-form-input
           v-model="localValue[ctx.index].coordinates[1]"
           type="number"
+          step="0.000001"
           number
           :placeholder="$t('longitude')"
         />
+        <b-input-group-append>
+          <b-button
+            v-b-tooltip.noninteractive.hover="{ title: $t('tooltip.openMap'), container: '#body' }"
+            variant="extra-light"
+            class="d-flex align-items-center"
+            @click="openMap(ctx.index)"
+          >
+            <font-awesome-icon
+              :icon="['fas', 'map-marked-alt']"
+              class="text-primary"
+            />
+          </b-button>
+
+          <b-button
+            v-if="!field.options.hideCurrentLocationButton"
+            v-b-tooltip.noninteractive.hover="{ title: $t('tooltip.useCurrentLocation'), container: '#body' }"
+            variant="extra-light"
+            class="d-flex align-items-center"
+            @click="useCurrentLocation(ctx.index)"
+          >
+            <font-awesome-icon
+              :icon="['fas', 'location-arrow']"
+              class="text-primary"
+            />
+          </b-button>
+        </b-input-group-append>
       </b-input-group>
     </multi>
 
@@ -71,23 +102,40 @@
         <b-form-input
           v-model="localValue.coordinates[0]"
           type="number"
+          step="0.000001"
           number
           :placeholder="$t('latitude')"
         />
         <b-form-input
           v-model="localValue.coordinates[1]"
           type="number"
+          step="0.000001"
           number
           :placeholder="$t('longitude')"
         />
         <b-input-group-append>
           <b-button
-            variant="light"
-            rounded
-            @click="openMap"
+            v-b-tooltip.noninteractive.hover="{ title: $t('tooltip.openMap'), container: '#body' }"
+            variant="extra-light"
+            class="d-flex align-items-center"
+            @click="openMap()"
           >
             <font-awesome-icon
               :icon="['fas', 'map-marked-alt']"
+              class="text-primary"
+            />
+          </b-button>
+
+          <b-button
+            v-if="!field.options.hideCurrentLocationButton"
+            v-b-tooltip.noninteractive.hover="{ title: $t('tooltip.useCurrentLocation'), container: '#body' }"
+            variant="extra-light"
+            class="d-flex align-items-center"
+            @click="useCurrentLocation()"
+          >
+            <font-awesome-icon
+              :icon="['fas', 'location-arrow']"
+              class="text-primary"
             />
           </b-button>
         </b-input-group-append>
@@ -98,43 +146,52 @@
 
     <b-modal
       v-model="map.show"
+      :title="field.label || field.name"
       size="lg"
-      title="Map"
       body-class="p-0"
-      hide-header
+      footer-class="flex align-items-center"
     >
       <template #modal-footer>
-        <h6
-          class="w-100"
+        {{ $t('clickToPlaceMarker') }}
+
+        <b-button
+          variant="light"
+          class="ml-auto"
+          @click="closeMap()"
         >
-          {{ $t('clickToPlaceMarker') }}
-        </h6>
+          {{ $t('general:label.cancel') }}
+        </b-button>
+
+        <b-button
+          variant="primary"
+          @click="saveMapValue()"
+        >
+          {{ $t('general:label.save') }}
+        </b-button>
       </template>
 
-      <l-map
-        ref="map"
-        :zoom="map.zoom"
-        :center="map.center"
+      <c-map
+        :map="map"
+        :hide-geo-search="field.options.hideGeoSearch"
+        :hide-current-location-button="field.options.hideCurrentLocationButton"
+        :markers="markers"
+        :labels="{
+          tooltip: { 'goToCurrentLocation': $t('tooltip.goToCurrentLocation') }
+        }"
         style="height: 75vh; width: 100%; cursor: pointer;"
-        @click="placeMarker"
-      >
-        <l-tile-layer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          :attribution="map.attribution"
-        />
-        <l-marker
-          v-for="(marker, i) in markers"
-          :key="i"
-          :lat-lng="marker"
-          @click="removeMarker(i)"
-        />
-      </l-map>
+        @on-map-click="placeMarker"
+        @on-marker-click="removeMarker"
+        @location-found="placeMarker($event, localValueIndex, true)"
+        @on-geosearch-error="onGeoSearchError"
+      />
     </b-modal>
   </b-form-group>
 </template>
 <script>
 import base from './base'
-import { latLng } from 'leaflet'
+import { components } from '@cortezaproject/corteza-vue'
+import { isNumber } from 'lodash'
+const { CMap } = components
 
 export default {
   i18nOptions: {
@@ -142,31 +199,40 @@ export default {
     keyPrefix: 'kind.geometry',
   },
 
+  components: {
+    CMap,
+  },
+
   extends: base,
 
   data () {
     return {
       localValue: undefined,
+      localValueIndex: undefined,
 
       map: {
         show: false,
-        zoom: 3,
-        center: [30, 30],
-        rotation: 0,
-        attribution: '&copy; <a target="_blank" href="http://osm.org/copyright">OpenStreetMap</a>',
+        value: undefined,
       },
     }
   },
 
   computed: {
     markers () {
-      let markers = [this.localValue.coordinates]
-
-      if (this.field.isMulti) {
-        markers = this.localValue.map(({ coordinates }) => coordinates && coordinates.length ? coordinates : undefined)
+      if (!this.map.value) {
+        return []
       }
 
-      return markers.map(this.getLatLng).filter(c => c)
+      let markers = [{ value: this.map.value.coordinates, opacity: 1.0 }]
+
+      if (this.field.isMulti) {
+        markers = this.map.value.map(({ coordinates }, i) => ({
+          value: coordinates && coordinates.length ? coordinates : undefined,
+          opacity: this.localValueIndex === undefined || i === this.localValueIndex ? 1.0 : 0.6,
+        }))
+      }
+
+      return markers
     },
   },
 
@@ -177,56 +243,128 @@ export default {
         this.value = this.field.isMulti ? value.filter(v => (v || {}).coordinates).map(v => JSON.stringify(v)) : JSON.stringify(value)
       },
     },
+
+    'field.isMulti': {
+      immediate: true,
+      handler () {
+        if (this.field.isMulti) {
+          this.localValue = this.value.map(v => {
+            return JSON.parse(v || '{"coordinates":[]}')
+          })
+        } else {
+          this.localValue = JSON.parse(this.value || '{"coordinates":[]}')
+        }
+      },
+    },
+
+    'field.options.prefillWithCurrentLocation': {
+      immediate: true,
+      handler (value) {
+        if (value) {
+          this.useCurrentLocation()
+        }
+      },
+    },
   },
 
-  created () {
-    if (this.field.isMulti) {
-      this.localValue = this.value.map(v => {
-        return JSON.parse(v || '{"coordinates":[]}')
-      })
-    } else {
-      this.localValue = JSON.parse(this.value || '{"coordinates":[]}')
-    }
+  beforeDestroy () {
+    this.setDefaultValues()
   },
 
   methods: {
-    openMap () {
-      const firstCoordinates = (this.field.isMulti ? this.localValue[0] : this.localValue) || {}
-      this.map.center = firstCoordinates.coordinates && firstCoordinates.coordinates.length ? firstCoordinates.coordinates : this.field.options.center
-      this.map.zoom = this.field.options.zoom
+    openMap (index) {
+      this.map.value = this.field.isMulti ? [...this.localValue] : this.localValue
+
+      this.localValueIndex = index
+
+      const firstCoordinates = (index >= 0 ? this.localValue[index] : this.localValue) || {}
+      const areCoordinatesValid = firstCoordinates.coordinates && firstCoordinates.coordinates.length === 2 && firstCoordinates.coordinates.every(isNumber)
+
+      firstCoordinates.coordinates = areCoordinatesValid ? [...firstCoordinates.coordinates] : []
+
+      this.map.center = areCoordinatesValid ? firstCoordinates.coordinates : this.field.options.center
+      this.map.zoom = areCoordinatesValid ? 13 : this.field.options.zoom
       this.map.show = true
-
-      setTimeout(() => {
-        this.$refs.map.mapObject.invalidateSize()
-      }, 100)
     },
 
-    getLatLng (coordinates = [undefined, undefined]) {
-      const [lat, lng] = coordinates
+    closeMap () {
+      this.map.show = false
+    },
 
-      if (lat && lng) {
-        return latLng(lat, lng)
+    placeMarker (e, index = this.localValueIndex, map = true) {
+      const { lat = 0, lng = 0 } = e.latlng || {}
+      const coords = {
+        coordinates: [
+          Math.round(lat * 1e7) / 1e7,
+          Math.round(lng * 1e7) / 1e7,
+        ],
       }
-    },
-
-    placeMarker (e) {
-      let { lat = 0, lng = 0 } = e.latlng || {}
-      lat = Math.round(lat * 1e7) / 1e7
-      lng = Math.round(lng * 1e7) / 1e7
 
       if (this.field.isMulti) {
-        this.localValue.push({ coordinates: [lat, lng] })
+        if (index >= 0) {
+          map ? this.map.value.splice(index, 1, coords) : this.localValue.splice(index, 1, coords)
+        } else {
+          map ? this.map.value.push(coords) : this.localValue.push(coords)
+        }
       } else {
-        this.localValue = { coordinates: [lat, lng] }
+        map ? this.map.value = coords : this.localValue = coords
       }
     },
 
-    removeMarker (i) {
+    removeMarker ({ index }) {
       if (this.field.isMulti) {
-        this.localValue.splice(i, 1)
+        this.map.value.splice(index, 1)
       } else {
-        this.localValue = { coordinates: [] }
+        this.map.value = { coordinates: [] }
       }
+    },
+
+    saveMapValue () {
+      this.localValue = this.map.value
+      this.closeMap()
+    },
+
+    useCurrentLocation (index) {
+      try {
+        if (!navigator.geolocation) {
+          this.toastErrorHandler(this.$t('notification:field-geometry.geolocationErrors.notSupported'))()
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          ({ coords }) => {
+            const latlng = { lat: coords.latitude, lng: coords.longitude }
+            this.placeMarker({ latlng }, index, false)
+          },
+          error => {
+            switch (error.code) {
+              case error.PERMISSION_DENIED:
+                this.toastErrorHandler(this.$t('notification:field-geometry.geolocationErrors.permissionDenied'))()
+                break
+              case error.POSITION_UNAVAILABLE:
+                this.toastErrorHandler(this.$t('notification:field-geometry.geolocationErrors.positionUnavailable'))()
+                break
+              case error.TIMEOUT:
+                this.toastErrorHandler(this.$t('notification:field-geometry.geolocationErrors.timeout'))()
+                break
+              default:
+                this.toastErrorHandler(this.$t('notification:field-geometry.geolocationErrors.unknownError'))()
+                break
+            }
+          },
+        )
+      } catch (error) {
+        this.toastErrorHandler(this.$t('notification:field-geometry.geolocationErrors.errorOccurred'))()
+      }
+    },
+
+    onGeoSearchError () {
+      this.toastErrorHandler(this.$t('notification:field-geometry.geolocationErrors.locationSearchFailed'))()
+    },
+
+    setDefaultValues () {
+      this.localValue = undefined
+      this.localValueIndex = undefined
+      this.map = {}
     },
   },
 }

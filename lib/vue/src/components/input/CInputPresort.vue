@@ -1,67 +1,76 @@
 <template>
-  <div>
-    <draggable
+  <c-form-table-wrapper
+    :labels="{ addButton: labels.addButton }"
+    :hide-add-button="textInput"
+    @add-item="items.push({ field: undefined, descending: false })"
+  >
+    <b-form-group
       v-if="!textInput"
-      :list.sync="items"
-      group="sort"
-      handle=".grab"
+      :label="labels.title"
+       label-class="text-primary"
     >
-      <b-form-row
-        v-for="(column, index) in items"
-        :key="index"
-        class="mb-1"
+      <b-table-simple
+        borderless
+        small
+        responsive="lg"
+        class="mb-0"
       >
-        <b-col
-          cols="1"
-          class="d-flex align-items-center justify-content-center"
+        <draggable
+          :list.sync="items"
+          group="sort"
+          handle=".grab"
+          tag="tbody"
         >
-          <font-awesome-icon
-            :icon="['fas', 'bars']"
-            class="grab text-grey"
-          />
-        </b-col>
-
-        <b-col
-          cols="5"
-        >
-          <b-form-select
-            v-model="column.field"
-            :options="availableFields"
-            text-field="label"
-            value-field="name"
-            class="rounded"
+          <tr
+            v-for="(column, index) in items"
+            :key="index"
           >
-            <template #first>
-              <b-form-select-option
-                :value="undefined"
-                disabled
-              >
-                {{ labels.none }}
-              </b-form-select-option>
-            </template>
-          </b-form-select>
-        </b-col>
-
-        <b-col
-          cols="6"
-          class="d-flex align-items-center justify-content-around"
-        >
-          <b-form-radio-group
-            v-model="column.descending"
-            :options="sortDirections"
-            buttons
-            size="sm"
-            button-variant="outline-primary"
-          />
-          <c-input-confirm
-            variant="link"
-            size="lg"
-            button-class="text-dark px-0"
-            @confirmed="items.splice(index, 1)"
-          />
-        </b-col>
-      </b-form-row>
-    </draggable>
+            <td
+              class="grab text-center align-middle"
+              style="width: 40px;"
+            >
+              <font-awesome-icon
+                :icon="['fas', 'bars']"
+                class="text-secondary"
+              />
+            </td>
+            <td
+              class="align-middle"
+              style="min-width: 250px;"
+            >
+              <c-input-select
+                v-model="column.field"
+                :options="availableFields"
+                :reduce="o => o.name"
+                :placeholder="labels.none"
+                class="rounded"
+              />
+            </td>
+            <td
+              class="text-center align-middle"
+              style="min-width: 200px;"
+            >
+              <b-form-radio-group
+                v-model="column.descending"
+                :options="sortDirections"
+                buttons
+                button-variant="outline-primary"
+                class="bg-white"
+              />
+            </td>
+            <td
+              class="align-middle text-right"
+              style="min-width: 80px; width: 80px;"
+            >
+              <c-input-confirm
+                show-icon
+                @confirmed="items.splice(index, 1)"
+              />
+            </td>
+          </tr>
+        </draggable>
+      </b-table-simple>
+    </b-form-group>
 
     <div
       v-else
@@ -76,24 +85,10 @@
     </div>
 
     <div
-      class="d-flex align-items-center"
+      v-if="allowTextInput"
+      class="d-flex align-items-center mt-1"
     >
       <b-button
-        v-if="!textInput"
-        variant="link"
-        class="d-flex align-items-center px-0 text-decoration-none"
-        @click="items.push({ field: undefined, descending: false })"
-      >
-        <font-awesome-icon
-          :icon="['fas', 'plus']"
-          size="sm"
-          class="mr-1"
-        />
-        {{ labels.add }}
-      </b-button>
-
-      <b-button
-        v-if="allowTextInput"
         variant="link"
         size="sm"
         class="text-decoration-none ml-auto"
@@ -102,15 +97,19 @@
         {{ labels.toggleInput }}
       </b-button>
     </div>
-  </div>
+  </c-form-table-wrapper>
 </template>
 
 <script>
 import Draggable from 'vuedraggable'
+import CInputSelect from './CInputSelect.vue'
+import CFormTableWrapper from '../wrapper/CFormTableWrapper.vue'
 
 export default {
   components: {
     Draggable,
+    CInputSelect,
+    CFormTableWrapper,
   },
 
   props: {
@@ -204,6 +203,17 @@ export default {
           }).join(','))
         }
       },
+    },
+  },
+
+  beforeDestroy () {
+    this.setDefaultValues()
+  },
+
+  methods: {
+    setDefaultValues () {
+      this.items = []
+      this.textInput = false
     },
   },
 }

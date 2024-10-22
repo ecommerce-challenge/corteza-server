@@ -23,6 +23,8 @@ import {
   faSync,
   faEye,
   faKey,
+  faAngleUp,
+  faAngleDown,
   faAngleDoubleLeft,
   faAngleRight,
   faAngleLeft,
@@ -47,6 +49,9 @@ import {
   faQuestion,
   faStamp,
   faInfoCircle,
+  faEllipsisV,
+  faTrashRestore,
+  faLocationArrow,
 } from '@fortawesome/free-solid-svg-icons'
 
 import {
@@ -55,6 +60,7 @@ import {
   faQuestionCircle,
   faUser,
   faTrashAlt,
+  faEdit,
 } from '@fortawesome/free-regular-svg-icons'
 
 library.add(
@@ -111,4 +117,10 @@ library.add(
   faQuestion,
   faStamp,
   faInfoCircle,
+  faEllipsisV,
+  faTrashRestore,
+  faEdit,
+  faLocationArrow,
+  faAngleUp,
+  faAngleDown
 )

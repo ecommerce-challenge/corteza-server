@@ -1,6 +1,6 @@
 <template>
   <div
-    class="app-selector d-flex flex-column h-100"
+    class="app-selector d-flex flex-column h-100 mt-3"
   >
     <div class="d-flex justify-content-center align-items-center">
       <b-img
@@ -45,9 +45,8 @@
               :key="app.applicationID"
               cols="12"
               sm="6"
-              md="6"
-              lg="4"
-              xl="3"
+              md="4"
+              lg="3"
               class="p-0 mb-3 mt-1"
               :data-v-onboarding="getStepName(app.unify.url)"
             >
@@ -78,6 +77,7 @@
                   :data-test-id="app.name"
                   :disabled="!app.enabled"
                   :href="app.unify.url"
+                  :target="openAppInNewTab(app.unify.url)"
                   :style="[{ cursor: `${app.enabled ? 'pointer': canCreateApplication ? 'grab' : 'default'}` }]"
                   class="stretched-link"
                 />
@@ -99,34 +99,12 @@
         </div>
       </b-container>
     </div>
-
-    <portal
-      to="topbar-help-dropdown"
-    >
-      <b-dropdown-item
-        data-test-id="dropdown-helper-tour"
-        @click="$refs.tour.onStartClick()"
-      >
-        {{ $t('start-tour') }}
-      </b-dropdown-item>
-    </portal>
-
-    <tour-start
-      @start="startTour"
-    />
-
-    <tour
-      ref="tour"
-      name="app-list"
-      :steps="filteredSteps"
-    />
   </div>
 </template>
 <script>
 import { mapGetters, mapActions } from 'vuex'
 import Draggable from 'vuedraggable'
-import { components, url } from '@cortezaproject/corteza-vue'
-const { Tour, TourStart, CInputSearch } = components
+import { url } from '@cortezaproject/corteza-vue'
 
 export default {
   i18nOptions: {
@@ -135,9 +113,6 @@ export default {
 
   components: {
     Draggable,
-    Tour,
-    TourStart,
-    CInputSearch,
   },
 
   props: {
@@ -253,10 +228,6 @@ export default {
       await this.reorderApp(applicationIDs)
     },
 
-    startTour () {
-      this.$refs.tour.onStart()
-    },
-
     logoUrl (app) {
       if (!app.unify.logo) {
         return 'applications/default-app.png'
@@ -275,13 +246,17 @@ export default {
       // Provisioned app logos
       return app.unify.logo
     },
+
+    openAppInNewTab (route) {
+      return !route.includes('jitsi') ? '' : '_blank'
+    },
   },
 }
 </script>
 <style lang="scss" scoped>
 .app-selector {
   .logo {
-    max-height: 25vh;
+    max-height: 20vh;
     max-width: 500px;
     width: auto;
   }
@@ -325,7 +300,7 @@ export default {
     background-color: transparent;
     border: none;
     .star-icon {
-      fill: $warning;
+      fill: var(--warning);
       width: 1.2rem;
       height: 1.2rem;
     }

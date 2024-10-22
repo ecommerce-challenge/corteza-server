@@ -1,89 +1,54 @@
 <template>
   <b-card
-    class="shadow-sm"
     data-test-id="card-application-info"
-    header-bg-variant="white"
-    footer-bg-variant="white"
+    header-class="border-bottom"
+    footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
+    class="shadow-sm"
   >
     <b-form
       @submit.prevent="$emit('submit', application)"
     >
-      <b-form-group
-        v-if="application.applicationID"
-        :label="$t('id')"
-        label-cols="2"
-      >
-        <b-form-input
-          v-model="application.applicationID"
-          data-test-id="input-application-id"
-          plaintext
-          disabled
-        />
-      </b-form-group>
-
-      <b-form-group
-        :label="$t('name')"
-        label-cols="2"
-      >
-        <b-form-input
-          v-model="application.name"
-          data-test-id="input-name"
-          :state="nameState"
-          required
-        />
-      </b-form-group>
-
-      <b-form-group
-        label-cols="2"
-        :class="{ 'mb-0': !application.applicationID }"
-      >
-        <b-form-checkbox
-          v-model="application.enabled"
-          data-test-id="checkbox-enabled"
+      <b-row>
+        <b-col
+          cols="12"
+          lg="6"
         >
-          {{ $t('enabled') }}
-        </b-form-checkbox>
-      </b-form-group>
+          <b-form-group
+            :label="$t('name')"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="application.name"
+              data-test-id="input-name"
+              :state="nameState"
+              required
+            />
+          </b-form-group>
+        </b-col>
 
-      <b-form-group
-        v-if="application.updatedAt"
-        :label="$t('updatedAt')"
-        label-cols="2"
-      >
-        <b-form-input
-          data-test-id="input-updated-at"
-          :value="application.updatedAt | locFullDateTime"
-          plaintext
-          disabled
-        />
-      </b-form-group>
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('enabled')"
+            :class="{ 'mb-0': !application.applicationID }"
+            label-class="text-primary"
+          >
+            <c-input-checkbox
+              v-model="application.enabled"
+              data-test-id="checkbox-enabled"
+              :labels="checkboxLabel"
+              switch
+            />
+          </b-form-group>
+        </b-col>
+      </b-row>
 
-      <b-form-group
-        v-if="application.deletedAt"
-        :label="$t('deletedAt')"
-        label-cols="2"
-      >
-        <b-form-input
-          data-test-id="input-deleted-at"
-          :value="application.deletedAt | locFullDateTime"
-          plaintext
-          disabled
-        />
-      </b-form-group>
-
-      <b-form-group
-        v-if="application.createdAt"
-        :label="$t('createdAt')"
-        label-cols="2"
-        class="mb-0"
-      >
-        <b-form-input
-          data-test-id="input-created-at"
-          :value="application.createdAt | locFullDateTime"
-          plaintext
-          disabled
-        />
-      </b-form-group>
+      <c-system-fields
+        :id="application.applicationID"
+        :resource="application"
+      />
 
       <!--
         include hidden input to enable
@@ -97,35 +62,36 @@
     </b-form>
 
     <template #header>
-      <h3 class="m-0">
+      <h4 class="m-0">
         {{ $t('title') }}
-      </h3>
+      </h4>
     </template>
 
     <template #footer>
-      <c-submit-button
-        class="float-right"
-        :processing="processing"
-        :success="success"
-        :disabled="saveDisabled"
-        @submit="$emit('submit', application)"
-      />
-
-      <confirmation-toggle
+      <c-input-confirm
         v-if="application && application.applicationID && application.canDeleteApplication"
         :data-test-id="deleteButtonStatusCypressId"
+        variant="danger"
+        size="md"
         @confirmed="$emit('delete')"
       >
         {{ getDeleteStatus }}
-      </confirmation-toggle>
+      </c-input-confirm>
+
+      <c-button-submit
+        :disabled="saveDisabled"
+        :processing="processing"
+        :success="success"
+        :text="$t('admin:general.label.submit')"
+        class="ml-auto"
+        @submit="$emit('submit', application)"
+      />
     </template>
   </b-card>
 </template>
 
 <script>
 import { NoID } from '@cortezaproject/corteza-js'
-import ConfirmationToggle from 'corteza-webapp-admin/src/components/ConfirmationToggle'
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
 
 export default {
   name: 'CApplicationEditorInfo',
@@ -133,11 +99,6 @@ export default {
   i18nOptions: {
     namespaces: 'system.applications',
     keyPrefix: 'editor.info',
-  },
-
-  components: {
-    ConfirmationToggle,
-    CSubmitButton,
   },
 
   props: {
@@ -160,6 +121,15 @@ export default {
       type: Boolean,
       required: true,
     },
+  },
+
+  data () {
+    return {
+      checkboxLabel: {
+        on: this.$t('general:label.general.yes'),
+        off: this.$t('general:label.general.no'),
+      },
+    }
   },
 
   computed: {

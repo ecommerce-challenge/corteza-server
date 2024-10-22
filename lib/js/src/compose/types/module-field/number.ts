@@ -11,6 +11,7 @@ interface Threshold {
 }
 
 interface NumberOptions extends Options {
+  presetFormat: string;
   format: string;
   prefix: string;
   suffix: string;
@@ -29,6 +30,7 @@ interface NumberOptions extends Options {
 
 const defaults = (): Readonly<NumberOptions> => Object.freeze({
   ...defaultOptions(),
+  presetFormat: 'custom',
   precision: 3,
   multiDelimiter: '\n',
   display: 'number', // Either number or progress (progress bar)
@@ -61,7 +63,7 @@ export class ModuleFieldNumber extends ModuleField {
     if (!o) return
     super.applyOptions(o)
 
-    Apply(this.options, o, String, 'format', 'prefix', 'suffix', 'multiDelimiter', 'display', 'variant')
+    Apply(this.options, o, String, 'format', 'prefix', 'suffix', 'multiDelimiter', 'display', 'variant', 'presetFormat')
     Apply(this.options, o, Number, 'precision', 'min', 'max')
     Apply(this.options, o, Boolean, 'showValue', 'showRelative', 'showProgress', 'animated')
 
@@ -70,9 +72,11 @@ export class ModuleFieldNumber extends ModuleField {
     }
   }
 
-  formatValue (value: string): string {
+  formatValue (value: string, format: string): string {
     const o = this.options
     let n: number
+
+    format = o.presetFormat === 'custom' ? o.format : o.presetFormat
 
     switch (typeof value) {
       case 'string':
@@ -84,14 +88,18 @@ export class ModuleFieldNumber extends ModuleField {
       default:
         n = 0
     }
+
     let out = `${n}`
-    if (o.format && o.format.length > 0) {
-      out = numeral(n).format(o.format)
+
+    if (format === 'accounting') {
+      out = fmt.accountingNumber(n)
+    } else if (format && format.length > 0) {
+      out = numeral(n).format(format)
     } else {
       out = fmt.number(n)
     }
 
-    return '' + o.prefix + out + o.suffix
+    return '' + o.prefix + (out || n) + o.suffix
   }
 }
 

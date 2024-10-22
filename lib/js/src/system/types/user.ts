@@ -11,6 +11,11 @@ interface PartialUser extends Partial<Omit<User, 'createdAt' | 'updatedAt' | 'de
 interface UserMeta {
   preferredLanguage?: string;
   securityPolicy?: SecurityPolicy;
+  avatarID?: string;
+  avatarKind?: string;
+  avatarColor?: string;
+  avatarBgColor?: string;
+  theme?: string;
 }
 
 interface SecurityPolicy {
@@ -38,6 +43,11 @@ export class User {
         enforcedTOTP: false,
       },
     },
+    avatarID: NoID,
+    avatarKind: '',
+    avatarColor: '',
+    avatarBgColor: '',
+    theme: '',
   }
 
   public canGrant = false
@@ -97,5 +107,30 @@ export class User {
       this.email,
       this.userID,
     ].join(' ').toLocaleLowerCase()
+  }
+
+  clone (): User {
+    return new User(JSON.parse(JSON.stringify(this)))
+  }
+
+  properties (): string[] {
+    return [
+      'userID',
+      'handle',
+      'username',
+      'email',
+      'name',
+      'emailConfirmed',
+      'labels',
+      'meta',
+      'canGrant',
+      'canUpdateUser',
+      'canDeleteUser',
+      'createdAt',
+      'updatedAt',
+      'deletedAt',
+      'suspendedAt',
+      'roles',
+    ]
   }
 }

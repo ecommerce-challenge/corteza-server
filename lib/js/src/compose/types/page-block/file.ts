@@ -7,24 +7,22 @@ interface Options {
   mode: string;
   attachments: string[];
   hideFileName: boolean;
-  height?: number;
-  width?: number;
-  maxHeight?: number;
-  maxWidth?: number;
-  borderRadius?: number;
-  margin?: number;
-  backgroundColor?: string;
+  height: string;
+  width: string;
+  maxHeight: string;
+  maxWidth: string;
+  borderRadius: string;
+  margin: string;
+  backgroundColor: string;
   magnifyOption: string;
+  clickToView?: boolean;
+  enableDownload?: boolean;
 }
 
 const PageBlockFileDefaultMode = 'list'
 const PageBlockFileModes = [
   // list of attachments, no preview
   'list',
-  // grid of icons
-  'grid',
-  // single (first) image/file, show preview
-  'single',
   // list of all images/files, show preview
   'gallery',
 ]
@@ -33,14 +31,16 @@ const defaults: Readonly<Options> = Object.freeze({
   mode: PageBlockFileDefaultMode,
   attachments: [],
   hideFileName: false,
-  height: undefined,
-  width: undefined,
-  maxHeight: undefined,
-  maxWidth: undefined,
-  borderRadius: undefined,
-  margin: undefined,
-  backgroundColor: undefined,
-  magnifyOption: ''
+  height: '',
+  width: '',
+  maxHeight: '',
+  maxWidth: '',
+  borderRadius: '',
+  margin: 'auto',
+  backgroundColor: '#FFFFFF00',
+  magnifyOption: '',
+  clickToView: true,
+  enableDownload: true,
 })
 
 export class PageBlockFile extends PageBlock {
@@ -60,11 +60,17 @@ export class PageBlockFile extends PageBlock {
       this.options.attachments = o.attachments
     }
 
-    Apply(this.options, o, Boolean, 'hideFileName')
-    Apply(this.options, o, String, 'backgroundColor', 'magnifyOption')
-    Apply(this.options, o, Number, 'height', 'width', 'maxHeight', 'maxWidth', 'borderRadius', 'margin')
+    Apply(this.options, o, Boolean, 'hideFileName', 'clickToView', 'enableDownload')
+    Apply(this.options, o, String, 'height', 'width', 'maxHeight', 'maxWidth', 'borderRadius', 'margin', 'backgroundColor', 'magnifyOption')
 
     if (o.mode) {
+      // Legacy
+      if (o.mode === 'single') {
+        o.mode = 'gallery'
+      } else if (o.mode === 'grid') {
+        o.mode = 'list'
+      }
+
       if (PageBlockFileModes.includes(o.mode)) {
         this.options.mode = o.mode
       } else {

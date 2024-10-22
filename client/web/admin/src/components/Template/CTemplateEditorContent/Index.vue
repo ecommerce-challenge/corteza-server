@@ -18,10 +18,10 @@
       lg="9"
     >
       <b-card
+        body-class="p-0"
+        header-class="d-flex align-items-center border-bottom"
+        footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
         class="shadow-sm"
-        header-bg-variant="white"
-        header-class="d-flex align-items-center"
-        footer-bg-variant="white"
       >
         <component
           :is="editor"
@@ -29,9 +29,9 @@
         />
 
         <template #header>
-          <h3 class="m-0">
+          <h4 class="m-0">
             {{ $t('title') }}
-          </h3>
+          </h4>
           <b-badge
             v-if="template.partial"
             data-test-id="badge-partial-template"
@@ -43,11 +43,12 @@
         </template>
 
         <template #footer>
-          <c-submit-button
+          <c-button-submit
             :disabled="!canCreate"
-            class="float-right"
             :processing="processing"
             :success="success"
+            :text="$t('admin:general.label.submit')"
+            class="ml-auto"
             @submit="$emit('submit', template)"
           />
         </template>
@@ -56,59 +57,48 @@
       <!-- Preview configuration -->
       <b-card
         v-if="!template.partial"
+        body-class="p-0"
+        header-class="border-bottom"
+        footer-class="border-top d-flex justify-content-end flex-wrap flex-fill-child gap-1"
         class="shadow-sm mt-3"
-        header-bg-variant="white"
-        footer-bg-variant="white"
       >
         <!-- Partial templates can't be previewed -->
-        <ace-editor
+        <c-ace-editor
+          v-model="previewData"
           data-test-id="template-preview-output"
-          :font-size="14"
-          :show-print-margin="true"
-          :show-gutter="true"
-          :highlight-active-line="true"
-          class="mt-1"
-          width="100%"
-          height="500px"
-          mode="json"
-          theme="chrome"
           name="preview-data"
-          :on-change="(v) => previewData = v"
-          :value="previewData"
-          :editor-props="{
-            $blockScrolling: false,
-          }"
+          lang="json"
+          height="500px"
+          show-line-numbers
+          highlight-active-line
+          show-print-margin
+          :border="false"
         />
 
         <template #header>
-          <h3 class="m-0">
+          <h4 class="m-0">
             {{ $t('preview.title') }}
-          </h3>
+          </h4>
         </template>
 
         <template #footer>
-          <div
-            class="float-right"
+          <b-btn
+            v-if="canPreviewHTML"
+            data-test-id="button-preview-html-template"
+            variant="light"
+            @click="openPreview('html')"
           >
-            <b-btn
-              v-if="canPreviewHTML"
-              data-test-id="button-preview-html-template"
-              variant="light"
-              class="mr-2"
-              @click="openPreview('html')"
-            >
-              {{ $t('preview.html') }}
-            </b-btn>
+            {{ $t('preview.html') }}
+          </b-btn>
 
-            <b-btn
-              v-if="canPreviewPDF"
-              data-test-id="button-preview-pdf-template"
-              variant="light"
-              @click="openPreview('pdf')"
-            >
-              {{ $t('preview.pdf') }}
-            </b-btn>
-          </div>
+          <b-btn
+            v-if="canPreviewPDF"
+            data-test-id="button-preview-pdf-template"
+            variant="light"
+            @click="openPreview('pdf')"
+          >
+            {{ $t('preview.pdf') }}
+          </b-btn>
         </template>
       </b-card>
     </b-col>
@@ -117,21 +107,18 @@
 
 <script>
 import listHelpers from 'corteza-webapp-admin/src/mixins/listHelpers'
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
 import EditorToolbox from './EditorToolbox'
 import EditorTextHtml from './EditorTextHtml'
 import EditorTextPlain from './EditorTextPlain'
 import EditorUnsupported from './EditorUnsupported'
-import { Ace as AceEditor } from 'vue2-brace-editor'
+import { components } from '@cortezaproject/corteza-vue'
 
-import 'brace/mode/json'
-import 'brace/theme/chrome'
+const { CAceEditor } = components
 
 export default {
 
   components: {
-    CSubmitButton,
-    AceEditor,
+    CAceEditor,
     EditorToolbox,
   },
   mixins: [

@@ -35,6 +35,7 @@
           :items="revisions"
           :fields="columns"
           sticky-header
+          hover
           class="flex-fill mh-100 mb-0 w-100 rounded"
         >
           <template #cell(timestamp)="row">
@@ -52,15 +53,14 @@
               {{ row.detailsShowing ? '&times;' : $t(`show-changes`, { count: row.item.changes.length }) }}
             </b-button>
           </template>
+
           <template #row-details="row">
             <div
               class="pl-5"
             >
-              <b-table-simple
-                class="bg-light"
-              >
+              <b-table-simple small>
                 <b-thead>
-                  <b-tr>
+                  <b-tr class="text-primary">
                     <b-th>{{ $t('changes.columns.field.label') }}</b-th>
                     <b-th>{{ $t('changes.columns.old-value.label') }}</b-th>
                     <b-th>{{ $t('changes.columns.new-value.label') }}</b-th>
@@ -93,11 +93,9 @@
         <div
           v-if="!revisions.length"
           class="position-absolute text-center mt-5 d-print-none"
-          style="left: 0; right: 0;"
+          style="left: 0; right: 0; bottom: calc(50% - 33px);"
         >
-          <p
-            class="mt-3"
-          >
+          <p class="mb-0 mx-2">
             {{ $t('errors.no-revisions') }}
           </p>
         </div>
@@ -152,7 +150,7 @@ export default {
       columns: [
         {
           key: 'revision',
-          label: '',
+          label: '#',
           thClass: 'border-top-0',
           class: 'text-center',
         },
@@ -176,7 +174,7 @@ export default {
           key: 'adt',
           label: '',
           thClass: 'border-top-0',
-          class: 'nowrap text-right',
+          class: 'text-nowrap text-right',
         },
       ],
     }
@@ -201,7 +199,7 @@ export default {
   },
 
   watch: {
-    'record.recordID': {
+    'record.updatedAt': {
       immediate: true,
       handler () {
         this.refresh()
@@ -216,11 +214,26 @@ export default {
     },
   },
 
+  beforeDestroy () {
+    this.setDefaultValues()
+    this.destroyEvents()
+  },
+
   created () {
     this.refreshBlock(this.refresh)
   },
 
+  mounted () {
+    this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
+  },
+
   methods: {
+    refreshOnRelatedRecordsUpdate ({ moduleID }) {
+      if (this.module.moduleID === moduleID) {
+        this.refresh()
+      }
+    },
+
     async loadRevisions () {
       if (this.revisionsDisabledOnModule) {
         return
@@ -233,19 +246,34 @@ export default {
       const { $ComposeAPI, $SystemAPI } = this
 
       this.processing = true
+
       return this.block.fetch($ComposeAPI, this.record)
         .then(set => {
           this.revisions = set
         })
         .then(() => this.block.expandReferences({ $ComposeAPI, $SystemAPI }, this.module, this.revisions))
         .finally(() => {
-          this.processing = false
+          setTimeout(() => {
+            this.processing = false
+          }, 300)
         })
     },
 
     refresh () {
       this.loadedRevisions = true
       this.loadRevisions()
+    },
+
+    setDefaultValues () {
+      this.error = null
+      this.processing = false
+      this.loadedRevisions = false
+      this.revisions = []
+      this.columns = []
+    },
+
+    destroyEvents () {
+      this.$root.$off('module-records-updated', this.refreshOnRelatedRecordsUpdate)
     },
   },
 }

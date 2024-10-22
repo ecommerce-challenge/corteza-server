@@ -1,8 +1,9 @@
 <template>
-  <div>
+  <div class="d-flex">
     <b-button
       variant="light"
       size="lg"
+      class="flex-fill"
       @click="show = true"
     >
       {{ $t('general:import.label') }}
@@ -14,6 +15,7 @@
       size="lg"
       :title="$t('general:import.json')"
       ok-only
+      no-fade
       class="d-none"
       @ok="$emit('import', workflows)"
     >

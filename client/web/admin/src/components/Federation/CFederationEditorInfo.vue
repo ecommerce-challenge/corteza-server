@@ -1,119 +1,84 @@
 <template>
   <b-card
+    header-class="border-bottom"
+    footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
     class="shadow-sm"
-    header-bg-variant="white"
-    footer-bg-variant="white"
   >
+    <template #header>
+      <h4 class="m-0">
+        {{ $t('title') }}
+      </h4>
+    </template>
+
     <b-form
       @submit.prevent="$emit('submit', node)"
     >
-      <b-form-group
-        :label="$t('name')"
-        label-cols="2"
-      >
-        <b-form-input
-          v-model="node.name"
-          :state="nameState"
-        />
-      </b-form-group>
-
-      <b-form-group
-        :label="$t('url')"
-        label-cols="2"
-      >
-        <b-form-input
-          v-model="node.baseURL"
-          placeholder="https://example.com/federation"
-          type="url"
-          :state="urlState"
-        />
-      </b-form-group>
-
-      <b-form-group
-        :label="$t('email')"
-        label-cols="2"
-      >
-        <b-form-input
-          v-model="node.contact"
-          placeholder="email@example.com"
-          type="email"
-        />
-      </b-form-group>
-
-      <!-- <b-form-group
-        :label="$t('tags.label')"
-        label-cols="2"
-      >
-        <b-form-tags
-          v-model="node.tags"
-          tag-variant="warning"
-          tag-class="rounded"
-          input-class="h4"
-          :placeholder="$t('tags.placeholder')"
-          size="lg"
-          class="py-1 px-2"
-        />
-      </b-form-group> -->
-
-      <b-form-group
-        v-if="node.status"
-        :label="$t('status')"
-        label-cols="2"
-      >
-        <b-form-input
-          v-model="node.status"
-          plaintext
-          disabled
-        />
-      </b-form-group>
-
-      <!-- <b-form-group
-        label-cols="2"
-        :class="{ 'mb-0': !node.nodeID }"
-      >
-        <b-form-checkbox
-          v-model="node.enabled"
+      <b-row>
+        <b-col
+          cols="12"
+          lg="6"
         >
-          {{ $t('enabled') }}
-        </b-form-checkbox>
-      </b-form-group> -->
+          <b-form-group
+            :label="$t('name')"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="node.name"
+              :state="nameState"
+            />
+          </b-form-group>
+        </b-col>
 
-      <b-form-group
-        v-if="node.updatedAt"
-        :label="$t('updatedAt')"
-        label-cols="2"
-      >
-        <b-form-input
-          :value="node.updatedAt | locFullDateTime"
-          plaintext
-          disabled
-        />
-      </b-form-group>
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('url')"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="node.baseURL"
+              placeholder="https://example.com/federation"
+              type="url"
+              :state="urlState"
+            />
+          </b-form-group>
+        </b-col>
 
-      <b-form-group
-        v-if="node.deletedAt"
-        :label="$t('deletedAt')"
-        label-cols="2"
-      >
-        <b-form-input
-          :value="node.deletedAt | locFullDateTime"
-          plaintext
-          disabled
-        />
-      </b-form-group>
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            :label="$t('email')"
+            label-class="text-primary"
+          >
+            <b-form-input
+              v-model="node.contact"
+              placeholder="email@example.com"
+              type="email"
+            />
+          </b-form-group>
+        </b-col>
 
-      <b-form-group
-        v-if="node.createdAt"
-        :label="$t('createdAt')"
-        label-cols="2"
-        class="mb-0"
-      >
-        <b-form-input
-          :value="node.createdAt | locFullDateTime"
-          plaintext
-          disabled
-        />
-      </b-form-group>
+        <b-col
+          cols="12"
+          lg="6"
+        >
+          <b-form-group
+            v-if="node.status"
+            :label="$t('status')"
+            label-class="text-primary"
+          >
+            {{ node.status }}
+          </b-form-group>
+        </b-col>
+      </b-row>
+
+      <c-system-fields
+        :resource="node"
+      />
 
       <!--
         include hidden input to enable
@@ -126,35 +91,30 @@
       >
     </b-form>
 
-    <template #header>
-      <h3 class="m-0">
-        {{ $t('title') }}
-      </h3>
-    </template>
-
     <template #footer>
-      <c-submit-button
-        class="float-right"
-        :disabled="saveDisabled"
-        :processing="processing"
-        :success="success"
-        @submit="$emit('submit', node)"
-      />
-
-      <confirmation-toggle
+      <c-input-confirm
         v-if="node && node.nodeID"
+        variant="danger"
+        size="md"
         @confirmed="$emit('delete')"
       >
         {{ getDeleteStatus }}
-      </confirmation-toggle>
+      </c-input-confirm>
+
+      <c-button-submit
+        :disabled="saveDisabled"
+        :processing="processing"
+        :success="success"
+        :text="$t('admin:general.label.submit')"
+        class="ml-auto"
+        @submit="$emit('submit', node)"
+      />
     </template>
   </b-card>
 </template>
 
 <script>
 import { NoID } from '@cortezaproject/corteza-js'
-import ConfirmationToggle from 'corteza-webapp-admin/src/components/ConfirmationToggle'
-import CSubmitButton from 'corteza-webapp-admin/src/components/CSubmitButton'
 
 export default {
   name: 'CFederationEditorInfo',
@@ -162,11 +122,6 @@ export default {
   i18nOptions: {
     namespaces: 'federation.nodes',
     keyPrefix: 'editor.info',
-  },
-
-  components: {
-    ConfirmationToggle,
-    CSubmitButton,
   },
 
   props: {

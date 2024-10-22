@@ -10,7 +10,6 @@
       <b-button-group
         v-if="modulePage"
         size="sm"
-        class="mr-1"
       >
         <b-button
           variant="primary"
@@ -30,7 +29,7 @@
     </portal>
 
     <record-list-base
-      v-if="block && page"
+      v-if="block && page && module"
       :block="block"
       :page="page"
       :module="module"
@@ -57,16 +56,30 @@ export default {
     RecordListBase,
   },
 
+  props: {
+    namespace: {
+      type: Object,
+      required: false,
+      default: undefined,
+    },
+
+    moduleID: {
+      type: String,
+      required: false,
+      default: '',
+    },
+  },
+
   data () {
     return {
       block: undefined,
-      namespace: this.$attrs.namespace,
     }
   },
 
   computed: {
     ...mapGetters({
       getModuleByID: 'module/getByID',
+      recordPaginationUsable: 'ui/recordPaginationUsable',
     }),
 
     title () {
@@ -75,8 +88,8 @@ export default {
     },
 
     module () {
-      if (this.$attrs.moduleID) {
-        return this.getModuleByID(this.$attrs.moduleID)
+      if (this.moduleID) {
+        return this.getModuleByID(this.moduleID)
       } else {
         return undefined
       }
@@ -101,17 +114,33 @@ export default {
     },
   },
 
+  watch: {
+    moduleID: {
+      handler () {
+        if (this.module) {
+          const { meta = { ui: {} }, moduleID } = this.module || {}
+
+          let fields = ((meta.ui || {}).admin || {}).fields || []
+          fields = fields.length ? fields : [...this.module.fields.slice(0, 10), ...this.module.systemFields()]
+
+          this.block.options.moduleID = moduleID
+          this.block.options.fields = fields
+        }
+      },
+    },
+  },
+
   created () {
-    const { meta = { ui: {} } } = this.module || {}
+    const { meta = { ui: {} }, moduleID } = this.module || {}
 
     let fields = ((meta.ui || {}).admin || {}).fields || []
-    fields = fields.length ? fields : this.module.fields
+    fields = fields.length ? fields : [...this.module.fields.slice(0, 10), ...this.module.systemFields()]
 
     // Init block
-    this.block = new compose.PageBlockRecordList({
+    const block = new compose.PageBlockRecordList({
       blockIndex: 0,
       options: {
-        moduleID: this.$attrs.moduleID,
+        moduleID,
         fields,
         hideRecordReminderButton: true,
         hideRecordViewButton: true,
@@ -122,35 +151,58 @@ export default {
         perPage: 14,
         fullPageNavigation: true,
         showTotalCount: true,
+        showDeletedRecordsOption: true,
         presort: 'createdAt DESC',
+        enableRecordPageNavigation: true,
+        hideConfigureFieldsButton: false,
+        inlineRecordEditEnabled: true,
+        customFilterPresets: true,
       },
     })
 
-    // Set allrecords configuration
-    this.block.options = {
-      ...this.block.options,
+    block.options = {
+      ...block.options,
       allRecords: true,
       rowViewUrl: 'admin.modules.record.view',
       rowEditUrl: 'admin.modules.record.edit',
       rowCreateUrl: 'admin.modules.record.create',
     }
+
+    this.block = block
+
+    // If the page changed we need to clear the record pagination since its not relevant anymore
+    if (this.recordPaginationUsable) {
+      this.setRecordPaginationUsable(false)
+    } else {
+      this.clearRecordIDs()
+    }
+  },
+
+  beforeDestroy () {
+    this.setDefaultValues()
   },
 
   methods: {
     ...mapActions({
       updateModule: 'module/update',
+      setRecordPaginationUsable: 'ui/setRecordPaginationUsable',
+      clearRecordIDs: 'ui/clearRecordIDs',
     }),
 
     handleFieldsSave (fields = []) {
+      fields = fields.map((f) => f.fieldID)
+
       if (!this.module.meta.ui) {
         this.module.meta.ui = { admin: { fields } }
       } else {
         this.module.meta.ui.admin = { ...(this.module.meta.ui.admin || {}), fields }
       }
 
-      this.updateModule(this.module).then(() => {
-        this.toastSuccess(this.$t('notification:module.columns.saved'))
-      }).catch(this.toastErrorHandler(this.$t('notification:module.columns.saveFailed')))
+      this.updateModule(this.module)
+    },
+
+    setDefaultValues () {
+      this.block = undefined
     },
   },
 }

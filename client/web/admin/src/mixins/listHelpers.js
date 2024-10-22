@@ -10,12 +10,13 @@ export default {
       filter: {},
 
       pagination: {
-        limit: 10,
+        limit: 100,
         pageCursor: undefined,
         prevPage: '',
         nextPage: '',
         total: 0,
         page: 1,
+        incTotal: true,
       },
 
       // Used to save query when fetching for total if we came to the page with a pageCursor in URL
@@ -78,7 +79,7 @@ export default {
 
       /// To prevent extra list fetch, check if pageCursor is defined (not first page)
       const refresh = this.$route.query.pageCursor !== this.pagination.pageCursor
-      this.pagination = { limit, pageCursor, prevPage, nextPage, total, page }
+      this.pagination = { ...this.pagination, limit, pageCursor, prevPage, nextPage, total, page }
 
       // Sorting
       let { sortBy = this.sorting.sortBy, sortDesc = this.sorting.sortDesc, ...r2 } = r1
@@ -124,7 +125,7 @@ export default {
 
     encodeListParams () {
       const { sortBy, sortDesc } = this.sorting
-      const { limit, pageCursor } = this.pagination
+      const { limit, pageCursor, incTotal } = this.pagination
 
       const sort = sortBy ? `${sortBy} ${sortDesc ? 'DESC' : 'ASC'}` : undefined
 
@@ -133,7 +134,7 @@ export default {
         sort: pageCursor ? undefined : sort,
         ...this.filter,
         pageCursor,
-        incTotal: !pageCursor || this.tempQuery,
+        incTotal: incTotal && (!pageCursor || this.tempQuery),
       }
     },
 
@@ -196,6 +197,49 @@ export default {
 
     genericRowClass (item) {
       return { 'text-secondary': item && !!item.deletedAt }
+    },
+
+    handleRowClicked (item) {
+      this.$router.push({ name: this.editRoute, params: { [this.primaryKey]: item[this.primaryKey] } })
+    },
+
+    handleItemDelete ({ resource, resourceName, locale, api = 'system' }) {
+      this.incLoader()
+
+      const { deletedAt = '' } = resource
+      const method = deletedAt ? `${resourceName}Undelete` : `${resourceName}Delete`
+      const event = deletedAt ? 'undelete' : 'delete'
+      const toastLocale = locale || resourceName
+      const API = api === 'system' ? this.$SystemAPI : this.$AutomationAPI
+
+      API[method](resource)
+        .then(() => {
+          this.toastSuccess(this.$t(`notification:${toastLocale}.${event}.success`))
+          this.filterList()
+        })
+        .catch(this.toastErrorHandler(this.$t(`notification:${toastLocale}.${event}.error`)))
+        .finally(() => {
+          this.decLoader()
+        })
+    },
+
+    areActionsVisible ({ resource, conditions = [] }) {
+      const condition = conditions.some(c => {
+        if (!resource[c]) {
+          return false
+        }
+
+        return true
+      })
+      return condition
+    },
+
+    getActionText (r) {
+      return r.deletedAt ? this.$t('undelete') : this.$t('delete')
+    },
+
+    getActionIcon (r) {
+      return r.deletedAt ? ['fas', 'trash-restore'] : ['far', 'trash-alt']
     },
   },
 }

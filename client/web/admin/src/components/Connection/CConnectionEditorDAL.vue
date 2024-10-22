@@ -1,93 +1,93 @@
 <template>
   <b-card
+    header-class="border-bottom"
+    footer-class="border-top d-flex flex-wrap flex-fill-child gap-1"
     class="shadow-sm"
-    :title="$t('title')"
   >
-    <b-container
-      v-if="canManage"
+    <template #header>
+      <h4 class="m-0">
+        {{ $t('title') }}
+      </h4>
+    </template>
+
+    <b-row
+      v-if="issues.length"
     >
-      <b-row
-        v-if="issues.length"
-      >
-        <b-col
-          cols="12"
+      <b-col cols="12">
+        <b-form-group
+          :label="$t('connectivity-issues')"
+          label-class="text-primary"
         >
-          <label>{{ $t('connectivity-issues') }}</label>
           <b-alert
             v-for="issue in issues"
-            :key="issue"
+            :key="issue.issue"
             show
             variant="danger"
           >
-            {{ issue }}
+            {{ issue.issue }}
           </b-alert>
-        </b-col>
-      </b-row>
-      <b-row>
-        <b-col
-          cols="12"
-          lg="12"
+        </b-form-group>
+      </b-col>
+    </b-row>
+    <b-row>
+      <b-col cols="12">
+        <b-form-group
+          :label="$t('form.model-ident.label')"
+          :description="$t('form.model-ident.description', { interpolation: { prefix: '{{{', suffix: '}}}' } })"
+          label-class="text-primary"
         >
-          <b-form-group
-            :label="$t('form.model-ident.label')"
-            :description="$t('form.model-ident.description', { interpolation: { prefix: '{{{', suffix: '}}}' } })"
-          >
-            <b-form-input
-              v-model="dal.modelIdent"
-              :disabled="disabled"
-              :placeholder="$t('form.model-ident.placeholder')"
-            />
-          </b-form-group>
-        </b-col>
-      </b-row>
-      <b-row>
-        <b-col
-          cols="12"
-          lg="12"
+          <b-form-input
+            v-model="dal.modelIdent"
+            :disabled="disabled"
+            :placeholder="$t('form.model-ident.placeholder')"
+          />
+        </b-form-group>
+      </b-col>
+    </b-row>
+    <b-row>
+      <b-col cols="12">
+        <b-form-group
+          :label="$t('form.type.label')"
+          :description="$t('form.type.description')"
+          label-class="text-primary"
         >
-          <b-form-group
-            :label="$t('form.type.label')"
-            :description="$t('form.type.description')"
-          >
-            <b-form-input
-              v-model="dal.type"
-              :disabled="disabled"
-              :placeholder="$t('form.type.placeholder')"
-            />
-          </b-form-group>
-        </b-col>
-      </b-row>
-      <b-row>
-        <b-col
-          cols="12"
-          lg="12"
+          <b-form-input
+            v-model="dal.type"
+            :disabled="disabled"
+            :placeholder="$t('form.type.placeholder')"
+          />
+        </b-form-group>
+      </b-col>
+    </b-row>
+    <b-row>
+      <b-col cols="12">
+        <b-form-group
+          :label="$t('form.params.label')"
+          :description="$t('form.params.description')"
+          label-class="text-primary"
         >
-          <b-form-group
-            :label="$t('form.params.label')"
-            :description="$t('form.params.description')"
-          >
-            <b-form-textarea
-              v-model="paramsJson"
-              :disabled="disabled"
-              :class="paramsJsonEditorClass"
-              :placeholder="$t('form.params.placeholder')"
-              rows="5"
-              @blur="processParamsJSON"
-            />
-          </b-form-group>
-        </b-col>
-      </b-row>
-    </b-container>
-    <b-container
-      v-else
-    >
-      <b-alert
-        variant="warning"
-        show
-      >
-        {{ $t('no-access-warning') }}
-      </b-alert>
-    </b-container>
+          <b-form-textarea
+            v-model="paramsJson"
+            :disabled="disabled"
+            :class="paramsJsonEditorClass"
+            :placeholder="$t('form.params.placeholder')"
+            rows="5"
+            @blur="processParamsJSON"
+          />
+        </b-form-group>
+      </b-col>
+    </b-row>
+
+    <template #footer>
+      <c-button-submit
+        :disabled="disabled"
+        :processing="processing"
+        :success="success"
+        :text="$t('admin:general.label.submit')"
+        class="ml-auto"
+        @submit="$emit('submit')"
+      />
+    </template>
   </b-card>
 </template>
 
@@ -101,7 +101,6 @@ export default {
 
   props: {
     disabled: { type: Boolean, default: false },
-    canManage: { type: Boolean, default: false },
 
     dal: {
       type: Object,
@@ -111,6 +110,16 @@ export default {
     issues: {
       type: Array,
       default: () => ([]),
+    },
+
+    processing: {
+      type: Boolean,
+      value: false,
+    },
+
+    success: {
+      type: Boolean,
+      value: false,
     },
   },
 

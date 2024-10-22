@@ -19,7 +19,8 @@ export class FunnelChartOptions extends ChartOptions {
     }
   }
 
-  getChartConfiguration (dataframes: Array<FrameDefinition>) {
+  getChartConfiguration (dataframes: Array<FrameDefinition>, meta: any) {
+    const { themeVariables = {} } = meta
     const labels = this.getLabels(dataframes[0])
     const { data = [] } = this.getDatasets(dataframes[0], dataframes) || {}
     const colors = getColorschemeColors(this.colorScheme)
@@ -30,16 +31,20 @@ export class FunnelChartOptions extends ChartOptions {
         text: this.title,
         left: 'center',
         textStyle: {
+          fontFamily: themeVariables['font-regular'],
+          color: themeVariables.black,
           fontSize: 16,
         },
       },
       textStyle: {
-        fontFamily: 'Poppins-Regular',
+        fontFamily: themeVariables['font-regular'],
       },
       tooltip: {
         show: true,
         trigger: 'item',
-        formatter: '{b} : {c} ({d}%)',
+        formatter: (params: any) => {
+          return `${params.seriesName}<br>${params.marker}${params.name}<span style="float: right; margin-left: 20px">${params.value} (${params.percent}%)</span>`
+        },
         appendToBody: true,
       },
       legend: {
@@ -49,7 +54,15 @@ export class FunnelChartOptions extends ChartOptions {
         right: (this.legend.position.default ? undefined : this.legend.position.right) || undefined,
         bottom: (this.legend.position.default ? undefined : this.legend.position.bottom) || undefined,
         left: (this.legend.position.default ? this.legend.align || 'center' : this.legend.position.left) || 'auto',
-        orient: this.legend.orientation || 'horizontal'
+        orient: this.legend.orientation || 'horizontal',
+        textStyle: {
+          color: themeVariables.black,
+        },
+        pageTextStyle: {
+          color: themeVariables.black,
+        },
+        pageIconColor: themeVariables.black,
+        pageIconInactiveColor: themeVariables.light,
       },
       series: [
         {

@@ -8,6 +8,7 @@
         :sidebar-pinned="pinned"
         :settings="$Settings.get('ui.topbar', {})"
         :labels="{
+          appMenu: $t('appMenu'),
           helpForum: $t('help.forum'),
           helpDocumentation: $t('help.documentation'),
           helpFeedback: $t('help.feedback'),
@@ -16,6 +17,8 @@
           userSettingsProfile: $t('userSettings.profile'),
           userSettingsChangePassword: $t('userSettings.changePassword'),
           userSettingsLogout: $t('userSettings.logout'),
+          lightTheme: $t('themes.labels.light'),
+          darkTheme: $t('themes.labels.dark'),
         }"
       >
         <template #help-dropdown>
@@ -38,9 +41,7 @@
       :logo="logo"
     />
 
-    <c-prompts
-      :hide-toasts="!loaded"
-    />
+    <c-prompts />
   </div>
 </template>
 
@@ -103,7 +104,7 @@ export default {
       .then(() => {
         setTimeout(() => {
           this.loaded = true
-        }, 500)
+        }, 2000)
       })
   },
 

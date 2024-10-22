@@ -75,8 +75,8 @@
       </div>
 
       <div
-        ref="cc"
-        class="h-100"
+        :ref="`cc-${blockIndex}`"
+        class="d-flex flex-column flex-fill"
       >
         <div
           v-if="processing"
@@ -86,12 +86,13 @@
         </div>
 
         <full-calendar
-          v-show="show && !processing"
-          ref="fc"
+          v-show="!processing"
+          :ref="`fc-${blockIndex}`"
           :key="key"
           :height="getHeight()"
           :events="events"
           v-bind="config"
+          class="flex-fill"
           @eventClick="handleEventClick"
         />
       </div>
@@ -102,6 +103,7 @@
 <script>
 import moment from 'moment'
 import { mapGetters, mapActions } from 'vuex'
+import axios from 'axios'
 import base from './base'
 import FullCalendar from '@fullcalendar/vue'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -110,7 +112,7 @@ import listPlugin from '@fullcalendar/list'
 import { compose, NoID } from '@cortezaproject/corteza-js'
 import { BootstrapTheme } from '@fullcalendar/bootstrap'
 import { createPlugin } from '@fullcalendar/core'
-import { evaluatePrefilter } from 'corteza-webapp-compose/src/lib/record-filter'
+import { evaluatePrefilter, isFieldInFilter } from 'corteza-webapp-compose/src/lib/record-filter'
 
 /**
  * FullCalendar Corteza theme definition.
@@ -158,6 +160,8 @@ export default {
       },
 
       refreshing: false,
+
+      cancelTokenSource: axios.CancelToken.source(),
     }
   },
 
@@ -189,6 +193,7 @@ export default {
         // Handle event fetching when view/date-range changes
         datesRender: ({ view: { activeStart, activeEnd, title } = {} } = {}) => {
           this.loadEvents(moment(activeStart), moment(activeEnd))
+          // eslint-disable-next-line vue/no-side-effects-in-computed-properties
           this.title = title
         },
       }
@@ -208,18 +213,18 @@ export default {
   },
 
   watch: {
-    'block.options': {
+    options: {
       deep: true,
       handler () {
         this.updateSize()
+        this.refresh()
       },
     },
-    boundingRect: {
+
+    'block.xywh': {
       deep: true,
       handler () {
-        setTimeout(() => {
-          this.updateSize()
-        })
+        this.updateSize()
       },
     },
   },
@@ -229,16 +234,49 @@ export default {
     this.refreshBlock(this.refresh)
   },
 
+  mounted () {
+    this.createEvents()
+  },
+
+  beforeDestroy () {
+    this.setDefaultValues()
+    this.abortRequests()
+    this.destroyEvents()
+  },
+
   methods: {
     ...mapActions({
       findModuleByID: 'module/findByID',
     }),
 
-    async updateSize () {
-      this.show = false
+    createEvents () {
+      this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
+      this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
+    },
 
-      await this.$nextTick(() => {
-        this.show = true
+    refetchOnPrefilterValueChange ({ fieldName }) {
+      const { feeds } = this.options
+
+      if (feeds.some(({ options }) => isFieldInFilter(fieldName, options.prefilter))) {
+        this.refresh()
+      }
+    },
+
+    updateSize () {
+      this.$nextTick(() => {
+        this.api() && this.api().updateSize()
+      })
+    },
+
+    refreshOnRelatedRecordsUpdate ({ moduleID, notPageID }) {
+      this.options.feeds.forEach((feed) => {
+        const { moduleID: feedModuleID } = feed.options
+
+        if (feedModuleID) {
+          if (feedModuleID === moduleID && this.page.pageID !== notPageID) {
+            this.refresh()
+          }
+        }
       })
     },
 
@@ -259,7 +297,9 @@ export default {
 
     // Proxy to the FC API
     api () {
-      return this.$refs.fc.getApi()
+      if (this.$refs[`fc-${this.blockIndex}`]) {
+        return this.$refs[`fc-${this.blockIndex}`].getApi()
+      }
     },
 
     /**
@@ -297,30 +337,34 @@ export default {
                 if (ff.options.prefilter) {
                   ff.options.prefilter = evaluatePrefilter(ff.options.prefilter, {
                     record: this.record,
+                    user: this.$auth.user || {},
                     recordID: (this.record || {}).recordID || NoID,
                     ownerID: (this.record || {}).ownedBy || NoID,
                     userID: (this.$auth.user || {}).userID || NoID,
                   })
                 }
 
-                return compose.PageBlockCalendar.RecordFeed(this.$ComposeAPI, module, this.namespace, ff, this.loaded)
+                return compose.PageBlockCalendar.RecordFeed(this.$ComposeAPI, module, this.namespace, ff, this.loaded, { cancelToken: this.cancelTokenSource.token })
                   .then(events => {
+                    events = this.setEventColors(events, ff)
                     this.events.push(...events)
                   })
               })
           case compose.PageBlockCalendar.feedResources.reminder:
             return compose.PageBlockCalendar.ReminderFeed(this.$SystemAPI, this.$auth.user, feed, this.loaded)
               .then(events => {
+                events = this.setEventColors(events, feed)
                 this.events.push(...events)
               })
         }
       }))
         .finally(() => {
-          this.processing = false
-          this.refreshing = false
           setTimeout(() => {
+            this.processing = false
+            this.refreshing = false
+
             this.updateSize()
-          })
+          }, 300)
         })
     },
 
@@ -338,21 +382,58 @@ export default {
         return
       }
 
-      this.$router.push({ name: 'page.record', params: { recordID, pageID: page.pageID } })
+      const route = { name: 'page.record', params: { recordID, pageID: page.pageID } }
+
+      if (this.options.eventDisplayOption === 'modal' || this.inModal) {
+        this.$root.$emit('show-record-modal', {
+          recordID,
+          recordPageID: page.pageID,
+        })
+      } else if (this.options.eventDisplayOption === 'newTab') {
+        window.open(this.$router.resolve(route).href)
+      } else {
+        this.$router.push(route)
+      }
     },
 
     getHeight () {
-      if (this.$refs.cc) {
-        return this.$refs.cc.clientHeight
+      if (this.$refs[`cc-${this.blockIndex}`]) {
+        return this.$refs[`cc-${this.blockIndex}`].clientHeight
       }
       return 'auto'
     },
 
     refresh () {
       this.refreshing = true
-      this.api().refetchEvents().then(() => {
-        this.key++
+      new Promise(resolve => resolve(this.api().refetchEvents()))
+        .then(() => this.key++)
+        .catch(() => this.toastErrorHandler(this.$t('notification:page.block.calendar.eventFetchFailed')))
+    },
+
+    setEventColors (events, feed) {
+      return events.map(event => {
+        event.backgroundColor = feed.options.color
+        return event
       })
+    },
+
+    setDefaultValues () {
+      this.processing = false
+      this.show = false
+      this.events = []
+      this.locale = undefined
+      this.title = ''
+      this.loaded = {}
+      this.refreshing = false
+    },
+
+    abortRequests () {
+      this.cancelTokenSource.cancel(`cancel-record-list-request-${this.block.blockID}`)
+    },
+
+    destroyEvents () {
+      this.$root.$off('module-records-updated', this.refreshOnRelatedRecordsUpdate)
+      this.$root.$off('record-field-change', this.refetchOnPrefilterValueChange)
     },
   },
 }
@@ -366,12 +447,28 @@ export default {
 </style>
 <style lang="scss">
 .calendar-container {
-  .fc-content {
+  .fc-content, .event-record {
     cursor: pointer;
   }
 
   .fc-day-header {
     white-space: pre-wrap;
+  }
+}
+
+.fc-popover {
+  .fc-header {
+    padding: 0.5rem;
+  }
+
+  .fc-body {
+    padding: 0;
+
+    .fc-event-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
   }
 }
 </style>
